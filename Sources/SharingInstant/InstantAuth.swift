@@ -225,7 +225,7 @@ public final class InstantAuth: ObservableObject {
     return user
   }
   
-  #if canImport(AuthenticationServices)
+  #if canImport(AuthenticationServices) && !os(watchOS)
   /// Signs in with Apple using the native Sign in with Apple flow.
   ///
   /// This handles the entire Sign in with Apple flow, including presenting
@@ -234,7 +234,7 @@ public final class InstantAuth: ObservableObject {
   /// - Parameter presentationAnchor: The window to present the sign-in UI in
   /// - Returns: The authenticated user
   /// - Throws: If sign-in fails or is cancelled
-  @available(iOS 13.0, macOS 10.15, tvOS 13.0, watchOS 6.0, *)
+  @available(iOS 13.0, macOS 10.15, tvOS 13.0, *)
   @discardableResult
   public func signInWithApple(presentationAnchor: ASPresentationAnchor) async throws -> User {
     guard let client = client else {
@@ -245,6 +245,36 @@ public final class InstantAuth: ObservableObject {
     
     let appleSignIn = SignInWithApple()
     let (idToken, nonce) = try await appleSignIn.signIn(presentationAnchor: presentationAnchor)
+    
+    let user = try await client.authManager.signInWithIdToken(
+      clientName: "apple",
+      idToken: idToken,
+      nonce: nonce
+    )
+    
+    logger.info("Signed in with Apple: \(user.email ?? "unknown")")
+    return user
+  }
+  #endif
+  
+  #if os(watchOS)
+  /// Signs in with Apple using the native Sign in with Apple flow.
+  ///
+  /// On watchOS, the system handles the presentation automatically.
+  ///
+  /// - Returns: The authenticated user
+  /// - Throws: If sign-in fails or is cancelled
+  @available(watchOS 6.0, *)
+  @discardableResult
+  public func signInWithApple() async throws -> User {
+    guard let client = client else {
+      throw InstantError.notConnected
+    }
+    
+    logger.info("Starting Sign in with Apple flow (watchOS)")
+    
+    let appleSignIn = SignInWithApple()
+    let (idToken, nonce) = try await appleSignIn.signIn()
     
     let user = try await client.authManager.signInWithIdToken(
       clientName: "apple",
@@ -412,4 +442,5 @@ public struct InstantAuthStateKey: SharedKey {
 #if canImport(AuthenticationServices)
 import AuthenticationServices
 #endif
+
 

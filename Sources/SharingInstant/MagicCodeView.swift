@@ -138,7 +138,9 @@ public struct MagicCodeView: View {
         .keyboardType(.emailAddress)
         .autocapitalization(.none)
         #endif
+        #if !os(watchOS) && !os(tvOS)
         .textFieldStyle(.roundedBorder)
+        #endif
       
       Button(action: sendCode) {
         if isLoading {
@@ -168,7 +170,9 @@ public struct MagicCodeView: View {
         .textContentType(.oneTimeCode)
         .keyboardType(.numberPad)
         #endif
+        #if !os(watchOS) && !os(tvOS)
         .textFieldStyle(.roundedBorder)
+        #endif
       
       Button(action: verifyCode) {
         if isLoading {
@@ -253,4 +257,5 @@ struct MagicCodeView_Previews: PreviewProvider {
 }
 #endif
 #endif
+
 

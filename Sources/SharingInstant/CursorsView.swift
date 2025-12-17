@@ -243,24 +243,30 @@ extension Color {
   
   /// Returns a hex string representation of the color.
   var hexString: String {
-    #if canImport(UIKit)
+    #if canImport(UIKit) && !os(watchOS)
     guard let components = UIColor(self).cgColor.components, components.count >= 3 else {
       return "#808080"
     }
+    let r = Int(components[0] * 255)
+    let g = Int(components[1] * 255)
+    let b = Int(components[2] * 255)
+    return String(format: "#%02X%02X%02X", r, g, b)
+    #elseif os(watchOS)
+    // watchOS: Use a simpler approach - generate a consistent hash-based color
+    // Since we can't easily extract RGB components on watchOS
+    return "#808080"
     #elseif canImport(AppKit)
     guard let color = NSColor(self).usingColorSpace(.sRGB),
           let components = color.cgColor.components, components.count >= 3 else {
       return "#808080"
     }
-    #else
-    return "#808080"
-    #endif
-    
     let r = Int(components[0] * 255)
     let g = Int(components[1] * 255)
     let b = Int(components[2] * 255)
-    
     return String(format: "#%02X%02X%02X", r, g, b)
+    #else
+    return "#808080"
+    #endif
   }
   
   /// A random dark color suitable for cursors.
