@@ -88,16 +88,15 @@ final class IntegrationTests: XCTestCase {
   
   // MARK: - UniqueRequestKeyID Tests
   
-  @MainActor
-  func testUniqueRequestKeyIDWithRealClient() {
+  func testUniqueRequestKeyIDEquality() {
     let id1 = UniqueRequestKeyID(
-      client: client,
+      appID: Self.testAppID,
       namespace: "test_todos",
       orderBy: .desc("createdAt")
     )
     
     let id2 = UniqueRequestKeyID(
-      client: client,
+      appID: Self.testAppID,
       namespace: "test_todos",
       orderBy: .desc("createdAt")
     )
@@ -107,7 +106,7 @@ final class IntegrationTests: XCTestCase {
     
     // Different namespace should produce different ID
     let id3 = UniqueRequestKeyID(
-      client: client,
+      appID: Self.testAppID,
       namespace: "test_facts",
       orderBy: .desc("createdAt")
     )
@@ -116,14 +115,13 @@ final class IntegrationTests: XCTestCase {
   
   // MARK: - Dependency Injection Tests
   
-  @MainActor
   func testDependencyInjection() {
-    // Test that we can inject a client via dependencies
+    // Test that we can inject an app ID via dependencies
     withDependencies {
-      $0.defaultInstant = client
+      $0.instantAppID = Self.testAppID
     } operation: {
-      @Dependency(\.defaultInstant) var injectedClient
-      XCTAssertEqual(injectedClient.appID, Self.testAppID)
+      @Dependency(\.instantAppID) var injectedAppID
+      XCTAssertEqual(injectedAppID, Self.testAppID)
     }
   }
 }
