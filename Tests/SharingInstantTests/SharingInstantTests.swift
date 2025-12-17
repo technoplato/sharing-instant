@@ -92,18 +92,15 @@ final class EntityIdentifiableTests: XCTestCase {
 
 final class UniqueRequestKeyIDTests: XCTestCase {
   
-  @MainActor
   func testKeyIDEquality() {
-    let client = InstantClient(appID: "test-app-id")
-    
     let id1 = UniqueRequestKeyID(
-      client: client,
+      appID: "test-app-id",
       namespace: "todos",
       orderBy: .desc("createdAt")
     )
     
     let id2 = UniqueRequestKeyID(
-      client: client,
+      appID: "test-app-id",
       namespace: "todos",
       orderBy: .desc("createdAt")
     )
@@ -111,18 +108,15 @@ final class UniqueRequestKeyIDTests: XCTestCase {
     XCTAssertEqual(id1, id2)
   }
   
-  @MainActor
   func testKeyIDInequalityDifferentNamespace() {
-    let client = InstantClient(appID: "test-app-id")
-    
     let id1 = UniqueRequestKeyID(
-      client: client,
+      appID: "test-app-id",
       namespace: "todos",
       orderBy: .desc("createdAt")
     )
     
     let id2 = UniqueRequestKeyID(
-      client: client,
+      appID: "test-app-id",
       namespace: "goals",
       orderBy: .desc("createdAt")
     )
@@ -130,18 +124,15 @@ final class UniqueRequestKeyIDTests: XCTestCase {
     XCTAssertNotEqual(id1, id2)
   }
   
-  @MainActor
   func testKeyIDInequalityDifferentOrder() {
-    let client = InstantClient(appID: "test-app-id")
-    
     let id1 = UniqueRequestKeyID(
-      client: client,
+      appID: "test-app-id",
       namespace: "todos",
       orderBy: .desc("createdAt")
     )
     
     let id2 = UniqueRequestKeyID(
-      client: client,
+      appID: "test-app-id",
       namespace: "todos",
       orderBy: .asc("createdAt")
     )

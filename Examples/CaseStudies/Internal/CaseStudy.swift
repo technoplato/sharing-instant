@@ -22,31 +22,58 @@ struct CaseStudyView<Content: SwiftUICaseStudy>: View {
     content
       .navigationTitle(content.caseStudyTitle)
       .toolbar {
+        #if os(iOS)
         ToolbarItem(placement: .navigationBarTrailing) {
-          Button {
-            isShowingReadMe = true
-          } label: {
-            Image(systemName: "info.circle")
-          }
+          infoButton
         }
+        #else
+        ToolbarItem(placement: .automatic) {
+          infoButton
+        }
+        #endif
       }
       .sheet(isPresented: $isShowingReadMe) {
-        NavigationStack {
-          ScrollView {
-            Text(content.readMe)
-              .padding()
-          }
-          .navigationTitle("About")
-          .navigationBarTitleDisplayMode(.inline)
-          .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-              Button("Done") {
-                isShowingReadMe = false
-              }
-            }
+        readMeSheet
+      }
+  }
+  
+  private var infoButton: some View {
+    Button {
+      isShowingReadMe = true
+    } label: {
+      Image(systemName: "info.circle")
+    }
+  }
+  
+  private var readMeSheet: some View {
+    NavigationStack {
+      ScrollView {
+        Text(content.readMe)
+          .padding()
+      }
+      .navigationTitle("About")
+      #if os(iOS)
+      .navigationBarTitleDisplayMode(.inline)
+      #endif
+      .toolbar {
+        #if os(iOS)
+        ToolbarItem(placement: .navigationBarTrailing) {
+          Button("Done") {
+            isShowingReadMe = false
           }
         }
+        #else
+        ToolbarItem(placement: .confirmationAction) {
+          Button("Done") {
+            isShowingReadMe = false
+          }
+        }
+        #endif
       }
+    }
+    #if os(macOS)
+    .frame(minWidth: 400, minHeight: 300)
+    #endif
   }
 }
 

@@ -75,7 +75,7 @@ final class TodoListModel {
   @ObservationIgnored
   @Shared(
     .instantSync(
-      configuration: .init(
+      configuration: SharingInstantSync.CollectionConfiguration<Todo>(
         namespace: "todos",
         orderBy: .desc("createdAt")
       )
@@ -146,6 +146,7 @@ private struct ObservableTodoRow: View {
           .foregroundStyle(.secondary)
       }
     }
+    #if os(iOS)
     .swipeActions(edge: .trailing) {
       Button(role: .destructive) {
         model.deleteTodo(todo)
@@ -160,6 +161,22 @@ private struct ObservableTodoRow: View {
         Image(systemName: todo.done ? "xmark.circle" : "checkmark.circle")
       }
       .tint(todo.done ? .orange : .green)
+    }
+    #endif
+    .contextMenu {
+      Button {
+        model.toggleTodo(todo)
+      } label: {
+        Label(
+          todo.done ? "Mark Incomplete" : "Mark Complete",
+          systemImage: todo.done ? "xmark.circle" : "checkmark.circle"
+        )
+      }
+      Button(role: .destructive) {
+        model.deleteTodo(todo)
+      } label: {
+        Label("Delete", systemImage: "trash")
+      }
     }
   }
 }

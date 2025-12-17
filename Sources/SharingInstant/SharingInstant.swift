@@ -9,6 +9,15 @@
 /// SharingInstant allows you to use familiar SwiftUI patterns with InstantDB:
 ///
 /// ```swift
+/// // Type-safe with generated schema
+/// @Shared(Schema.todos)
+/// private var todos: IdentifiedArrayOf<Todo> = []
+///
+/// // With ordering
+/// @Shared(Schema.todos.orderBy(\.createdAt, .desc))
+/// private var todos: IdentifiedArrayOf<Todo> = []
+///
+/// // Or with manual configuration
 /// @Shared(
 ///   .instantSync(
 ///     configuration: .init(
@@ -25,6 +34,7 @@
 /// ### Getting Started
 ///
 /// - ``EntityIdentifiable``
+/// - ``EntityKey``
 /// - ``SharingInstantSync``
 /// - ``SharingInstantQuery``
 ///
@@ -36,6 +46,7 @@
 /// ### Configuration
 ///
 /// - ``OrderBy``
+/// - ``EntityKeyOrderDirection``
 /// - ``UniqueRequestKeyID``
 
 // Re-export key types for convenience

@@ -2,16 +2,14 @@ import Dependencies
 import SharingInstant
 import SwiftUI
 
-func prepareInstant(_ values: inout DependencyValues) {
-  // Use the test InstantDB app from the plan
-  values.defaultInstant = InstantClient(appID: "b9319949-2f2d-410b-8f8a-6990177c1d44")
-}
-
 @main
 struct CaseStudiesApp: App {
   
   init() {
-    prepareDependencies(prepareInstant(_:))
+    prepareDependencies {
+      // Use the test InstantDB app from the plan
+      $0.instantAppID = "b9319949-2f2d-410b-8f8a-6990177c1d44"
+    }
   }
   
   var body: some Scene {
