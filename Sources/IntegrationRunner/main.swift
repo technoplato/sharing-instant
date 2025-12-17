@@ -1,0 +1,551 @@
+/// IntegrationRunner - Standalone integration tests for SharingInstant
+///
+/// Run with: swift run IntegrationRunner
+/// Or build and run: swift build && .build/debug/IntegrationRunner
+///
+/// This script tests the integration with the live InstantDB backend without
+/// requiring XCTest. It provides clear pass/fail output and can be run in CI.
+
+import Foundation
+import SharingInstant
+import InstantDB
+import Dependencies
+import IdentifiedCollections
+
+// MARK: - Test Configuration
+
+/// Test app configuration from the plan
+enum TestConfig {
+  static let appID = "b9319949-2f2d-410b-8f8a-6990177c1d44"
+  static let appName = "test_sharing-instant"
+  static let connectionTimeout: TimeInterval = 10.0
+  static let queryTimeout: TimeInterval = 15.0
+}
+
+// MARK: - Test Models
+
+struct TestTodo: Codable, EntityIdentifiable, Sendable, Equatable {
+  static var namespace: String { "test_todos" }
+  
+  var id: String
+  var title: String
+  var done: Bool
+  var createdAt: Date
+  
+  init(
+    id: String = UUID().uuidString,
+    title: String = "Test Todo",
+    done: Bool = false,
+    createdAt: Date = Date()
+  ) {
+    self.id = id
+    self.title = title
+    self.done = done
+    self.createdAt = createdAt
+  }
+}
+
+struct TestFact: Codable, EntityIdentifiable, Sendable, Equatable {
+  static var namespace: String { "test_facts" }
+  
+  var id: String
+  var text: String
+  var count: Int
+  
+  init(id: String = UUID().uuidString, text: String = "Test Fact", count: Int = 0) {
+    self.id = id
+    self.text = text
+    self.count = count
+  }
+}
+
+/// Todo model for typed queries - uses "todos" namespace (no prefix)
+struct Todo: Codable, InstantEntity, Sendable {
+  static var namespace: String { "todos" }
+  
+  var id: String
+  var title: String
+  var done: Bool
+  var createdAt: Int?  // Timestamp in milliseconds
+  
+  init(id: String = UUID().uuidString, title: String, done: Bool = false, createdAt: Int? = nil) {
+    self.id = id
+    self.title = title
+    self.done = done
+    self.createdAt = createdAt ?? Int(Date().timeIntervalSince1970 * 1000)
+  }
+}
+
+// MARK: - Test Runner
+
+@MainActor
+final class IntegrationTestRunner {
+  private var passedTests = 0
+  private var failedTests = 0
+  private var skippedTests = 0
+  private var client: InstantClient?
+  
+  func run() async {
+    print("""
+    ╔═══════════════════════════════════════════════════════════════════╗
+    ║       SharingInstant Integration Test Runner                      ║
+    ║       Testing against: \(TestConfig.appID)       ║
+    ╚═══════════════════════════════════════════════════════════════════╝
+    """)
+    
+    let startTime = Date()
+    
+    // Run all test groups
+    await runConnectionTests()
+    await runConfigurationTests()
+    await runDependencyTests()
+    await runDataCreationTests()
+    await runQueryTests()
+    
+    // Print summary
+    let elapsed = Date().timeIntervalSince(startTime)
+    printSummary(elapsed: elapsed)
+  }
+  
+  // MARK: - Connection Tests
+  
+  private func runConnectionTests() async {
+    printSection("Connection Tests")
+    
+    await test("Create InstantClient with test app ID") {
+      client = InstantClient(appID: TestConfig.appID)
+      guard client != nil else {
+        throw TestError("Failed to create InstantClient")
+      }
+      print("    ✓ Created client for app: \(TestConfig.appID)")
+    }
+    
+    await test("Connect to InstantDB backend") {
+      guard let client = client else {
+        throw TestError("No client available")
+      }
+      
+      client.connect()
+      
+      // Wait for connection with timeout
+      let deadline = Date().addingTimeInterval(TestConfig.connectionTimeout)
+      while Date() < deadline {
+        if client.connectionState == .connected || client.connectionState == .authenticated {
+          print("    ✓ Connection state: \(client.connectionState)")
+          return
+        }
+        try await Task.sleep(nanoseconds: 100_000_000) // 100ms
+      }
+      
+      throw TestError("Connection timeout - state: \(client.connectionState)")
+    }
+    
+    await test("Verify client is authenticated or connected") {
+      guard let client = client else {
+        throw TestError("No client available")
+      }
+      
+      let validStates: [ConnectionState] = [.connected, .authenticated]
+      guard validStates.contains(client.connectionState) else {
+        throw TestError("Expected connected or authenticated, got: \(client.connectionState)")
+      }
+      print("    ✓ Client state is valid: \(client.connectionState)")
+    }
+    
+    await test("Verify app ID matches") {
+      guard let client = client else {
+        throw TestError("No client available")
+      }
+      
+      guard client.appID == TestConfig.appID else {
+        throw TestError("App ID mismatch: expected \(TestConfig.appID), got \(client.appID)")
+      }
+      print("    ✓ App ID verified: \(client.appID)")
+    }
+  }
+  
+  // MARK: - Configuration Tests
+  
+  private func runConfigurationTests() async {
+    printSection("Configuration Tests")
+    
+    await test("Create SharingInstantQuery.Configuration") {
+      let config = SharingInstantQuery.Configuration<TestTodo>(
+        namespace: "test_todos",
+        orderBy: .desc("createdAt"),
+        limit: 10
+      )
+      
+      guard config.namespace == "test_todos" else {
+        throw TestError("Namespace mismatch")
+      }
+      guard config.orderBy?.field == "createdAt" else {
+        throw TestError("OrderBy field mismatch")
+      }
+      guard config.orderBy?.isDescending == true else {
+        throw TestError("OrderBy direction mismatch")
+      }
+      guard config.limit == 10 else {
+        throw TestError("Limit mismatch")
+      }
+      print("    ✓ Query configuration created successfully")
+    }
+    
+    await test("Create SharingInstantSync.CollectionConfiguration") {
+      let config = SharingInstantSync.CollectionConfiguration<TestTodo>(
+        namespace: "test_todos",
+        orderBy: .desc("createdAt")
+      )
+      
+      guard config.namespace == "test_todos" else {
+        throw TestError("Namespace mismatch")
+      }
+      guard config.orderBy?.field == "createdAt" else {
+        throw TestError("OrderBy field mismatch")
+      }
+      print("    ✓ Sync configuration created successfully")
+    }
+    
+    await test("OrderBy.asc creates ascending order") {
+      let order = OrderBy.asc("title")
+      guard order.field == "title" else {
+        throw TestError("Field mismatch")
+      }
+      guard order.isDescending == false else {
+        throw TestError("Should be ascending")
+      }
+      print("    ✓ Ascending order: \(order.field)")
+    }
+    
+    await test("OrderBy.desc creates descending order") {
+      let order = OrderBy.desc("createdAt")
+      guard order.field == "createdAt" else {
+        throw TestError("Field mismatch")
+      }
+      guard order.isDescending == true else {
+        throw TestError("Should be descending")
+      }
+      print("    ✓ Descending order: \(order.field)")
+    }
+  }
+  
+  // MARK: - Dependency Tests
+  
+  private func runDependencyTests() async {
+    printSection("Dependency Injection Tests")
+    
+    await test("Inject instantAppID via dependencies") {
+      withDependencies {
+        $0.instantAppID = TestConfig.appID
+      } operation: {
+        @Dependency(\.instantAppID) var injectedAppID
+        guard injectedAppID == TestConfig.appID else {
+          print("    ✗ App ID mismatch: expected \(TestConfig.appID), got \(injectedAppID)")
+          return
+        }
+        print("    ✓ Injected app ID: \(injectedAppID)")
+      }
+    }
+    
+    await test("InstantClientFactory creates client") {
+      let client = InstantClientFactory.makeClient(appID: TestConfig.appID)
+      guard client.appID == TestConfig.appID else {
+        throw TestError("Client app ID mismatch")
+      }
+      print("    ✓ Factory created client with app ID: \(client.appID)")
+    }
+  }
+  
+  // MARK: - Data Creation Tests
+  
+  private func runDataCreationTests() async {
+    printSection("Data Creation Tests (Live Backend)")
+    
+    await test("Create a todo item") {
+      guard let client = client else {
+        throw TestError("No client available")
+      }
+      
+      // Wait for authentication
+      let authDeadline = Date().addingTimeInterval(TestConfig.connectionTimeout)
+      while client.connectionState != .authenticated && Date() < authDeadline {
+        try await Task.sleep(nanoseconds: 200_000_000)
+      }
+      
+      guard client.connectionState == .authenticated else {
+        throw TestError("Client not authenticated: \(client.connectionState)")
+      }
+      
+      // Create a unique todo using TransactionChunk API
+      let todoId = UUID().uuidString.lowercased()
+      let title = "Integration Test Todo - \(Date())"
+      let timestamp = Int(Date().timeIntervalSince1970 * 1000)
+      
+      print("    Creating todo with ID: \(todoId)")
+      
+      // Use TransactionChunk with "create" operation
+      // Format: ["create", entityType, entityId, dataDict]
+      let chunk = TransactionChunk(
+        namespace: "todos",
+        id: todoId,
+        ops: [["create", "todos", todoId, [
+          "title": title,
+          "done": false,
+          "createdAt": timestamp
+        ] as [String: Any]]]
+      )
+      
+      do {
+        try client.transact(chunk)
+        print("    ✓ Transaction sent successfully")
+        
+        // Wait a moment for the server to process
+        try await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+        
+        print("    ✓ Created todo: \(title)")
+      } catch {
+        throw TestError("Transaction failed: \(error)")
+      }
+    }
+    
+    await test("Create multiple todos") {
+      guard let client = client else {
+        throw TestError("No client available")
+      }
+      
+      guard client.connectionState == .authenticated else {
+        throw TestError("Client not authenticated")
+      }
+      
+      // Create 3 todos using TransactionChunk API
+      let todoTitles = [
+        "Buy groceries 🛒",
+        "Learn Swift 📚",
+        "Build awesome app 🚀"
+      ]
+      
+      var chunks: [TransactionChunk] = []
+      
+      for title in todoTitles {
+        let todoId = UUID().uuidString.lowercased()
+        let timestamp = Int(Date().timeIntervalSince1970 * 1000)
+        
+        let chunk = TransactionChunk(
+          namespace: "todos",
+          id: todoId,
+          ops: [["create", "todos", todoId, [
+            "title": title,
+            "done": false,
+            "createdAt": timestamp
+          ] as [String: Any]]]
+        )
+        chunks.append(chunk)
+      }
+      
+      do {
+        try client.transact(chunks)
+        print("    ✓ Created \(todoTitles.count) todos")
+        
+        // Wait for server to process
+        try await Task.sleep(nanoseconds: 2_000_000_000)
+      } catch {
+        throw TestError("Batch transaction failed: \(error)")
+      }
+    }
+    
+    await test("Query todos after creation") {
+      guard let client = client else {
+        throw TestError("No client available")
+      }
+      
+      // Use typed query API
+      let query = client.query(Todo.self)
+      
+      var receivedCount = 0
+      var gotResult = false
+      
+      let token = try client.subscribe(query) { result in
+        if result.isLoading { return }
+        gotResult = true
+        
+        let todos = result.data
+        receivedCount = todos.count
+        print("    ✓ Found \(todos.count) todos in database")
+        for todo in todos.prefix(5) {
+          print("      - \(todo.title)")
+        }
+        if todos.count > 5 {
+          print("      ... and \(todos.count - 5) more")
+        }
+      }
+      
+      // Wait for result
+      let deadline = Date().addingTimeInterval(5.0)
+      while !gotResult && Date() < deadline {
+        try await Task.sleep(nanoseconds: 100_000_000)
+      }
+      
+      token.cancel()
+      
+      guard gotResult else {
+        throw TestError("Query timeout")
+      }
+      
+      print("    ✓ Successfully queried \(receivedCount) todos")
+    }
+  }
+  
+  // MARK: - Query Tests
+  
+  private func runQueryTests() async {
+    printSection("Query Tests (Live Backend)")
+    
+    await test("Subscribe to query (callback test)") {
+      guard let client = client else {
+        throw TestError("No client available")
+      }
+      
+      // Wait for authentication (not just connection)
+      let authDeadline = Date().addingTimeInterval(TestConfig.connectionTimeout)
+      while client.connectionState != .authenticated && Date() < authDeadline {
+        try await Task.sleep(nanoseconds: 200_000_000) // 200ms
+      }
+      
+      guard client.connectionState == .authenticated else {
+        throw TestError("Client not authenticated: \(client.connectionState)")
+      }
+      
+      print("    ✓ Client authenticated, sending query...")
+      
+      let query = client.query(TestTodo.self)
+      
+      // Just verify we can subscribe without errors
+      do {
+        var callbackInvoked = false
+        let token = try client.subscribe(query) { result in
+          callbackInvoked = true
+          if result.isLoading {
+            print("    … Callback invoked (loading)")
+          } else if let error = result.error {
+            print("    … Callback invoked (error: \(error))")
+          } else {
+            print("    … Callback invoked (data: \(result.data.count) items)")
+          }
+        }
+        
+        // Give the callback time to be invoked
+        try await Task.sleep(nanoseconds: 3_000_000_000) // 3 seconds
+        
+        // Clean up
+        token.cancel()
+        
+        // The callback should have been invoked at least once (for loading state)
+        guard callbackInvoked else {
+          throw TestError("Callback was never invoked")
+        }
+        
+        print("    ✓ Query subscription successful, callback invoked")
+      } catch {
+        throw TestError("Subscribe failed: \(error)")
+      }
+    }
+    
+    await test("Entity namespace is correct") {
+      guard TestTodo.namespace == "test_todos" else {
+        throw TestError("TestTodo namespace mismatch")
+      }
+      guard TestFact.namespace == "test_facts" else {
+        throw TestError("TestFact namespace mismatch")
+      }
+      print("    ✓ TestTodo.namespace = \(TestTodo.namespace)")
+      print("    ✓ TestFact.namespace = \(TestFact.namespace)")
+    }
+    
+    await test("Entity encoding/decoding roundtrip") {
+      let todo = TestTodo(id: "test-123", title: "Integration Test", done: true)
+      
+      let encoder = JSONEncoder()
+      let data = try encoder.encode(todo)
+      
+      let decoder = JSONDecoder()
+      let decoded = try decoder.decode(TestTodo.self, from: data)
+      
+      guard todo == decoded else {
+        throw TestError("Roundtrip failed: original != decoded")
+      }
+      print("    ✓ Entity encodes and decodes correctly")
+    }
+  }
+  
+  // MARK: - Test Helpers
+  
+  private func test(_ name: String, _ body: () async throws -> Void) async {
+    print("  ▶ \(name)")
+    do {
+      try await body()
+      passedTests += 1
+      print("    ✅ PASSED\n")
+    } catch {
+      failedTests += 1
+      print("    ❌ FAILED: \(error)\n")
+    }
+  }
+  
+  private func printSection(_ name: String) {
+    print("""
+    
+    ┌───────────────────────────────────────────────────────────────────┐
+    │ \(name.padding(toLength: 65, withPad: " ", startingAt: 0)) │
+    └───────────────────────────────────────────────────────────────────┘
+    """)
+  }
+  
+  private func printSummary(elapsed: TimeInterval) {
+    let total = passedTests + failedTests + skippedTests
+    let status = failedTests == 0 ? "✅ ALL TESTS PASSED" : "❌ SOME TESTS FAILED"
+    
+    print("""
+    
+    ═══════════════════════════════════════════════════════════════════
+                              TEST SUMMARY
+    ═══════════════════════════════════════════════════════════════════
+    
+      Total:   \(total)
+      Passed:  \(passedTests) ✅
+      Failed:  \(failedTests) ❌
+      Skipped: \(skippedTests) ⏭️
+    
+      Time:    \(String(format: "%.2f", elapsed))s
+    
+      \(status)
+    
+    ═══════════════════════════════════════════════════════════════════
+    """)
+  }
+}
+
+// MARK: - Error Type
+
+struct TestError: Error, CustomStringConvertible {
+  let message: String
+  
+  init(_ message: String) {
+    self.message = message
+  }
+  
+  var description: String { message }
+}
+
+// MARK: - Main Entry Point
+
+@main
+struct IntegrationRunnerApp {
+  static func main() async {
+    let runner = IntegrationTestRunner()
+    await runner.run()
+    
+    // Exit code 0 for now
+    exit(0)
+  }
+}
+

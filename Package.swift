@@ -16,6 +16,18 @@ let package = Package(
       name: "SharingInstant",
       targets: ["SharingInstant"]
     ),
+    .library(
+      name: "InstantSchemaCodegen",
+      targets: ["InstantSchemaCodegen"]
+    ),
+    .executable(
+      name: "instant-schema",
+      targets: ["instant-schema"]
+    ),
+    .plugin(
+      name: "InstantSchemaPlugin",
+      targets: ["InstantSchemaPlugin"]
+    ),
   ],
   dependencies: [
     // The upstream InstantDB iOS SDK (local path for development)
@@ -26,6 +38,8 @@ let package = Package(
     .package(url: "https://github.com/pointfreeco/swift-dependencies", from: "1.6.4"),
     // Identified collections for type-safe arrays
     .package(url: "https://github.com/pointfreeco/swift-identified-collections", from: "1.1.1"),
+    // Swift Parsing for bidirectional schema parsing/printing
+    .package(url: "https://github.com/pointfreeco/swift-parsing", from: "0.14.1"),
   ],
   targets: [
     .target(
@@ -37,11 +51,49 @@ let package = Package(
         .product(name: "IdentifiedCollections", package: "swift-identified-collections"),
       ]
     ),
+    // Schema codegen library
+    .target(
+      name: "InstantSchemaCodegen",
+      dependencies: [
+        .product(name: "Parsing", package: "swift-parsing"),
+      ]
+    ),
+    // Schema codegen CLI
+    .executableTarget(
+      name: "instant-schema",
+      dependencies: [
+        "InstantSchemaCodegen",
+      ]
+    ),
+    .executableTarget(
+      name: "IntegrationRunner",
+      dependencies: [
+        "SharingInstant",
+      ],
+      path: "Sources/IntegrationRunner"
+    ),
     .testTarget(
       name: "SharingInstantTests",
       dependencies: [
         "SharingInstant",
         .product(name: "DependenciesTestSupport", package: "swift-dependencies"),
+      ]
+    ),
+    .testTarget(
+      name: "InstantSchemaCodegenTests",
+      dependencies: [
+        "InstantSchemaCodegen",
+      ],
+      resources: [
+        .copy("Fixtures")
+      ]
+    ),
+    // SPM Build Plugin for automatic schema codegen
+    .plugin(
+      name: "InstantSchemaPlugin",
+      capability: .buildTool(),
+      dependencies: [
+        .target(name: "instant-schema")
       ]
     ),
   ],

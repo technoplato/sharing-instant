@@ -19,7 +19,7 @@ struct SwiftUISyncDemo: SwiftUICaseStudy {
   
   @Shared(
     .instantSync(
-      configuration: .init(
+      configuration: SharingInstantSync.CollectionConfiguration<Todo>(
         namespace: "todos",
         orderBy: .desc("createdAt"),
         animation: .default
@@ -30,8 +30,6 @@ struct SwiftUISyncDemo: SwiftUICaseStudy {
   
   @State private var newTodoTitle = ""
   @FocusState private var isInputFocused: Bool
-  
-  @Dependency(\.defaultInstant) var instant
   
   var body: some View {
     List {
@@ -131,6 +129,7 @@ private struct TodoRow: View {
           .foregroundStyle(.secondary)
       }
     }
+    #if os(iOS)
     .swipeActions(edge: .leading) {
       Button {
         todo.done.toggle()
@@ -139,6 +138,7 @@ private struct TodoRow: View {
       }
       .tint(todo.done ? .orange : .green)
     }
+    #endif
   }
 }
 

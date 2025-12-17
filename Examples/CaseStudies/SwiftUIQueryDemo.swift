@@ -18,7 +18,7 @@ struct SwiftUIQueryDemo: SwiftUICaseStudy {
   
   @SharedReader(
     .instantQuery(
-      configuration: .init(
+      configuration: SharingInstantQuery.Configuration<Todo>(
         namespace: "todos",
         orderBy: .desc("createdAt"),
         animation: .default
