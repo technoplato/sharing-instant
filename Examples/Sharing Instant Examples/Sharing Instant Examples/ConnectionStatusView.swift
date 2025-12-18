@@ -7,7 +7,8 @@
 //  caused by corporate VPNs like Zscaler).
 //
 
-import InstantDB
+import Sharing
+import SharingInstant
 import SwiftUI
 
 // MARK: - ConnectionStatusView
@@ -17,147 +18,216 @@ import SwiftUI
 /// ## Why This Exists
 /// When debugging connection issues (especially SSL/TLS failures from corporate
 /// VPNs), it's helpful to see the connection state in the UI. This view shows:
-/// - Current connection state (disconnected, connecting, connected, authenticated, error)
-/// - Session ID (when connected)
-/// - Error details (when in error state)
-/// - Manual connect/disconnect controls
+/// - Current connection state with emoji indicator
+/// - Session info when authenticated (user, schema)
+/// - Error details with SSL-specific guidance
+/// - Recent connection logs
 ///
 /// ## Usage
-/// Add this view to your app's main screen or settings page:
+///
 /// ```swift
-/// ConnectionStatusView(client: myInstantClient)
+/// ConnectionStatusView()
 /// ```
 struct ConnectionStatusView: View {
-  @ObservedObject var client: InstantClient
+  @SharedReader(.instantConnection) private var connection: InstantConnectionState
+  
   @State private var isExpanded = false
   @State private var logs: [String] = []
   
   var body: some View {
     DisclosureGroup(isExpanded: $isExpanded) {
       VStack(alignment: .leading, spacing: 12) {
-        statusDetails
+        stateDetails
         
         if !logs.isEmpty {
           logSection
         }
-        
-        actionButtons
       }
       .padding(.vertical, 8)
     } label: {
       HStack(spacing: 12) {
-        statusEmoji
+        Text(connection.statusEmoji)
           .font(.title2)
         
         VStack(alignment: .leading, spacing: 2) {
-          Text(statusText)
+          Text(connection.statusText)
             .font(.headline)
           
-          if let sessionID = client.sessionID {
-            Text("Session: \(sessionID.prefix(8))...")
-              .font(.caption)
-              .foregroundStyle(.tertiary)
+          if case .authenticated(let session) = connection {
+            if let email = session.user?.email {
+              Text(email)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+            if let sessionID = Optional(session.sessionID) {
+              Text("Session: \(sessionID.prefix(8))...")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+            }
           }
         }
         
         Spacer()
       }
     }
-    .onChange(of: client.connectionState) { _, newState in
-      addLog("Connection: \(newState)")
+    .onChange(of: connection) { _, newState in
+      addLog("State: \(newState.statusText)")
     }
     .onAppear {
-      addLog("View appeared, state: \(client.connectionState)")
+      addLog("View appeared, state: \(connection.statusText)")
     }
   }
   
-  // MARK: - Status Display
-  
-  private var statusEmoji: Text {
-    switch client.connectionState {
-    case .disconnected:
-      return Text("⚫️")
-    case .connecting:
-      return Text("🟡")
-    case .connected:
-      return Text("🟢")
-    case .authenticated:
-      return Text("✅")
-    case .error:
-      return Text("🔴")
-    }
-  }
-  
-  private var statusText: String {
-    switch client.connectionState {
-    case .disconnected:
-      return "Disconnected"
-    case .connecting:
-      return "Connecting..."
-    case .connected:
-      return "Connected"
-    case .authenticated:
-      return "Authenticated"
-    case .error(let error):
-      if error.isSSLTrustFailure {
-        return "SSL/TLS Error"
-      }
-      return "Error"
-    }
-  }
-  
-  private var statusDetails: some View {
-    VStack(alignment: .leading, spacing: 8) {
-      if case .error(let error) = client.connectionState {
-        errorDetails(error)
-      }
-      
-      HStack {
-        Label("\(client.attributes.count) attributes", systemImage: "doc.text")
-        Spacer()
-        Label(client.isAuthenticated ? "Signed in" : "Guest", systemImage: "person.circle")
-      }
-      .font(.caption)
-      .foregroundStyle(.secondary)
-    }
-  }
+  // MARK: - State Details
   
   @ViewBuilder
-  private func errorDetails(_ error: InstantError) -> some View {
+  private var stateDetails: some View {
+    switch connection {
+    case .disconnected:
+      disconnectedDetails
+      
+    case .connecting:
+      connectingDetails
+      
+    case .connected:
+      connectedDetails
+      
+    case .authenticated(let session):
+      authenticatedDetails(session)
+      
+    case .error(let error):
+      errorDetails(error)
+    }
+  }
+  
+  private var disconnectedDetails: some View {
+    VStack(alignment: .leading, spacing: 4) {
+      Text("Not connected to InstantDB")
+        .font(.caption)
+        .foregroundStyle(.secondary)
+      Text("The app will connect automatically when needed.")
+        .font(.caption2)
+        .foregroundStyle(.tertiary)
+    }
+  }
+  
+  private var connectingDetails: some View {
+    VStack(alignment: .leading, spacing: 4) {
+      HStack {
+        ProgressView()
+          .scaleEffect(0.8)
+        Text("Establishing connection...")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+      }
+      Text("This includes DNS, TCP, TLS handshake, and WebSocket upgrade.")
+        .font(.caption2)
+        .foregroundStyle(.tertiary)
+    }
+  }
+  
+  private var connectedDetails: some View {
+    VStack(alignment: .leading, spacing: 4) {
+      HStack {
+        ProgressView()
+          .scaleEffect(0.8)
+        Text("WebSocket open, authenticating...")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+      }
+    }
+  }
+  
+  private func authenticatedDetails(_ session: InstantConnectionState.Session) -> some View {
     VStack(alignment: .leading, spacing: 8) {
-      Text(error.localizedDescription ?? "Unknown error")
+      // User info
+      HStack {
+        Image(systemName: session.isAuthenticated ? "person.fill.checkmark" : "person.fill")
+          .foregroundStyle(session.isAuthenticated ? .green : .orange)
+        
+        if let user = session.user {
+          if let email = user.email {
+            Text(email)
+              .font(.caption)
+          } else {
+            Text("Guest User (ID: \(user.id.prefix(8))...)")
+              .font(.caption)
+              .foregroundStyle(.secondary)
+          }
+        } else {
+          Text("No user")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+      }
+      
+      // Schema info
+      HStack {
+        Image(systemName: "doc.text")
+          .foregroundStyle(session.isSchemaLoaded ? .blue : .gray)
+        
+        if session.isSchemaLoaded {
+          Text("\(session.attributeCount) attributes loaded")
+            .font(.caption)
+        } else {
+          Text("Schema not loaded")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+      }
+    }
+  }
+  
+  private func errorDetails(_ error: InstantConnectionState.ConnectionError) -> some View {
+    VStack(alignment: .leading, spacing: 8) {
+      // Error message
+      Text(error.localizedDescription)
         .font(.caption)
         .foregroundStyle(.red)
       
-      if error.isSSLTrustFailure {
-        sslTrustFailureGuidance
+      // SSL-specific guidance
+      if error.isSSLError {
+        sslErrorGuidance
       }
       
+      // Recovery suggestion
       if let suggestion = error.recoverySuggestion {
         Text(suggestion)
           .font(.caption2)
           .foregroundStyle(.secondary)
       }
+      
+      // Retry info
+      Text("The SDK will automatically retry with exponential backoff.")
+        .font(.caption2)
+        .foregroundStyle(.tertiary)
+        .italic()
     }
     .padding(8)
     .background(Color.red.opacity(0.1))
     .cornerRadius(8)
   }
   
-  private var sslTrustFailureGuidance: some View {
+  private var sslErrorGuidance: some View {
     VStack(alignment: .leading, spacing: 4) {
-      Text("This is likely caused by a corporate VPN (Zscaler, Netskope, etc.)")
+      Text("This is likely caused by a corporate VPN")
         .font(.caption)
         .bold()
       
-      Text("Solutions:")
+      Text("(Zscaler, Netskope, Cisco AnyConnect, etc.)")
         .font(.caption2)
         .foregroundStyle(.secondary)
       
+      Divider()
+      
+      Text("Solutions:")
+        .font(.caption2)
+        .bold()
+      
       VStack(alignment: .leading, spacing: 2) {
-        Text("1. Disable VPN temporarily")
-        Text("2. Add VPN's root certificate to simulator")
-        Text("3. Ask IT to whitelist api.instantdb.com")
+        Label("Disable VPN temporarily", systemImage: "1.circle")
+        Label("Add VPN's root cert to simulator", systemImage: "2.circle")
+        Label("Ask IT to whitelist api.instantdb.com", systemImage: "3.circle")
       }
       .font(.caption2)
       .foregroundStyle(.secondary)
@@ -189,38 +259,10 @@ struct ConnectionStatusView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
       }
-      .frame(height: 100)
+      .frame(height: 80)
       .padding(8)
       .background(Color.gray.opacity(0.1))
       .cornerRadius(6)
-    }
-  }
-  
-  // MARK: - Actions
-  
-  private var actionButtons: some View {
-    HStack(spacing: 12) {
-      Button {
-        addLog("Manual connect requested")
-        client.connect()
-      } label: {
-        Label("Connect", systemImage: "play.circle.fill")
-          .frame(maxWidth: .infinity)
-      }
-      .buttonStyle(.bordered)
-      .tint(.green)
-      .disabled(client.connectionState == .authenticated || client.connectionState == .connecting)
-      
-      Button {
-        addLog("Manual disconnect requested")
-        client.disconnect()
-      } label: {
-        Label("Disconnect", systemImage: "stop.circle.fill")
-          .frame(maxWidth: .infinity)
-      }
-      .buttonStyle(.bordered)
-      .tint(.red)
-      .disabled(client.connectionState == .disconnected)
     }
   }
   
@@ -236,9 +278,8 @@ struct ConnectionStatusView: View {
 
 #Preview {
   List {
-    // This preview won't work without a real client,
-    // but shows the structure
-    Text("ConnectionStatusView requires an InstantClient")
+    Section("Connection Status") {
+      ConnectionStatusView()
+    }
   }
 }
-
