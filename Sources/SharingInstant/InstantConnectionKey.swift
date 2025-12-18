@@ -7,12 +7,7 @@ import Combine
 import Dependencies
 import Foundation
 import InstantDB
-import os.log
 import Sharing
-
-// MARK: - Logging
-
-private let logger = Logger(subsystem: "SharingInstant", category: "Connection")
 
 // MARK: - Connection Status Types
 
@@ -336,11 +331,10 @@ public struct InstantConnectionKey: SharedReaderKey {
     didSet: @escaping @Sendable (InstantConnectionState?) -> Void
   ) -> SharedSubscription {
     let cancellable = LockIsolated<AnyCancellable?>(nil)
-    let subscriptionID = UUID().uuidString
-    
-    logger.debug("[\(subscriptionID)] Starting connection subscription")
     
     Task { @MainActor in
+      InstantLogger.debug("Starting connection subscription")
+      
       @Dependency(\.instantAppID) var defaultAppID
       let resolvedAppID = appID ?? defaultAppID
       let client = InstantClientFactory.makeClient(appID: resolvedAppID)
@@ -361,7 +355,7 @@ public struct InstantConnectionKey: SharedReaderKey {
           authState: authState
         )
         
-        logger.debug("[\(subscriptionID)] State: \(state.statusText)")
+        InstantLogger.connectionStateChanged(state)
         didSet(state)
       }
       
@@ -369,7 +363,9 @@ public struct InstantConnectionKey: SharedReaderKey {
     }
     
     return SharedSubscription {
-      logger.debug("[\(subscriptionID)] Ending connection subscription")
+      Task { @MainActor in
+        InstantLogger.debug("Ending connection subscription")
+      }
       cancellable.withValue { $0?.cancel() }
     }
   }
