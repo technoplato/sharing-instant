@@ -1,4 +1,4 @@
-import InstantDB
+import Sharing
 import SharingInstant
 import SwiftUI
 
@@ -6,16 +6,42 @@ import SwiftUI
 ///
 /// This example shows how to build a typing indicator that shows
 /// when other users are actively typing in a shared input.
-struct TypingIndicatorDemo: View {
-  let room = InstantRoom(type: "typing", id: "demo-123")
+///
+/// ## Declarative API
+///
+/// This demo uses the type-safe `@Shared(.instantPresence(...))` API.
+/// Typing state is updated via `$presence.withLock { $0.user.isTyping = true }`.
+struct TypingIndicatorDemo: SwiftUICaseStudy {
+  var caseStudyTitle: String { "Typing Indicator" }
   
-  @State private var message = ""
-  @State private var presenceState = InstantPresenceState()
-  @State private var isTyping = false
-  @State private var unsubscribe: (() -> Void)?
+  var readMe: String {
+    """
+    This demo shows real-time typing indicators using InstantDB presence.
+    
+    **Features:**
+    • Shows when other users are actively typing
+    • Uses `@Shared(.instantPresence(...))` for declarative presence
+    • Typing state via `$presence.withLock { $0.user.isTyping = true }`
+    
+    Open this demo in multiple windows and start typing to see the indicators!
+    """
+  }
   
   private let userId = String(UUID().uuidString.prefix(4))
   private let userColor = Color.random
+  
+  /// Type-safe presence subscription with typing state.
+  @Shared(.instantPresence(
+    Schema.Rooms.chat,
+    roomId: "demo-123",
+    initialPresence: ChatPresence(name: "", color: "", isTyping: false)
+  ))
+  private var presence: RoomPresence<ChatPresence>
+  
+  @State private var message = ""
+  
+  /// Track previous peer count for logging
+  @State private var previousPeerCount: Int = 0
   
   var body: some View {
     VStack(spacing: 0) {
@@ -26,7 +52,7 @@ struct TypingIndicatorDemo: View {
           PeerAvatar(
             name: userId,
             color: userColor,
-            isTyping: isTyping
+            isTyping: presence.user.isTyping
           )
           .overlay(
             Text("You")
@@ -35,12 +61,11 @@ struct TypingIndicatorDemo: View {
           )
           
           // Other peers
-          ForEach(presenceState.peersList, id: \.id) { peer in
-            let peerIsTyping = (peer.data["isTyping"]?.value as? Bool) ?? false
+          ForEach(presence.peers) { peer in
             PeerAvatar(
-              name: peer.name ?? String(peer.id.prefix(4)),
-              color: peer.color.flatMap { Color(hex: $0) } ?? .gray,
-              isTyping: peerIsTyping
+              name: peer.data.name.isEmpty ? String(peer.id.prefix(4)) : peer.data.name,
+              color: Color(hex: peer.data.color) ?? .gray,
+              isTyping: peer.data.isTyping
             )
           }
         }
@@ -81,18 +106,47 @@ struct TypingIndicatorDemo: View {
       }
       .padding()
     }
-    .task {
-      await setupPresence()
+    .onAppear {
+      InstantLogger.viewAppeared("TypingIndicatorDemo")
+      InstantLogger.info("Joining chat room", json: ["userId": userId, "roomId": "demo-123"])
+      
+      // Set initial presence with actual values
+      $presence.withLock { state in
+        state.user = ChatPresence(name: userId, color: userColor.hexString, isTyping: false)
+      }
     }
     .onDisappear {
-      unsubscribe?()
+      InstantLogger.viewDisappeared("TypingIndicatorDemo")
+    }
+    .onChange(of: presence.peers.count) { oldCount, newCount in
+      if newCount != previousPeerCount {
+        InstantLogger.presenceUpdate(
+          newCount > previousPeerCount ? "Peer joined chat" : "Peer left chat",
+          peerCount: newCount,
+          details: ["previousCount": previousPeerCount]
+        )
+        previousPeerCount = newCount
+      }
+    }
+    .onChange(of: presence.isLoading) { _, isLoading in
+      if !isLoading {
+        InstantLogger.info("Chat presence connected", json: ["peerCount": presence.peers.count])
+        previousPeerCount = presence.peers.count
+      }
+    }
+    .onChange(of: activeTypers.count) { oldCount, newCount in
+      if newCount != oldCount {
+        let typerNames = activeTypers.map { $0.data.name.isEmpty ? $0.id : $0.data.name }
+        InstantLogger.presenceUpdate(
+          "Typing state changed",
+          details: ["activeTypers": typerNames.joined(separator: ", "), "count": newCount]
+        )
+      }
     }
   }
   
-  private var activeTypers: [PeerPresence] {
-    presenceState.peersList.filter { peer in
-      (peer.data["isTyping"]?.value as? Bool) ?? false
-    }
+  private var activeTypers: [Peer<ChatPresence>] {
+    presence.peers.filter { $0.data.isTyping }
   }
   
   private var typingText: String {
@@ -100,50 +154,34 @@ struct TypingIndicatorDemo: View {
     case 0:
       return ""
     case 1:
-      let name = activeTypers[0].name ?? "Someone"
+      let name = activeTypers[0].data.name.isEmpty ? "Someone" : activeTypers[0].data.name
       return "\(name) is typing..."
     case 2:
-      let name1 = activeTypers[0].name ?? "Someone"
-      let name2 = activeTypers[1].name ?? "Someone"
+      let name1 = activeTypers[0].data.name.isEmpty ? "Someone" : activeTypers[0].data.name
+      let name2 = activeTypers[1].data.name.isEmpty ? "Someone" : activeTypers[1].data.name
       return "\(name1) and \(name2) are typing..."
     default:
-      let name = activeTypers[0].name ?? "Someone"
+      let name = activeTypers[0].data.name.isEmpty ? "Someone" : activeTypers[0].data.name
       return "\(name) and \(activeTypers.count - 1) others are typing..."
     }
   }
   
-  @MainActor
-  private func setupPresence() async {
-    let client = InstantClientFactory.makeClient()
-    
-    // Wait for connection
-    while client.connectionState != .authenticated {
-      try? await Task.sleep(nanoseconds: 50_000_000)
-    }
-    
-    // Join room with initial presence
-    _ = client.presence.joinRoom(room.roomId, initialPresence: [
-      "name": userId,
-      "color": userColor.hexString,
-      "isTyping": false
-    ])
-    
-    // Subscribe to presence updates
-    unsubscribe = client.presence.subscribePresence(roomId: room.roomId) { slice in
-      presenceState = InstantPresenceState(from: slice)
-    }
-  }
-  
-  @MainActor
   private func updateTypingState(_ typing: Bool) {
-    guard typing != isTyping else { return }
-    isTyping = typing
+    guard typing != presence.user.isTyping else { return }
     
-    room.publishPresence(["isTyping": typing])
+    InstantLogger.userAction(
+      typing ? "Started typing" : "Stopped typing",
+      details: ["userId": userId]
+    )
+    
+    $presence.withLock { state in
+      state.user.isTyping = typing
+    }
   }
   
-  @MainActor
   private func sendMessage() {
+    InstantLogger.userAction("Send message", details: ["messageLength": message.count])
+    
     // In a real app, you'd send the message to your backend
     message = ""
     updateTypingState(false)
@@ -211,4 +249,3 @@ struct TypingDots: View {
 #Preview {
   TypingIndicatorDemo()
 }
-

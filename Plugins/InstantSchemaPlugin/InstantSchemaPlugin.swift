@@ -53,9 +53,30 @@
 //
 // ## Environment Variables
 //
-// - `INSTANT_APP_ID`: Your InstantDB app ID (optional, for API-based generation)
-// - `INSTANT_ADMIN_TOKEN`: Admin token for API access (optional)
+// - `INSTANT_APP_ID`: Your InstantDB app ID (required for schema verification)
+// - `INSTANT_ADMIN_TOKEN`: Admin token for API access (required for schema verification)
 // - `INSTANT_SCHEMA_PATH`: Custom path to schema file (optional)
+// - `INSTANT_SCHEMA_VERIFY`: Verification mode: "warn" (default), "strict", or "off"
+//
+// ## Schema Verification
+//
+// When `INSTANT_APP_ID` and `INSTANT_ADMIN_TOKEN` are set, the plugin will:
+// 1. Generate Swift types from your local schema
+// 2. Fetch the deployed schema from InstantDB
+// 3. Compare local vs deployed and report differences
+//
+// Verification modes:
+// - `warn` (default): Log warnings for mismatches, build continues
+// - `strict`: Fail the build if schemas don't match (recommended for CI)
+// - `off`: Skip verification entirely
+//
+// Example CI setup:
+// ```yaml
+// env:
+//   INSTANT_APP_ID: ${{ secrets.INSTANT_APP_ID }}
+//   INSTANT_ADMIN_TOKEN: ${{ secrets.INSTANT_ADMIN_TOKEN }}
+//   INSTANT_SCHEMA_VERIFY: strict
+// ```
 //
 // ## Troubleshooting
 //
@@ -103,8 +124,10 @@ struct InstantSchemaPlugin: BuildToolPlugin {
     
     Diagnostics.remark("InstantDB: Generating Swift types from \(schema.lastPathComponent)")
     
-    // Create the build command
-    return [
+    var commands: [Command] = []
+    
+    // 1. Generate Swift types from schema
+    commands.append(
       .buildCommand(
         displayName: "Generate InstantDB Swift Types",
         executable: tool.url,
@@ -119,7 +142,40 @@ struct InstantSchemaPlugin: BuildToolPlugin {
           outputDir.appending(path: "Schema.swift")
         ]
       )
-    ]
+    )
+    
+    // 2. Verify schema against deployed (if credentials available)
+    let appId = ProcessInfo.processInfo.environment["INSTANT_APP_ID"]
+    let adminToken = ProcessInfo.processInfo.environment["INSTANT_ADMIN_TOKEN"]
+    let verifyMode = ProcessInfo.processInfo.environment["INSTANT_SCHEMA_VERIFY"] ?? "warn"
+    
+    if let appId = appId, let adminToken = adminToken, verifyMode != "off" {
+      Diagnostics.remark("InstantDB: Verifying schema against deployed (app: \(appId))")
+      
+      var verifyArgs = [
+        "verify",
+        "--app-id", appId,
+        "--local", schema.path(percentEncoded: false)
+      ]
+      
+      // Add --strict flag if verify mode is "strict"
+      if verifyMode == "strict" {
+        verifyArgs.append("--strict")
+      }
+      
+      commands.append(
+        .buildCommand(
+          displayName: "Verify InstantDB Schema",
+          executable: tool.url,
+          arguments: verifyArgs,
+          environment: ["INSTANT_ADMIN_TOKEN": adminToken],
+          inputFiles: [schema],
+          outputFiles: []
+        )
+      )
+    }
+    
+    return commands
   }
   
   /// Find the schema file in the project
@@ -176,7 +232,10 @@ extension InstantSchemaPlugin: XcodeBuildToolPlugin {
     
     Diagnostics.remark("InstantDB: Generating Swift types from \(schema.lastPathComponent)")
     
-    return [
+    var commands: [Command] = []
+    
+    // 1. Generate Swift types from schema
+    commands.append(
       .buildCommand(
         displayName: "Generate InstantDB Swift Types",
         executable: tool.url,
@@ -190,7 +249,39 @@ extension InstantSchemaPlugin: XcodeBuildToolPlugin {
           outputDir.appending(path: "Schema.swift")
         ]
       )
-    ]
+    )
+    
+    // 2. Verify schema against deployed (if credentials available)
+    let appId = ProcessInfo.processInfo.environment["INSTANT_APP_ID"]
+    let adminToken = ProcessInfo.processInfo.environment["INSTANT_ADMIN_TOKEN"]
+    let verifyMode = ProcessInfo.processInfo.environment["INSTANT_SCHEMA_VERIFY"] ?? "warn"
+    
+    if let appId = appId, let adminToken = adminToken, verifyMode != "off" {
+      Diagnostics.remark("InstantDB: Verifying schema against deployed (app: \(appId))")
+      
+      var verifyArgs = [
+        "verify",
+        "--app-id", appId,
+        "--local", schema.path(percentEncoded: false)
+      ]
+      
+      if verifyMode == "strict" {
+        verifyArgs.append("--strict")
+      }
+      
+      commands.append(
+        .buildCommand(
+          displayName: "Verify InstantDB Schema",
+          executable: tool.url,
+          arguments: verifyArgs,
+          environment: ["INSTANT_ADMIN_TOKEN": adminToken],
+          inputFiles: [schema],
+          outputFiles: []
+        )
+      )
+    }
+    
+    return commands
   }
   
   private func findSchemaFileInXcode(context: XcodePluginContext) -> URL? {

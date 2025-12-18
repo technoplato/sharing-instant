@@ -1,17 +1,33 @@
-import InstantDB
+import Sharing
 import SharingInstant
 import SwiftUI
 
-/// Demonstrates ephemeral topics (broadcast events) using InstantDB presence.
+/// Demonstrates ephemeral topics (broadcast events) using InstantDB.
 ///
 /// This example shows how to use topics to send fire-and-forget messages
 /// that don't persist in the database - perfect for emoji reactions,
 /// notifications, or other ephemeral events.
-struct TopicsDemo: View {
-  let room = InstantRoom(type: "topics", id: "demo-123")
+///
+/// ## Declarative API
+///
+/// This demo uses the type-safe `@Shared(.instantTopic(...))` API.
+/// The `publish` method takes an `onAttempt` callback for local handling.
+struct TopicsDemo: SwiftUICaseStudy {
+  var caseStudyTitle: String { "Topics" }
   
-  @State private var unsubscribe: (() -> Void)?
-  @State private var animations: [EmojiAnimation] = []
+  var readMe: String {
+    """
+    This demo shows ephemeral topics (broadcast events) using InstantDB.
+    
+    **Features:**
+    • Fire-and-forget messages that don't persist
+    • Perfect for emoji reactions, notifications, ephemeral events
+    • Uses `@Shared(.instantTopic(...))` for declarative topics
+    • Local handling via `publish(onAttempt:)` callback
+    
+    Open this demo in multiple windows and tap emojis to broadcast!
+    """
+  }
   
   private let emojis: [(name: String, emoji: String)] = [
     ("fire", "🔥"),
@@ -19,6 +35,15 @@ struct TopicsDemo: View {
     ("confetti", "🎉"),
     ("heart", "❤️"),
   ]
+  
+  /// Type-safe topic subscription for emoji events.
+  @Shared(.instantTopic(
+    Schema.Topics.emoji,
+    roomId: "demo-123"
+  ))
+  private var emojiChannel: TopicChannel<EmojiTopic>
+  
+  @State private var animations: [EmojiAnimation] = []
   
   var body: some View {
     ZStack {
@@ -34,6 +59,12 @@ struct TopicsDemo: View {
       VStack {
         Spacer()
         
+        if !emojiChannel.isConnected {
+          ProgressView("Connecting...")
+            .font(.caption)
+            .padding(.bottom, 8)
+        }
+        
         Text("Tap an emoji to broadcast it!")
           .font(.subheadline)
           .foregroundStyle(.secondary)
@@ -47,7 +78,7 @@ struct TopicsDemo: View {
         HStack(spacing: 16) {
           ForEach(emojis, id: \.name) { item in
             Button {
-              publishEmoji(item.name)
+              publishEmoji(item)
             } label: {
               Text(item.emoji)
                 .font(.system(size: 32))
@@ -66,68 +97,37 @@ struct TopicsDemo: View {
         .padding(.bottom, 40)
       }
     }
-    .task {
-      await setupTopics()
-    }
-    .onDisappear {
-      unsubscribe?()
-    }
-  }
-  
-  @MainActor
-  private func setupTopics() async {
-    let client = InstantClientFactory.makeClient()
-    
-    // Wait for connection
-    while client.connectionState != .authenticated {
-      try? await Task.sleep(nanoseconds: 50_000_000)
-    }
-    
-    // Join the room
-    _ = client.presence.joinRoom(room.roomId)
-    
-    // Subscribe to emoji topic
-    unsubscribe = client.presence.subscribeTopic(roomId: room.roomId, topic: "emoji") { message in
-      guard let name = message.data["name"] as? String,
-            let directionAngle = message.data["directionAngle"] as? Double,
-            let rotationAngle = message.data["rotationAngle"] as? Double else {
-        return
-      }
-      
-      let emoji = emojis.first { $0.name == name }?.emoji ?? "❓"
-      animateEmoji(emoji: emoji, directionAngle: directionAngle, rotationAngle: rotationAngle)
+    .onChange(of: emojiChannel.latestEvent) { _, event in
+      // Handle events from OTHER peers
+      guard let event = event else { return }
+      let emoji = emojis.first { $0.name == event.data.name }?.emoji ?? "❓"
+      animateEmoji(emoji: emoji, event: event.data)
     }
   }
   
-  @MainActor
-  private func publishEmoji(_ name: String) {
-    let params: [String: Any] = [
-      "name": name,
-      "directionAngle": Double.random(in: 0...1),
-      "rotationAngle": Double.random(in: 0...1)
-    ]
-    
-    // Animate locally
-    let emoji = emojis.first { $0.name == name }?.emoji ?? "❓"
-    animateEmoji(
-      emoji: emoji,
-      directionAngle: params["directionAngle"] as! Double,
-      rotationAngle: params["rotationAngle"] as! Double
+  private func publishEmoji(_ item: (name: String, emoji: String)) {
+    let payload = EmojiTopic(
+      name: item.name,
+      directionAngle: Double.random(in: 0...1),
+      rotationAngle: Double.random(in: 0...1)
     )
     
-    // Broadcast to others
-    room.publishTopic("emoji", data: params)
+    // Publish with onAttempt for local animation
+    $emojiChannel.publish(payload) { payload in
+      // Animate locally immediately
+      animateEmoji(emoji: item.emoji, event: payload)
+    }
   }
   
   @MainActor
-  private func animateEmoji(emoji: String, directionAngle: Double, rotationAngle: Double) {
+  private func animateEmoji(emoji: String, event: EmojiTopic) {
     let id = UUID()
-    let angle = directionAngle * 2 * .pi
+    let angle = event.directionAngle * 2 * .pi
     
     let animation = EmojiAnimation(
       id: id,
       emoji: emoji,
-      rotation: rotationAngle * 360,
+      rotation: event.rotationAngle * 360,
       offset: .zero,
       opacity: 1.0
     )
@@ -166,4 +166,3 @@ struct EmojiAnimation: Identifiable {
 #Preview {
   TopicsDemo()
 }
-

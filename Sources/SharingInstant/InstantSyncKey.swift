@@ -77,12 +77,32 @@ extension SharedReaderKey {
   ///
   /// - Parameters:
   ///   - request: A request describing the data to sync.
-  ///   - client: The InstantDB client to use. A value of `nil` will use the
-  ///     ``Dependencies/DependencyValues/defaultInstant``.
   /// - Returns: A key that can be passed to the `@Shared` property wrapper.
   public static func instantSync<Records: RangeReplaceableCollection & Sendable>(
+    _ request: some SharingInstantSync.KeyCollectionRequest<Records.Element>
+  ) -> Self
+  where Self == InstantSyncCollectionKey<Records>.Default {
+    Self[InstantSyncCollectionKey(request: request, appID: nil), default: Value()]
+  }
+  
+  /// A key that can sync collection data with InstantDB for a specific app.
+  ///
+  /// ## Multi-App Support (Untested)
+  ///
+  /// This overload exists to support connecting to multiple InstantDB apps
+  /// simultaneously. Each app ID creates a separate cached `InstantClient`.
+  ///
+  /// **This feature has not been tested.** If you need multi-app support,
+  /// please test thoroughly and report any issues.
+  ///
+  /// - Parameters:
+  ///   - request: A request describing the data to sync.
+  ///   - appID: The app ID to use.
+  /// - Returns: A key that can be passed to the `@Shared` property wrapper.
+  @available(*, deprecated, message: "Multi-app support is untested. Remove appID parameter to use the default app ID configured via prepareDependencies.")
+  public static func instantSync<Records: RangeReplaceableCollection & Sendable>(
     _ request: some SharingInstantSync.KeyCollectionRequest<Records.Element>,
-    appID: String? = nil
+    appID: String
   ) -> Self
   where Self == InstantSyncCollectionKey<Records>.Default {
     Self[InstantSyncCollectionKey(request: request, appID: appID), default: Value()]
@@ -107,12 +127,38 @@ extension SharedReaderKey {
   ///
   /// - Parameters:
   ///   - configuration: A configuration describing the data to sync.
-  ///   - client: The InstantDB client to use. A value of `nil` will use the
-  ///     ``Dependencies/DependencyValues/defaultInstant``.
   /// - Returns: A key that can be passed to the `@Shared` property wrapper.
   public static func instantSync<Value: EntityIdentifiable & Sendable>(
+    configuration: SharingInstantSync.CollectionConfiguration<Value>
+  ) -> Self
+  where Self == InstantSyncCollectionKey<IdentifiedArrayOf<Value>>.Default {
+    Self[
+      InstantSyncCollectionKey(
+        request: SyncCollectionConfigurationRequest(configuration: configuration),
+        appID: nil
+      ),
+      default: []
+    ]
+  }
+  
+  /// A key that can sync collection data with InstantDB for a specific app.
+  ///
+  /// ## Multi-App Support (Untested)
+  ///
+  /// This overload exists to support connecting to multiple InstantDB apps
+  /// simultaneously. Each app ID creates a separate cached `InstantClient`.
+  ///
+  /// **This feature has not been tested.** If you need multi-app support,
+  /// please test thoroughly and report any issues.
+  ///
+  /// - Parameters:
+  ///   - configuration: A configuration describing the data to sync.
+  ///   - appID: The app ID to use.
+  /// - Returns: A key that can be passed to the `@Shared` property wrapper.
+  @available(*, deprecated, message: "Multi-app support is untested. Remove appID parameter to use the default app ID configured via prepareDependencies.")
+  public static func instantSync<Value: EntityIdentifiable & Sendable>(
     configuration: SharingInstantSync.CollectionConfiguration<Value>,
-    appID: String? = nil
+    appID: String
   ) -> Self
   where Self == InstantSyncCollectionKey<IdentifiedArrayOf<Value>>.Default {
     Self[
@@ -140,12 +186,38 @@ extension SharedReaderKey {
   ///
   /// - Parameters:
   ///   - configuration: A configuration describing the data to sync.
-  ///   - client: The InstantDB client to use. A value of `nil` will use the
-  ///     ``Dependencies/DependencyValues/defaultInstant``.
   /// - Returns: A key that can be passed to the `@Shared` property wrapper.
   public static func instantSync<Value: EntityIdentifiable & Sendable>(
+    configuration: SharingInstantSync.CollectionConfiguration<Value>
+  ) -> Self
+  where Self == InstantSyncCollectionKey<[Value]>.Default {
+    Self[
+      InstantSyncCollectionKey(
+        request: SyncCollectionConfigurationRequest(configuration: configuration),
+        appID: nil
+      ),
+      default: []
+    ]
+  }
+  
+  /// A key that can sync collection data with InstantDB (Array version) for a specific app.
+  ///
+  /// ## Multi-App Support (Untested)
+  ///
+  /// This overload exists to support connecting to multiple InstantDB apps
+  /// simultaneously. Each app ID creates a separate cached `InstantClient`.
+  ///
+  /// **This feature has not been tested.** If you need multi-app support,
+  /// please test thoroughly and report any issues.
+  ///
+  /// - Parameters:
+  ///   - configuration: A configuration describing the data to sync.
+  ///   - appID: The app ID to use.
+  /// - Returns: A key that can be passed to the `@Shared` property wrapper.
+  @available(*, deprecated, message: "Multi-app support is untested. Remove appID parameter to use the default app ID configured via prepareDependencies.")
+  public static func instantSync<Value: EntityIdentifiable & Sendable>(
     configuration: SharingInstantSync.CollectionConfiguration<Value>,
-    appID: String? = nil
+    appID: String
   ) -> Self
   where Self == InstantSyncCollectionKey<[Value]>.Default {
     Self[

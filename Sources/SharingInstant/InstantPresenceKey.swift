@@ -35,13 +35,45 @@ extension SharedReaderKey {
   ///   - roomType: The room type (e.g., "document", "cursors")
   ///   - roomId: The unique room identifier
   ///   - initialPresence: Optional initial presence data to sync
-  ///   - appID: Optional app ID. Uses the default if not specified.
   /// - Returns: A key that can be passed to `@SharedReader`
   public static func instantPresence(
     roomType: String,
     roomId: String,
+    initialPresence: [String: Any]? = nil
+  ) -> Self where Self == InstantPresenceKey.Default {
+    Self[
+      InstantPresenceKey(
+        roomType: roomType,
+        roomId: roomId,
+        initialPresence: initialPresence,
+        appID: nil
+      ),
+      default: InstantPresenceState()
+    ]
+  }
+  
+  /// A key that syncs presence state from an InstantDB room for a specific app.
+  ///
+  /// ## Multi-App Support (Untested)
+  ///
+  /// This overload exists to support connecting to multiple InstantDB apps
+  /// simultaneously. Each app ID creates a separate cached `InstantClient`.
+  ///
+  /// **This feature has not been tested.** If you need multi-app support,
+  /// please test thoroughly and report any issues.
+  ///
+  /// - Parameters:
+  ///   - roomType: The room type (e.g., "document", "cursors")
+  ///   - roomId: The unique room identifier
+  ///   - initialPresence: Optional initial presence data to sync
+  ///   - appID: The app ID to use.
+  /// - Returns: A key that can be passed to `@SharedReader`
+  @available(*, deprecated, message: "Multi-app support is untested. Remove appID parameter to use the default app ID configured via prepareDependencies.")
+  public static func instantPresence(
+    roomType: String,
+    roomId: String,
     initialPresence: [String: Any]? = nil,
-    appID: String? = nil
+    appID: String
   ) -> Self where Self == InstantPresenceKey.Default {
     Self[
       InstantPresenceKey(
@@ -64,8 +96,45 @@ extension SharedReaderKey {
   /// ```
   public static func instantPresence(
     room: String,
+    initialPresence: [String: Any]? = nil
+  ) -> Self where Self == InstantPresenceKey.Default {
+    let components = room.split(separator: "-", maxSplits: 1)
+    let roomType: String
+    let roomId: String
+    if components.count == 2 {
+      roomType = String(components[0])
+      roomId = String(components[1])
+    } else {
+      roomType = "default"
+      roomId = room
+    }
+    return Self[
+      InstantPresenceKey(
+        roomType: roomType,
+        roomId: roomId,
+        initialPresence: initialPresence,
+        appID: nil
+      ),
+      default: InstantPresenceState()
+    ]
+  }
+  
+  /// A key that syncs presence state from an InstantDB room for a specific app.
+  ///
+  /// ## Multi-App Support (Untested)
+  ///
+  /// This overload exists to support connecting to multiple InstantDB apps
+  /// simultaneously. Each app ID creates a separate cached `InstantClient`.
+  ///
+  /// **This feature has not been tested.** If you need multi-app support,
+  /// please test thoroughly and report any issues.
+  ///
+  /// Convenience overload that takes a combined room ID.
+  @available(*, deprecated, message: "Multi-app support is untested. Remove appID parameter to use the default app ID configured via prepareDependencies.")
+  public static func instantPresence(
+    room: String,
     initialPresence: [String: Any]? = nil,
-    appID: String? = nil
+    appID: String
   ) -> Self where Self == InstantPresenceKey.Default {
     let components = room.split(separator: "-", maxSplits: 1)
     let roomType: String
@@ -116,7 +185,7 @@ public struct InstantPresenceState: Sendable, Equatable {
   }
   
   /// Creates a presence state from a presence slice
-  init(from slice: PresenceSlice) {
+  public init(from slice: PresenceSlice) {
     self.user = slice.user.mapValues { AnySendable($0) }
     self.peers = slice.peers.mapValues { $0.mapValues { AnySendable($0) } }
     self.isLoading = slice.isLoading

@@ -77,7 +77,7 @@ final class TodoListModel {
     .instantSync(
       configuration: SharingInstantSync.CollectionConfiguration<Todo>(
         namespace: "todos",
-        orderBy: .desc("createdAt")
+        orderBy: OrderBy.desc("createdAt")
       )
     )
   )
@@ -94,7 +94,7 @@ final class TodoListModel {
     guard !title.isEmpty else { return }
     
     let todo = Todo(title: title)
-    $todos.withLock { todos in
+    _ = $todos.withLock { todos in
       todos.insert(todo, at: 0)
     }
     

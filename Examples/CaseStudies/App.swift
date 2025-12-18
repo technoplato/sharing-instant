@@ -61,6 +61,19 @@ struct CaseStudiesApp: App {
             
             NavigationLink {
               CaseStudyView {
+                AdvancedTodoDemo()
+              }
+            } label: {
+              VStack(alignment: .leading, spacing: 4) {
+                Label("Advanced Todo", systemImage: "checklist")
+                Text("Search, sort, and filter todos")
+                  .font(.caption)
+                  .foregroundStyle(.secondary)
+              }
+            }
+            
+            NavigationLink {
+              CaseStudyView {
                 DynamicFilterDemo()
               }
             } label: {

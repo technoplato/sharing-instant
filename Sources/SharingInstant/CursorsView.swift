@@ -223,7 +223,7 @@ public struct DefaultCursor: View {
 
 // MARK: - Color Extensions
 
-extension Color {
+public extension Color {
   /// Creates a color from a hex string.
   init?(hex: String) {
     var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -270,7 +270,7 @@ extension Color {
   }
   
   /// A random dark color suitable for cursors.
-  public static var random: Color {
+  static var random: Color {
     Color(
       red: Double.random(in: 0...0.7),
       green: Double.random(in: 0...0.7),

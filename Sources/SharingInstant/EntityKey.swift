@@ -63,6 +63,12 @@ public struct EntityKey<Entity: EntityIdentifiable & Sendable>: Hashable, Sendab
   /// Maximum number of results (optional)
   public var limitCount: Int?
   
+  /// Where clause predicates (stored as field -> predicate dictionary)
+  public var whereClauses: [String: EntityKeyPredicate]
+  
+  /// Links to include in query results (InstaQL-style nested queries)
+  public var includedLinks: Set<String>
+  
   /// Creates an EntityKey for the specified namespace.
   ///
   /// - Parameters:
@@ -70,16 +76,22 @@ public struct EntityKey<Entity: EntityIdentifiable & Sendable>: Hashable, Sendab
   ///   - orderByField: Optional field to order by
   ///   - orderDirection: Optional order direction
   ///   - limitCount: Optional limit on results
+  ///   - whereClauses: Optional where clauses
+  ///   - includedLinks: Optional links to include in results
   public init(
     namespace: String,
     orderByField: String? = nil,
     orderDirection: EntityKeyOrderDirection? = nil,
-    limitCount: Int? = nil
+    limitCount: Int? = nil,
+    whereClauses: [String: EntityKeyPredicate] = [:],
+    includedLinks: Set<String> = []
   ) {
     self.namespace = namespace
     self.orderByField = orderByField
     self.orderDirection = orderDirection
     self.limitCount = limitCount
+    self.whereClauses = whereClauses
+    self.includedLinks = includedLinks
   }
   
   // MARK: - Query Modifiers
@@ -99,13 +111,7 @@ public struct EntityKey<Entity: EntityIdentifiable & Sendable>: Hashable, Sendab
     _ direction: EntityKeyOrderDirection
   ) -> EntityKey<Entity> {
     var copy = self
-    // Extract field name from keyPath
-    // This uses a simple approach - in production, consider using Mirror or codegen
-    let keyPathString = String(describing: keyPath)
-    // KeyPath string format is like \Entity.fieldName
-    if let lastComponent = keyPathString.split(separator: ".").last {
-      copy.orderByField = String(lastComponent)
-    }
+    copy.orderByField = extractFieldName(from: keyPath)
     copy.orderDirection = direction
     return copy
   }
@@ -143,6 +149,89 @@ public struct EntityKey<Entity: EntityIdentifiable & Sendable>: Hashable, Sendab
     copy.limitCount = count
     return copy
   }
+  
+  // MARK: - Where Clauses
+  
+  /// Filter results where a field equals a value.
+  ///
+  /// ```swift
+  /// Schema.todos.where(\.done, .equals(false))
+  /// Schema.todos.where(\.priority, .greaterThan(5))
+  /// ```
+  ///
+  /// - Parameters:
+  ///   - keyPath: KeyPath to the field to filter on
+  ///   - predicate: The predicate to apply
+  /// - Returns: A new EntityKey with the filter applied
+  public func `where`<V: Hashable & Sendable>(
+    _ keyPath: KeyPath<Entity, V>,
+    _ predicate: EntityKeyPredicate
+  ) -> EntityKey<Entity> {
+    var copy = self
+    let fieldName = extractFieldName(from: keyPath)
+    copy.whereClauses[fieldName] = predicate
+    return copy
+  }
+  
+  /// Filter results where a field equals a value (string-based).
+  ///
+  /// ```swift
+  /// Schema.todos.where("done", .equals(false))
+  /// ```
+  ///
+  /// - Parameters:
+  ///   - field: The field name to filter on
+  ///   - predicate: The predicate to apply
+  /// - Returns: A new EntityKey with the filter applied
+  public func `where`(
+    _ field: String,
+    _ predicate: EntityKeyPredicate
+  ) -> EntityKey<Entity> {
+    var copy = self
+    copy.whereClauses[field] = predicate
+    return copy
+  }
+  
+  // MARK: - Link Inclusion
+  
+  /// Include a related entity in the query results.
+  ///
+  /// ```swift
+  /// // Include owner in todo results
+  /// Schema.todos.with(\.owner)
+  ///
+  /// // Include multiple relations
+  /// Schema.todos.with(\.owner).with(\.tags)
+  /// ```
+  ///
+  /// - Parameter keyPath: KeyPath to the link field
+  /// - Returns: A new EntityKey with the link inclusion
+  public func with<V>(_ keyPath: KeyPath<Entity, V>) -> EntityKey<Entity> {
+    var copy = self
+    let fieldName = extractFieldName(from: keyPath)
+    copy.includedLinks.insert(fieldName)
+    return copy
+  }
+  
+  /// Include a related entity by field name.
+  ///
+  /// - Parameter linkName: The name of the link field to include
+  /// - Returns: A new EntityKey with the link inclusion
+  public func with(_ linkName: String) -> EntityKey<Entity> {
+    var copy = self
+    copy.includedLinks.insert(linkName)
+    return copy
+  }
+  
+  // MARK: - Helpers
+  
+  private func extractFieldName<V>(from keyPath: KeyPath<Entity, V>) -> String {
+    let keyPathString = String(describing: keyPath)
+    if let lastComponent = keyPathString.split(separator: ".").last {
+      return String(lastComponent)
+    }
+    return keyPathString
+  }
 }
 
 // MARK: - Order Direction
@@ -154,6 +243,158 @@ public enum EntityKeyOrderDirection: String, Sendable, Hashable {
   
   /// Descending order (largest to smallest, newest to oldest)
   case desc
+}
+
+// MARK: - Predicate
+
+/// A predicate for filtering EntityKey queries.
+///
+/// Predicates support common comparison operations:
+///
+/// ```swift
+/// .equals(value)       // field == value
+/// .notEquals(value)    // field != value
+/// .greaterThan(value)  // field > value
+/// .greaterOrEqual(value) // field >= value
+/// .lessThan(value)     // field < value
+/// .lessOrEqual(value)  // field <= value
+/// .isIn([values])      // field in [values]
+/// .like(pattern)       // SQL LIKE pattern (case-sensitive)
+/// .ilike(pattern)      // SQL LIKE pattern (case-insensitive)
+/// .contains(text)      // Contains substring (case-insensitive)
+/// .startsWith(text)    // Starts with prefix (case-insensitive)
+/// .endsWith(text)      // Ends with suffix (case-insensitive)
+/// ```
+public enum EntityKeyPredicate: Hashable, Sendable {
+  /// Equals comparison
+  case equals(AnyHashableSendable)
+  
+  /// Not equals comparison
+  case notEquals(AnyHashableSendable)
+  
+  /// Greater than comparison
+  case greaterThan(AnyHashableSendable)
+  
+  /// Greater than or equal comparison
+  case greaterOrEqual(AnyHashableSendable)
+  
+  /// Less than comparison
+  case lessThan(AnyHashableSendable)
+  
+  /// Less than or equal comparison
+  case lessOrEqual(AnyHashableSendable)
+  
+  /// In set comparison
+  case isIn([AnyHashableSendable])
+  
+  /// Pattern matching (case-sensitive, SQL LIKE syntax: % for wildcard)
+  case like(String)
+  
+  /// Pattern matching (case-insensitive, SQL LIKE syntax: % for wildcard)
+  case ilike(String)
+  
+  // MARK: - Convenience Initializers
+  
+  /// Creates an equals predicate.
+  public static func eq<V: Hashable & Sendable>(_ value: V) -> EntityKeyPredicate {
+    .equals(AnyHashableSendable(value))
+  }
+  
+  /// Creates a not-equals predicate.
+  public static func neq<V: Hashable & Sendable>(_ value: V) -> EntityKeyPredicate {
+    .notEquals(AnyHashableSendable(value))
+  }
+  
+  /// Creates a greater-than predicate.
+  public static func gt<V: Hashable & Sendable>(_ value: V) -> EntityKeyPredicate {
+    .greaterThan(AnyHashableSendable(value))
+  }
+  
+  /// Creates a greater-or-equal predicate.
+  public static func gte<V: Hashable & Sendable>(_ value: V) -> EntityKeyPredicate {
+    .greaterOrEqual(AnyHashableSendable(value))
+  }
+  
+  /// Creates a less-than predicate.
+  public static func lt<V: Hashable & Sendable>(_ value: V) -> EntityKeyPredicate {
+    .lessThan(AnyHashableSendable(value))
+  }
+  
+  /// Creates a less-or-equal predicate.
+  public static func lte<V: Hashable & Sendable>(_ value: V) -> EntityKeyPredicate {
+    .lessOrEqual(AnyHashableSendable(value))
+  }
+  
+  /// Creates an in-set predicate.
+  public static func `in`<V: Hashable & Sendable>(_ values: [V]) -> EntityKeyPredicate {
+    .isIn(values.map { AnyHashableSendable($0) })
+  }
+  
+  /// Creates a contains predicate (case-insensitive).
+  /// Matches if the field contains the given substring.
+  public static func contains(_ substring: String) -> EntityKeyPredicate {
+    .ilike("%\(substring)%")
+  }
+  
+  /// Creates a starts-with predicate (case-insensitive).
+  /// Matches if the field starts with the given prefix.
+  public static func startsWith(_ prefix: String) -> EntityKeyPredicate {
+    .ilike("\(prefix)%")
+  }
+  
+  /// Creates an ends-with predicate (case-insensitive).
+  /// Matches if the field ends with the given suffix.
+  public static func endsWith(_ suffix: String) -> EntityKeyPredicate {
+    .ilike("%\(suffix)")
+  }
+  
+  /// Convert to InstantDB where clause dictionary format
+  func toWhereValue() -> Any {
+    switch self {
+    case .equals(let value):
+      return value.base
+    case .notEquals(let value):
+      return ["$neq": value.base]
+    case .greaterThan(let value):
+      return ["$gt": value.base]
+    case .greaterOrEqual(let value):
+      return ["$gte": value.base]
+    case .lessThan(let value):
+      return ["$lt": value.base]
+    case .lessOrEqual(let value):
+      return ["$lte": value.base]
+    case .isIn(let values):
+      return ["$in": values.map { $0.base }]
+    case .like(let pattern):
+      return ["$like": pattern]
+    case .ilike(let pattern):
+      return ["$ilike": pattern]
+    }
+  }
+}
+
+/// Type-erased hashable sendable value for predicate storage.
+public struct AnyHashableSendable: Hashable, Sendable {
+  public let base: any Sendable
+  private let _hashValue: Int
+  private let _isEqual: @Sendable (Any) -> Bool
+  
+  public init<T: Hashable & Sendable>(_ value: T) {
+    self.base = value
+    self._hashValue = value.hashValue
+    self._isEqual = { other in
+      guard let other = other as? T else { return false }
+      return value == other
+    }
+  }
+  
+  public func hash(into hasher: inout Hasher) {
+    hasher.combine(_hashValue)
+  }
+  
+  public static func == (lhs: AnyHashableSendable, rhs: AnyHashableSendable) -> Bool {
+    lhs._isEqual(rhs.base)
+  }
 }
 
 // MARK: - SharedReaderKey Extension
@@ -226,9 +467,21 @@ struct EntityKeyRequest<E: EntityIdentifiable & Sendable>: SharingInstantSync.Ke
     if let field = key.orderByField, let direction = key.orderDirection {
       orderBy = direction == .desc ? .desc(field) : .asc(field)
     }
+    
+    // Convert EntityKey where clauses to dictionary format
+    var whereClause: [String: Any]? = nil
+    if !key.whereClauses.isEmpty {
+      var clause: [String: Any] = [:]
+      for (field, predicate) in key.whereClauses {
+        clause[field] = predicate.toWhereValue()
+      }
+      whereClause = clause
+    }
+    
     return SharingInstantSync.CollectionConfiguration(
       namespace: key.namespace,
-      orderBy: orderBy
+      orderBy: orderBy,
+      whereClause: whereClause
     )
   }
 }
@@ -243,10 +496,22 @@ struct EntityKeyQueryRequest<E: EntityIdentifiable & Sendable>: SharingInstantQu
     if let field = key.orderByField, let direction = key.orderDirection {
       orderBy = direction == .desc ? .desc(field) : .asc(field)
     }
+    
+    // Convert EntityKey where clauses to dictionary format
+    var whereClause: [String: Any]? = nil
+    if !key.whereClauses.isEmpty {
+      var clause: [String: Any] = [:]
+      for (field, predicate) in key.whereClauses {
+        clause[field] = predicate.toWhereValue()
+      }
+      whereClause = clause
+    }
+    
     return SharingInstantQuery.Configuration(
       namespace: key.namespace,
       orderBy: orderBy,
-      limit: key.limitCount
+      limit: key.limitCount,
+      whereClause: whereClause
     )
   }
 }

@@ -35,39 +35,54 @@ struct ConnectionStatusView: View {
   @State private var isExpanded = false
   
   var body: some View {
+    #if os(tvOS) || os(watchOS)
+    // tvOS and watchOS don't support DisclosureGroup, show inline content
+    VStack(alignment: .leading, spacing: 12) {
+      statusHeader
+      stateDetails
+    }
+    .onAppear {
+      InstantLogger.viewAppeared("ConnectionStatusView")
+    }
+    #else
     DisclosureGroup(isExpanded: $isExpanded) {
       VStack(alignment: .leading, spacing: 12) {
         stateDetails
       }
       .padding(.vertical, 8)
     } label: {
-      HStack(spacing: 12) {
-        Text(connection.statusEmoji)
-          .font(.title2)
-        
-        VStack(alignment: .leading, spacing: 2) {
-          Text(connection.statusText)
-            .font(.headline)
-          
-          if case .authenticated(let session) = connection {
-            if let email = session.user?.email {
-              Text(email)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
-            if let sessionID = Optional(session.sessionID) {
-              Text("Session: \(sessionID.prefix(8))...")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-            }
-          }
-        }
-        
-        Spacer()
-      }
+      statusHeader
     }
     .onAppear {
       InstantLogger.viewAppeared("ConnectionStatusView")
+    }
+    #endif
+  }
+  
+  private var statusHeader: some View {
+    HStack(spacing: 12) {
+      Text(connection.statusEmoji)
+        .font(.title2)
+      
+      VStack(alignment: .leading, spacing: 2) {
+        Text(connection.statusText)
+          .font(.headline)
+        
+        if case .authenticated(let session) = connection {
+          if let email = session.user?.email {
+            Text(email)
+              .font(.caption)
+              .foregroundStyle(.secondary)
+          }
+          if let sessionID = Optional(session.sessionID) {
+            Text("Session: \(sessionID.prefix(8))...")
+              .font(.caption2)
+              .foregroundStyle(.tertiary)
+          }
+        }
+      }
+      
+      Spacer()
     }
   }
   
@@ -224,6 +239,16 @@ struct ConnectionStatusView: View {
       }
       .font(.caption2)
       .foregroundStyle(.secondary)
+      
+      Divider()
+      
+      NavigationLink {
+        SSLDebugView()
+      } label: {
+        Label("Run SSL Diagnostics", systemImage: "stethoscope")
+          .font(.caption)
+          .foregroundStyle(.blue)
+      }
     }
   }
 }

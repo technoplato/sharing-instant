@@ -58,24 +58,51 @@ private enum InstantAppIDKey: DependencyKey {
 
 // MARK: - Client Factory
 
-/// Factory for creating InstantDB clients.
+/// Factory for creating and caching InstantDB clients.
 ///
 /// This is used internally by SharingInstant to create clients on the main actor.
+/// Clients are cached by appID so that the same connected client is reused across
+/// all operations (subscribe, save, etc.).
 public enum InstantClientFactory {
-  /// Creates an InstantDB client for the configured app ID.
+  /// Cache of clients by appID to ensure we reuse connected clients
+  @MainActor
+  private static var clientCache: [String: InstantClient] = [:]
+  
+  /// Creates or returns a cached InstantDB client for the configured app ID.
   ///
   /// Must be called from the main actor.
   @MainActor
   public static func makeClient() -> InstantClient {
     @Dependency(\.instantAppID) var appID
-    return InstantClient(appID: appID)
+    return makeClient(appID: appID)
   }
   
-  /// Creates an InstantDB client for a specific app ID.
+  /// Creates or returns a cached InstantDB client for a specific app ID.
+  ///
+  /// The client is cached so that subsequent calls with the same appID return
+  /// the same connected client instance. This ensures that save operations
+  /// can use an already-authenticated client.
   ///
   /// Must be called from the main actor.
   @MainActor
   public static func makeClient(appID: String) -> InstantClient {
-    InstantClient(appID: appID)
+    if let cached = clientCache[appID] {
+      return cached
+    }
+    let client = InstantClient(appID: appID)
+    clientCache[appID] = client
+    return client
+  }
+  
+  /// Clears the client cache. Useful for testing or when switching accounts.
+  @MainActor
+  public static func clearCache() {
+    clientCache.removeAll()
+  }
+  
+  /// Removes a specific client from the cache.
+  @MainActor
+  public static func removeClient(appID: String) {
+    clientCache.removeValue(forKey: appID)
   }
 }

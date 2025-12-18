@@ -14,7 +14,23 @@ import SwiftUI
 /// This demo shows how to use both:
 /// - `@Shared(.instantSync(...))` for persisted board state
 /// - `@Shared(.instantPresence(...))` for ephemeral player presence
-struct TileGameDemo: View {
+struct TileGameDemo: SwiftUICaseStudy {
+  var caseStudyTitle: String { "Tile Game" }
+  
+  var readMe: String {
+    """
+    This demo shows a collaborative tile game combining presence and data sync.
+    
+    **Features:**
+    • Click tiles to color them with your color
+    • Board state persists via `@Shared(.instantSync(...))`
+    • Player presence via `@Shared(.instantPresence(...))`
+    • Real-time updates across all clients
+    
+    Open this demo in multiple windows to play together!
+    """
+  }
+  
   private let userId = String(UUID().uuidString.prefix(4))
   @State private var myColor: Color = .random
   // InstantDB requires UUIDs for entity IDs. We use a deterministic UUID
@@ -160,7 +176,7 @@ struct TileGameDemo: View {
           newBoard.state["\(row)-\(col)"] = "#FFFFFF"
         }
       }
-      $boards.withLock { $0.append(newBoard) }
+      _ = $boards.withLock { $0.append(newBoard) }
     }
   }
   

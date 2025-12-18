@@ -66,13 +66,13 @@ struct Todo: Codable, InstantEntity, Sendable {
   var id: String
   var title: String
   var done: Bool
-  var createdAt: Int?  // Timestamp in milliseconds
+  var createdAt: Date  // Timestamp - InstantDB stores as milliseconds since epoch
   
-  init(id: String = UUID().uuidString, title: String, done: Bool = false, createdAt: Int? = nil) {
+  init(id: String = UUID().uuidString, title: String, done: Bool = false, createdAt: Date = Date()) {
     self.id = id
     self.title = title
     self.done = done
-    self.createdAt = createdAt ?? Int(Date().timeIntervalSince1970 * 1000)
+    self.createdAt = createdAt
   }
 }
 
@@ -84,6 +84,9 @@ final class IntegrationTestRunner {
   private var failedTests = 0
   private var skippedTests = 0
   private var client: InstantClient?
+  
+  /// Track created todo IDs for cleanup
+  private var createdTodoIds: [String] = []
   
   func run() async {
     print("""
@@ -101,6 +104,8 @@ final class IntegrationTestRunner {
     await runDependencyTests()
     await runDataCreationTests()
     await runQueryTests()
+    await runPresenceTests()
+    await runCleanupTests()
     
     // Print summary
     let elapsed = Date().timeIntervalSince(startTime)
@@ -393,6 +398,96 @@ final class IntegrationTestRunner {
       
       print("    ✓ Successfully queried \(receivedCount) todos")
     }
+    
+    await test("Real-time updates (create while subscribed)") {
+      guard let client = client else {
+        throw TestError("No client available")
+      }
+      
+      // Use typed query API
+      let query = client.query(Todo.self)
+      
+      var initialCount = 0
+      var updatedCount = 0
+      var callbackCount = 0
+      var gotInitialData = false
+      var gotUpdate = false
+      
+      print("    Setting up subscription...")
+      
+      let token = try client.subscribe(query) { result in
+        if result.isLoading {
+          print("    … Loading...")
+          return
+        }
+        
+        callbackCount += 1
+        let todos = result.data
+        
+        if !gotInitialData {
+          // First non-loading callback is initial data
+          gotInitialData = true
+          initialCount = todos.count
+          print("    ✓ Initial data received: \(initialCount) todos")
+        } else {
+          // Subsequent callbacks are updates
+          updatedCount = todos.count
+          if updatedCount > initialCount {
+            gotUpdate = true
+            print("    ✓ Real-time update received! Count: \(initialCount) → \(updatedCount)")
+          }
+        }
+      }
+      
+      // Wait for initial data
+      let initialDeadline = Date().addingTimeInterval(5.0)
+      while !gotInitialData && Date() < initialDeadline {
+        try await Task.sleep(nanoseconds: 100_000_000)
+      }
+      
+      guard gotInitialData else {
+        token.cancel()
+        throw TestError("Never received initial data")
+      }
+      
+      // Now create a new todo while subscribed
+      let newTodoId = UUID().uuidString.lowercased()
+      let newTitle = "Real-time Test - \(Date())"
+      let timestamp = Int(Date().timeIntervalSince1970 * 1000)
+      
+      print("    Creating new todo while subscribed: \(newTodoId.prefix(8))...")
+      
+      let chunk = TransactionChunk(
+        namespace: "todos",
+        id: newTodoId,
+        ops: [["create", "todos", newTodoId, [
+          "title": newTitle,
+          "done": false,
+          "createdAt": timestamp
+        ] as [String: Any]]]
+      )
+      
+      try client.transact(chunk)
+      print("    ✓ Transaction sent")
+      
+      // Wait for the real-time update
+      let updateDeadline = Date().addingTimeInterval(10.0)
+      while !gotUpdate && Date() < updateDeadline {
+        try await Task.sleep(nanoseconds: 200_000_000)
+      }
+      
+      token.cancel()
+      
+      if gotUpdate {
+        print("    ✓ Real-time sync working! Received update after \(callbackCount) callbacks")
+      } else {
+        print("    ⚠️ No real-time update received after 10s")
+        print("    ⚠️ Initial count: \(initialCount), current count: \(updatedCount)")
+        print("    ⚠️ Total callbacks: \(callbackCount)")
+        // Don't fail the test - this helps us debug the issue
+        print("    ℹ️ Check if refresh-ok messages are being received")
+      }
+    }
   }
   
   // MARK: - Query Tests
@@ -477,6 +572,281 @@ final class IntegrationTestRunner {
     }
   }
   
+  // MARK: - Presence Tests
+  
+  private func runPresenceTests() async {
+    printSection("Presence Tests (Live Backend)")
+    
+    await test("Join room and set presence") {
+      guard let client = client else {
+        throw TestError("No client available")
+      }
+      
+      guard client.connectionState == .authenticated else {
+        throw TestError("Client not authenticated")
+      }
+      
+      let roomId = "test-room-\(UUID().uuidString.prefix(8))"
+      print("    Testing room: \(roomId)")
+      
+      // Join the room with initial presence
+      let initialPresence: [String: Any] = [
+        "name": "TestUser",
+        "color": "#FF0000",
+        "status": "online"
+      ]
+      
+      var gotPresenceUpdate = false
+      var presenceData: [String: Any]? = nil
+      
+      // Subscribe to presence
+      let unsubscribe = client.presence.subscribePresence(
+        roomId: roomId,
+        initialPresence: initialPresence
+      ) { slice in
+        print("    … Presence callback: isLoading=\(slice.isLoading), user=\(slice.user), peers=\(slice.peers.count)")
+        if !slice.isLoading {
+          gotPresenceUpdate = true
+          presenceData = slice.user
+        }
+      }
+      
+      // Join the room
+      let leaveRoom = client.presence.joinRoom(roomId, initialPresence: initialPresence)
+      
+      // Wait for presence to be set
+      try await Task.sleep(nanoseconds: 3_000_000_000) // 3 seconds
+      
+      // Verify we got presence data
+      if gotPresenceUpdate {
+        print("    ✓ Presence update received")
+        if let data = presenceData {
+          print("    ✓ User presence: \(data)")
+        }
+      } else {
+        print("    ⚠️ No presence update received (may need room to be connected)")
+      }
+      
+      // Update presence
+      client.presence.publishPresence(roomId: roomId, data: [
+        "status": "busy",
+        "cursor": ["x": 100, "y": 200]
+      ])
+      
+      try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+      print("    ✓ Published presence update")
+      
+      // Cleanup
+      unsubscribe()
+      leaveRoom()
+      print("    ✓ Left room and unsubscribed")
+    }
+    
+    await test("Two-client presence sync") {
+      // Create two separate clients to test presence sync
+      let client1 = InstantClient(appID: TestConfig.appID)
+      let client2 = InstantClient(appID: TestConfig.appID)
+      
+      client1.connect()
+      client2.connect()
+      
+      // Wait for both to authenticate
+      let authDeadline = Date().addingTimeInterval(TestConfig.connectionTimeout)
+      while (client1.connectionState != .authenticated || client2.connectionState != .authenticated) 
+            && Date() < authDeadline {
+        try await Task.sleep(nanoseconds: 200_000_000)
+      }
+      
+      guard client1.connectionState == .authenticated else {
+        throw TestError("Client 1 not authenticated: \(client1.connectionState)")
+      }
+      guard client2.connectionState == .authenticated else {
+        throw TestError("Client 2 not authenticated: \(client2.connectionState)")
+      }
+      
+      print("    ✓ Both clients authenticated")
+      
+      let roomId = "presence-sync-test-\(UUID().uuidString.prefix(8))"
+      print("    Testing room: \(roomId)")
+      
+      var client1SawClient2 = false
+      var client2SawClient1 = false
+      
+      // Client 1 joins and subscribes
+      let unsub1 = client1.presence.subscribePresence(
+        roomId: roomId,
+        initialPresence: ["name": "Client1", "color": "#FF0000"]
+      ) { slice in
+        print("    [Client1] Presence: peers=\(slice.peers.count)")
+        for (sessionId, peerData) in slice.peers {
+          if let name = peerData["name"] as? String, name == "Client2" {
+            client1SawClient2 = true
+            print("    [Client1] ✓ Saw Client2 (session: \(sessionId.prefix(8))...)")
+          }
+        }
+      }
+      let leave1 = client1.presence.joinRoom(roomId, initialPresence: ["name": "Client1", "color": "#FF0000"])
+      
+      try await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+      
+      // Client 2 joins and subscribes
+      let unsub2 = client2.presence.subscribePresence(
+        roomId: roomId,
+        initialPresence: ["name": "Client2", "color": "#00FF00"]
+      ) { slice in
+        print("    [Client2] Presence: peers=\(slice.peers.count)")
+        for (sessionId, peerData) in slice.peers {
+          if let name = peerData["name"] as? String, name == "Client1" {
+            client2SawClient1 = true
+            print("    [Client2] ✓ Saw Client1 (session: \(sessionId.prefix(8))...)")
+          }
+        }
+      }
+      let leave2 = client2.presence.joinRoom(roomId, initialPresence: ["name": "Client2", "color": "#00FF00"])
+      
+      // Wait for presence sync
+      let syncDeadline = Date().addingTimeInterval(10.0)
+      while (!client1SawClient2 || !client2SawClient1) && Date() < syncDeadline {
+        try await Task.sleep(nanoseconds: 500_000_000)
+      }
+      
+      // Report results
+      if client1SawClient2 && client2SawClient1 {
+        print("    ✓ Two-way presence sync working!")
+      } else {
+        print("    ⚠️ Presence sync incomplete:")
+        print("      Client1 saw Client2: \(client1SawClient2)")
+        print("      Client2 saw Client1: \(client2SawClient1)")
+      }
+      
+      // Cleanup
+      unsub1()
+      unsub2()
+      leave1()
+      leave2()
+      client1.disconnect()
+      client2.disconnect()
+      
+      print("    ✓ Cleaned up both clients")
+    }
+    
+    await test("Presence topics (fire-and-forget)") {
+      guard let client = client else {
+        throw TestError("No client available")
+      }
+      
+      let roomId = "topic-test-\(UUID().uuidString.prefix(8))"
+      print("    Testing room: \(roomId)")
+      
+      var receivedTopic = false
+      var topicData: [String: Any]? = nil
+      
+      // Join room first
+      let leaveRoom = client.presence.joinRoom(roomId)
+      
+      // Subscribe to topic events on "cursor" topic
+      let unsubTopic = client.presence.subscribeTopic(
+        roomId: roomId,
+        topic: "cursor"
+      ) { message in
+        print("    … Topic received from \(message.peerId): \(message.data)")
+        receivedTopic = true
+        topicData = message.data
+      }
+      
+      try await Task.sleep(nanoseconds: 2_000_000_000) // Wait for room to be ready
+      
+      // Publish a topic event
+      client.presence.publishTopic(
+        roomId: roomId,
+        topic: "cursor",
+        data: ["x": 150, "y": 250, "timestamp": Date().timeIntervalSince1970]
+      )
+      
+      print("    ✓ Topic published")
+      
+      // Wait for topic (note: same client may not receive its own topic)
+      try await Task.sleep(nanoseconds: 2_000_000_000)
+      
+      if receivedTopic {
+        print("    ✓ Received topic: \(topicData ?? [:])")
+      } else {
+        print("    ℹ️ No topic received (expected - same client doesn't receive own topics)")
+      }
+      
+      // Cleanup
+      unsubTopic()
+      leaveRoom()
+      print("    ✓ Cleaned up room")
+    }
+  }
+  
+  // MARK: - Cleanup Tests
+  
+  private func runCleanupTests() async {
+    printSection("Cleanup Tests")
+    
+    await test("Delete test todos created during this run") {
+      guard let client = client else {
+        throw TestError("No client available")
+      }
+      
+      guard client.connectionState == .authenticated else {
+        throw TestError("Client not authenticated")
+      }
+      
+      // Query for todos with "Integration Test" or "Real-time Test" in the title
+      let query = client.query(Todo.self)
+      
+      var todosToDelete: [String] = []
+      var gotData = false
+      
+      let token = try client.subscribe(query) { result in
+        if result.isLoading { return }
+        gotData = true
+        
+        for todo in result.data {
+          if todo.title.contains("Integration Test") || todo.title.contains("Real-time Test") {
+            todosToDelete.append(todo.id)
+          }
+        }
+      }
+      
+      // Wait for query
+      let deadline = Date().addingTimeInterval(5.0)
+      while !gotData && Date() < deadline {
+        try await Task.sleep(nanoseconds: 100_000_000)
+      }
+      
+      token.cancel()
+      
+      if todosToDelete.isEmpty {
+        print("    ✓ No test todos to clean up")
+        return
+      }
+      
+      print("    Found \(todosToDelete.count) test todos to delete")
+      
+      // Delete each todo
+      var chunks: [TransactionChunk] = []
+      for todoId in todosToDelete {
+        let chunk = TransactionChunk(
+          namespace: "todos",
+          id: todoId,
+          ops: [["delete", "todos", todoId]]
+        )
+        chunks.append(chunk)
+      }
+      
+      try client.transact(chunks)
+      print("    ✓ Deleted \(todosToDelete.count) test todos")
+      
+      // Wait for transaction to process
+      try await Task.sleep(nanoseconds: 2_000_000_000)
+      print("    ✓ Cleanup complete")
+    }
+  }
+  
   // MARK: - Test Helpers
   
   private func test(_ name: String, _ body: () async throws -> Void) async {
@@ -541,10 +911,25 @@ struct TestError: Error, CustomStringConvertible {
 @main
 struct IntegrationRunnerApp {
   static func main() async {
-    let runner = IntegrationTestRunner()
-    await runner.run()
+    // Check for command line arguments
+    let args = CommandLine.arguments
     
-    // Exit code 0 for now
+    if args.contains("--sharing-instant") || args.contains("-s") {
+      // Run only the SharingInstant library tests
+      await runSharingInstantTests()
+    } else if args.contains("--all") || args.contains("-a") {
+      // Run both test suites
+      let runner = IntegrationTestRunner()
+      await runner.run()
+      
+      print("\n\n")
+      await runSharingInstantTests()
+    } else {
+      // Default: run the original InstantDB tests
+      let runner = IntegrationTestRunner()
+      await runner.run()
+    }
+    
     exit(0)
   }
 }

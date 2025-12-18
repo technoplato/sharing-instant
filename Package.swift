@@ -40,6 +40,8 @@ let package = Package(
     .package(url: "https://github.com/pointfreeco/swift-identified-collections", from: "1.1.1"),
     // Swift Parsing for bidirectional schema parsing/printing
     .package(url: "https://github.com/pointfreeco/swift-parsing", from: "0.14.1"),
+    // Swift Snapshot Testing for verifying generated code
+    .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.18.0"),
   ],
   targets: [
     .target(
@@ -70,7 +72,10 @@ let package = Package(
       dependencies: [
         "SharingInstant",
       ],
-      path: "Sources/IntegrationRunner"
+      path: "Sources/IntegrationRunner",
+      swiftSettings: [
+        .unsafeFlags(["-parse-as-library"])
+      ]
     ),
     .testTarget(
       name: "SharingInstantTests",
@@ -83,6 +88,11 @@ let package = Package(
       name: "InstantSchemaCodegenTests",
       dependencies: [
         "InstantSchemaCodegen",
+        .product(name: "SnapshotTesting", package: "swift-snapshot-testing"),
+      ],
+      // Snapshot files are managed by SnapshotTesting library, not SPM resources
+      exclude: [
+        "__Snapshots__"
       ],
       resources: [
         .copy("Fixtures")

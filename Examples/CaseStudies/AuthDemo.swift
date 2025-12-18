@@ -8,7 +8,23 @@ import SwiftUI
 /// - Guest sign-in
 /// - Magic code (email) authentication
 /// - Sign out
-struct AuthDemo: View {
+struct AuthDemo: SwiftUICaseStudy {
+  var caseStudyTitle: String { "Authentication" }
+  
+  var readMe: String {
+    """
+    This demo shows authentication flows using InstantDB.
+    
+    **Features:**
+    • Guest sign-in (anonymous users)
+    • Magic code authentication (email-based)
+    • Sign out functionality
+    • User profile display
+    
+    Try signing in as a guest or with your email!
+    """
+  }
+  
   @StateObject private var auth = InstantAuth()
   
   var body: some View {

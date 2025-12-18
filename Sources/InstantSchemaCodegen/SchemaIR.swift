@@ -35,6 +35,9 @@ public struct SchemaIR: Codable, Sendable, Equatable {
   /// All links (relationships) between entities
   public var links: [LinkIR]
   
+  /// All rooms for presence and topics
+  public var rooms: [RoomIR]
+  
   /// Schema-level documentation comment
   public var documentation: String?
   
@@ -44,11 +47,13 @@ public struct SchemaIR: Codable, Sendable, Equatable {
   public init(
     entities: [EntityIR] = [],
     links: [LinkIR] = [],
+    rooms: [RoomIR] = [],
     documentation: String? = nil,
     sourceFile: String? = nil
   ) {
     self.entities = entities
     self.links = links
+    self.rooms = rooms
     self.documentation = documentation
     self.sourceFile = sourceFile
   }
@@ -66,6 +71,11 @@ public struct SchemaIR: Codable, Sendable, Equatable {
   /// Find all links where this entity is the "to" side
   public func linksTo(entity name: String) -> [LinkIR] {
     links.filter { $0.reverse.entityName == name }
+  }
+  
+  /// Find a room by name
+  public func room(named name: String) -> RoomIR? {
+    rooms.first { $0.name == name }
   }
 }
 
@@ -118,9 +128,42 @@ public struct EntityIR: Codable, Sendable, Equatable, Identifiable {
   }
   
   /// The Swift struct name (PascalCase singular)
-  /// "todos" → "Todo", "users" → "User"
+  /// "todos" → "Todo", "users" → "User", "people" → "Person"
   public var swiftTypeName: String {
-    let singular = name.hasSuffix("s") ? String(name.dropLast()) : name
+    // Handle irregular plurals
+    let irregularPlurals: [String: String] = [
+      "people": "Person",
+      "children": "Child",
+      "men": "Man",
+      "women": "Woman",
+      "mice": "Mouse",
+      "geese": "Goose",
+      "teeth": "Tooth",
+      "feet": "Foot",
+      "data": "Data",
+      "media": "Media",
+      "criteria": "Criterion",
+      "phenomena": "Phenomenon",
+    ]
+    
+    if let irregular = irregularPlurals[name.lowercased()] {
+      return irregular
+    }
+    
+    // Handle regular plurals
+    let singular: String
+    if name.hasSuffix("ies") {
+      // "categories" → "category"
+      singular = String(name.dropLast(3)) + "y"
+    } else if name.hasSuffix("es") && (name.hasSuffix("sses") || name.hasSuffix("xes") || name.hasSuffix("ches") || name.hasSuffix("shes")) {
+      // "classes" → "class", "boxes" → "box"
+      singular = String(name.dropLast(2))
+    } else if name.hasSuffix("s") && !name.hasSuffix("ss") {
+      singular = String(name.dropLast())
+    } else {
+      singular = name
+    }
+    
     return singular.prefix(1).uppercased() + singular.dropFirst()
   }
 }
@@ -355,6 +398,136 @@ public enum Cardinality: String, Codable, Sendable, Equatable {
   case many
 }
 
+// MARK: - Room IR
+
+/// A room for real-time presence and ephemeral topics.
+///
+/// Rooms allow users to share ephemeral state (presence) and broadcast
+/// fire-and-forget messages (topics) without persisting to the database.
+///
+/// ## Example
+///
+/// For this TypeScript:
+/// ```typescript
+/// rooms: {
+///   chat: {
+///     presence: i.entity({
+///       name: i.string(),
+///       isTyping: i.boolean(),
+///     }),
+///     topics: {
+///       emoji: i.entity({
+///         name: i.string(),
+///         angle: i.number(),
+///       }),
+///     },
+///   },
+/// }
+/// ```
+///
+/// The IR is:
+/// ```swift
+/// RoomIR(
+///   name: "chat",
+///   presence: EntityIR(name: "chatPresence", fields: [...]),
+///   topics: [TopicIR(name: "emoji", payload: EntityIR(...))]
+/// )
+/// ```
+public struct RoomIR: Codable, Sendable, Equatable, Identifiable {
+  public var id: String { name }
+  
+  /// The room name (key in the `rooms` object)
+  public var name: String
+  
+  /// The presence data shape for this room (optional - room may have only topics)
+  public var presence: EntityIR?
+  
+  /// Topics defined for this room (fire-and-forget events)
+  public var topics: [TopicIR]
+  
+  /// Documentation comment for this room
+  public var documentation: String?
+  
+  public init(
+    name: String,
+    presence: EntityIR? = nil,
+    topics: [TopicIR] = [],
+    documentation: String? = nil
+  ) {
+    self.name = name
+    self.presence = presence
+    self.topics = topics
+    self.documentation = documentation
+  }
+  
+  /// The Swift type name for the presence struct
+  /// "chat" → "ChatPresence"
+  public var presenceTypeName: String {
+    name.prefix(1).uppercased() + name.dropFirst() + "Presence"
+  }
+}
+
+// MARK: - Topic IR
+
+/// A topic for fire-and-forget ephemeral messages within a room.
+///
+/// Topics are used for broadcasting events that don't need persistence,
+/// like emoji reactions, cursor movements, or typing indicators.
+///
+/// ## Example
+///
+/// For this TypeScript:
+/// ```typescript
+/// topics: {
+///   emoji: i.entity({
+///     name: i.string(),
+///     directionAngle: i.number(),
+///     rotationAngle: i.number(),
+///   }),
+/// }
+/// ```
+///
+/// The IR is:
+/// ```swift
+/// TopicIR(
+///   name: "emoji",
+///   payload: EntityIR(name: "emoji", fields: [...])
+/// )
+/// ```
+public struct TopicIR: Codable, Sendable, Equatable, Identifiable {
+  public var id: String { name }
+  
+  /// The topic name (key in the `topics` object)
+  public var name: String
+  
+  /// The payload data shape for this topic
+  public var payload: EntityIR
+  
+  /// The room this topic belongs to
+  public var roomName: String
+  
+  /// Documentation comment for this topic
+  public var documentation: String?
+  
+  public init(
+    name: String,
+    payload: EntityIR,
+    roomName: String,
+    documentation: String? = nil
+  ) {
+    self.name = name
+    self.payload = payload
+    self.roomName = roomName
+    self.documentation = documentation
+  }
+  
+  /// The Swift type name for the topic payload struct
+  /// "emoji" → "EmojiTopic"
+  public var payloadTypeName: String {
+    name.prefix(1).uppercased() + name.dropFirst() + "Topic"
+  }
+}
+
 // MARK: - Validation
 
 extension SchemaIR {
@@ -376,6 +549,15 @@ extension SchemaIR {
       .keys
     if !duplicateLinks.isEmpty {
       throw SchemaValidationError.duplicateLinkNames(Array(duplicateLinks))
+    }
+    
+    // Check for duplicate room names
+    let roomNames = rooms.map(\.name)
+    let duplicateRooms = Dictionary(grouping: roomNames, by: { $0 })
+      .filter { $0.value.count > 1 }
+      .keys
+    if !duplicateRooms.isEmpty {
+      throw SchemaValidationError.duplicateRoomNames(Array(duplicateRooms))
     }
     
     // Validate links reference existing entities
@@ -406,6 +588,32 @@ extension SchemaIR {
         throw SchemaValidationError.reservedFieldName("id", inEntity: entity.name)
       }
     }
+    
+    // Validate rooms
+    for room in rooms {
+      // Check for duplicate topic names within room
+      let topicNames = room.topics.map(\.name)
+      let duplicateTopics = Dictionary(grouping: topicNames, by: { $0 })
+        .filter { $0.value.count > 1 }
+        .keys
+      if !duplicateTopics.isEmpty {
+        throw SchemaValidationError.duplicateTopicNames(Array(duplicateTopics), inRoom: room.name)
+      }
+      
+      // Validate presence fields if present
+      if let presence = room.presence {
+        let fieldNames = presence.fields.map(\.name)
+        let duplicateFields = Dictionary(grouping: fieldNames, by: { $0 })
+          .filter { $0.value.count > 1 }
+          .keys
+        if !duplicateFields.isEmpty {
+          throw SchemaValidationError.duplicateFieldNames(
+            Array(duplicateFields),
+            inEntity: "\(room.name).presence"
+          )
+        }
+      }
+    }
   }
 }
 
@@ -413,6 +621,8 @@ extension SchemaIR {
 public enum SchemaValidationError: Error, LocalizedError {
   case duplicateEntityNames([String])
   case duplicateLinkNames([String])
+  case duplicateRoomNames([String])
+  case duplicateTopicNames([String], inRoom: String)
   case duplicateFieldNames([String], inEntity: String)
   case unknownEntity(String, inLink: String)
   case reservedFieldName(String, inEntity: String)
@@ -423,6 +633,10 @@ public enum SchemaValidationError: Error, LocalizedError {
       return "Duplicate entity names: \(names.joined(separator: ", "))"
     case .duplicateLinkNames(let names):
       return "Duplicate link names: \(names.joined(separator: ", "))"
+    case .duplicateRoomNames(let names):
+      return "Duplicate room names: \(names.joined(separator: ", "))"
+    case .duplicateTopicNames(let names, let room):
+      return "Duplicate topic names in room '\(room)': \(names.joined(separator: ", "))"
     case .duplicateFieldNames(let names, let entity):
       return "Duplicate field names in '\(entity)': \(names.joined(separator: ", "))"
     case .unknownEntity(let name, let link):

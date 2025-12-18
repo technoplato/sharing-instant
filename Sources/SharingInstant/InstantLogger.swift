@@ -125,7 +125,8 @@ public struct LogEntry: Codable, EntityIdentifiable, Sendable, Equatable {
 ///
 /// ## Setup
 ///
-/// Configure the logger early in your app's lifecycle:
+/// The logger is enabled by default with stdout and os.log output.
+/// InstantDB sync is disabled by default to avoid performance impact.
 ///
 /// ```swift
 /// @main
@@ -136,12 +137,22 @@ public struct LogEntry: Codable, EntityIdentifiable, Sendable, Equatable {
 ///       $0.instantAppID = "your-app-id"
 ///     }
 ///     
-///     // Optional: Configure logger behavior
-///     InstantLoggerConfig.printToStdout = true
-///     InstantLoggerConfig.logToOSLog = true
-///     InstantLoggerConfig.syncToInstantDB = true
+///     // Logger defaults (no configuration needed for basic logging):
+///     // - printToStdout: true (logs to Xcode console)
+///     // - logToOSLog: true (logs to system log, tail with `log stream`)
+///     // - syncToInstantDB: false (disabled by default)
+///     
+///     // Enable InstantDB sync only when you need remote debugging:
+///     // InstantLoggerConfig.syncToInstantDB = true
 ///   }
 /// }
+/// ```
+///
+/// ## Tailing Logs from Terminal
+///
+/// With os.log enabled, you can tail logs from Terminal:
+/// ```bash
+/// log stream --predicate 'subsystem == "SharingInstant"' --level debug
 /// ```
 ///
 /// ## Schema Requirements
@@ -183,11 +194,16 @@ public struct InstantLoggerConfig {
   
   /// Whether to sync logs to InstantDB.
   /// Requires a "logs" namespace in your schema.
-  /// Default: true
+  /// Default: false (disabled to avoid performance impact on your real data)
+  ///
+  /// Enable this when you need remote debugging across devices:
+  /// ```swift
+  /// InstantLoggerConfig.syncToInstantDB = true
+  /// ```
   ///
   /// - Note: Uses `nonisolated(unsafe)` because this is a configuration flag
   ///   that is typically set once at app launch and then read-only.
-  nonisolated(unsafe) public static var syncToInstantDB = true
+  nonisolated(unsafe) public static var syncToInstantDB = false
   
   /// Whether logging is enabled at all.
   /// Default: true

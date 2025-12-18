@@ -144,13 +144,18 @@ public enum InstantConnectionState: Equatable, Sendable {
   // MARK: - Connection Error
   
   /// Details about a connection failure.
+  ///
+  /// ## Equatable Implementation
+  /// Since `InstantError` contains associated `Error` values which don't conform
+  /// to `Equatable`, we implement custom equality by comparing the localized
+  /// descriptions. This matches how `ConnectionState` in the SDK handles it.
   public struct ConnectionError: Equatable, Sendable {
     /// The underlying error.
     public let error: InstantError
     
     /// A human-readable description of what went wrong.
     public var localizedDescription: String {
-      error.localizedDescription ?? "Unknown error"
+      error.localizedDescription
     }
     
     /// Whether this is an SSL/TLS trust failure.
@@ -164,6 +169,12 @@ public enum InstantConnectionState: Equatable, Sendable {
     /// A suggestion for how to fix the error.
     public var recoverySuggestion: String? {
       error.recoverySuggestion
+    }
+    
+    // MARK: - Equatable
+    
+    public static func == (lhs: ConnectionError, rhs: ConnectionError) -> Bool {
+      lhs.localizedDescription == rhs.localizedDescription
     }
   }
   
@@ -256,9 +267,9 @@ public enum InstantConnectionState: Equatable, Sendable {
 
 // MARK: - SharedReaderKey Extension
 
-extension SharedReaderKey {
+extension SharedReaderKey where Self == InstantConnectionKey.Default {
   
-  /// A key that observes the InstantDB connection status.
+  /// A key that observes the InstantDB connection status using the default app ID.
   ///
   /// Use this to reactively display connection state in your UI.
   ///
@@ -298,11 +309,44 @@ extension SharedReaderKey {
   /// }
   /// ```
   ///
-  /// - Parameter appID: Optional app ID. Uses the default if not specified.
+  /// The app ID is determined by `instantAppID` configured via `prepareDependencies`:
+  ///
+  /// ```swift
+  /// @main
+  /// struct MyApp: App {
+  ///   init() {
+  ///     prepareDependencies {
+  ///       $0.instantAppID = "your-app-id"
+  ///     }
+  ///   }
+  /// }
+  /// ```
+  public static var instantConnection: Self {
+    Self[InstantConnectionKey(appID: nil), default: .disconnected]
+  }
+  
+  /// A key that observes the InstantDB connection status for a specific app.
+  ///
+  /// ## Multi-App Support (Untested)
+  ///
+  /// This function exists to support connecting to multiple InstantDB apps
+  /// simultaneously. Each app ID creates a separate cached `InstantClient`
+  /// with its own WebSocket connection and authentication state.
+  ///
+  /// **This feature has not been tested.** If you need multi-app support,
+  /// please test thoroughly and report any issues.
+  ///
+  /// For single-app usage, prefer the property syntax:
+  /// ```swift
+  /// @SharedReader(.instantConnection) var connection
+  /// ```
+  ///
+  /// - Parameter appID: The app ID to observe.
   /// - Returns: A key that can be passed to `@SharedReader`.
+  @available(*, deprecated, message: "Multi-app support is untested. Use .instantConnection for the default app ID configured via prepareDependencies.")
   public static func instantConnection(
-    appID: String? = nil
-  ) -> Self where Self == InstantConnectionKey.Default {
+    appID: String
+  ) -> Self {
     Self[InstantConnectionKey(appID: appID), default: .disconnected]
   }
 }
@@ -326,9 +370,19 @@ public struct InstantConnectionKey: SharedReaderKey {
     InstantConnectionKeyID(appID: appID ?? "default")
   }
   
+  // MARK: - SharedReaderKey Protocol
+  
+  public func load(
+    context: LoadContext<InstantConnectionState>,
+    continuation: LoadContinuation<InstantConnectionState>
+  ) {
+    // Connection state is subscription-based; return the initial value on load
+    continuation.resumeReturningInitialValue()
+  }
+  
   public func subscribe(
-    initialValue: InstantConnectionState?,
-    didSet: @escaping @Sendable (InstantConnectionState?) -> Void
+    context: LoadContext<InstantConnectionState>,
+    subscriber: SharedSubscriber<InstantConnectionState>
   ) -> SharedSubscription {
     let cancellable = LockIsolated<AnyCancellable?>(nil)
     
@@ -356,7 +410,7 @@ public struct InstantConnectionKey: SharedReaderKey {
         )
         
         InstantLogger.connectionStateChanged(state)
-        didSet(state)
+        subscriber.yield(state)
       }
       
       cancellable.withValue { $0 = subscription }

@@ -403,12 +403,14 @@ struct SSLDebugView: View {
         inputStream.setProperty(StreamSocketSecurityLevel.negotiatedSSL, forKey: .socketSecurityLevelKey)
         outputStream.setProperty(StreamSocketSecurityLevel.negotiatedSSL, forKey: .socketSecurityLevelKey)
         
-        // Set SSL settings
+        // Set SSL settings (not available on watchOS)
+        #if !os(watchOS)
         let sslSettings: [String: Any] = [
           kCFStreamSSLPeerName as String: host
         ]
         inputStream.setProperty(sslSettings, forKey: kCFStreamPropertySSLSettings as Stream.PropertyKey)
         outputStream.setProperty(sslSettings, forKey: kCFStreamPropertySSLSettings as Stream.PropertyKey)
+        #endif
         
         inputStream.open()
         outputStream.open()
@@ -597,8 +599,10 @@ struct SSLDebugView: View {
   
   private func performWebSocketTest(host: String) async {
     log(.info, "→ Testing WebSocket connection...")
+    log(.info, "  (This is what InstantDB uses for real-time sync)")
     
-    let wsURL = URL(string: "wss://\(host)/runtime/session")!
+    // Build the WebSocket URL with a test app ID
+    let wsURL = URL(string: "wss://\(host)/runtime/session?app_id=b9319949-2f2d-410b-8f8a-6990177c1d44")!
     
     // Create session with or without bypass
     let session: URLSession
@@ -614,38 +618,69 @@ struct SSLDebugView: View {
     
     let wsTask = session.webSocketTask(with: wsURL)
     
+    // Start the connection
+    wsTask.resume()
+    
+    // Try to receive a message - InstantDB sends an init message on connect
     do {
-      // Just try to connect - we don't need to actually complete the handshake
-      wsTask.resume()
+      // Wait for a message with timeout
+      let message = try await withThrowingTaskGroup(of: URLSessionWebSocketTask.Message?.self) { group in
+        group.addTask {
+          try await wsTask.receive()
+        }
+        group.addTask {
+          try await Task.sleep(nanoseconds: 5_000_000_000) // 5 second timeout
+          return nil
+        }
+        
+        for try await result in group {
+          group.cancelAll()
+          return result
+        }
+        return nil
+      }
       
-      // Wait a moment for connection to establish or fail
-      try await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
-      
-      // Check the state
-      switch wsTask.state {
-      case .running:
-        log(.success, "  ✅ WebSocket connection established!")
-        wsTask.cancel(with: .goingAway, reason: nil)
-      case .suspended:
-        log(.warning, "  ⏸️ WebSocket suspended")
-      case .canceling:
-        log(.warning, "  ⏳ WebSocket canceling")
-      case .completed:
-        log(.info, "  WebSocket completed")
-      @unknown default:
-        log(.info, "  WebSocket state: unknown")
+      if let message = message {
+        switch message {
+        case .string(let text):
+          log(.success, "  ✅ WebSocket connected and received message!")
+          // Check if it's an InstantDB init message
+          if text.contains("init-ok") {
+            log(.success, "  ✅ InstantDB handshake successful!")
+          } else {
+            log(.info, "  Message: \(String(text.prefix(80)))...")
+          }
+        case .data(let data):
+          log(.success, "  ✅ WebSocket connected and received data!")
+          log(.info, "  Data size: \(data.count) bytes")
+        @unknown default:
+          log(.success, "  ✅ WebSocket connected!")
+        }
+      } else {
+        // Timeout - check state
+        switch wsTask.state {
+        case .running:
+          log(.warning, "  ⏱️ WebSocket connected but no message received (timeout)")
+        case .suspended:
+          log(.warning, "  ⏸️ WebSocket suspended")
+        case .canceling, .completed:
+          log(.error, "  ❌ WebSocket connection failed")
+        @unknown default:
+          log(.warning, "  WebSocket state: unknown")
+        }
       }
     } catch {
-      log(.error, "  WebSocket error: \(error.localizedDescription)")
+      log(.error, "  ❌ WebSocket error: \(error.localizedDescription)")
       
       let nsError = error as NSError
-      if nsError.code == -1200 {
-        log(.error, "  ⚠️ WebSocket SSL/TLS FAILURE")
-        log(.error, "  This confirms Zscaler intercepts WebSocket differently than HTTP!")
+      if nsError.code == -1200 || nsError.code == -9802 {
+        log(.error, "  ⚠️ SSL/TLS FAILURE - Zscaler certificate not trusted!")
+        log(.error, "  This is why InstantDB connections fail.")
+        log(.info, "  Fix: Install Zscaler Root CA in simulator trust store")
       }
     }
     
-    wsTask.cancel()
+    wsTask.cancel(with: .goingAway, reason: nil)
     if zscalerBypassEnabled {
       session.invalidateAndCancel()
     }

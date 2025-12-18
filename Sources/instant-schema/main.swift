@@ -55,6 +55,12 @@ struct InstantSchemaCLI {
       case "diff":
         try await diffCommand(Array(arguments.dropFirst()))
         
+      case "swift-to-ts", "s2t":
+        try await swiftToTypeScriptCommand(Array(arguments.dropFirst()))
+        
+      case "migrate":
+        try await migrateCommand(Array(arguments.dropFirst()))
+        
       case "help", "--help", "-h":
         printUsage()
         
@@ -449,6 +455,180 @@ struct InstantSchemaCLI {
     }
   }
   
+  // MARK: - Migrate Command
+  
+  /// Generate migration script between two schemas
+  static func migrateCommand(_ args: [String]) async throws {
+    var fromPath: String?
+    var toPath: String?
+    var outputPath: String?
+    var appId: String?
+    var adminToken: String?
+    var showScript = false
+    
+    var i = 0
+    while i < args.count {
+      switch args[i] {
+      case "--from", "-f":
+        i += 1
+        fromPath = args[i]
+      case "--to", "-t":
+        i += 1
+        toPath = args[i]
+      case "--output", "-o":
+        i += 1
+        outputPath = args[i]
+      case "--app-id", "-a":
+        i += 1
+        appId = args[i]
+      case "--admin-token":
+        i += 1
+        adminToken = args[i]
+      case "--script":
+        showScript = true
+      default:
+        break
+      }
+      i += 1
+    }
+    
+    // Get credentials from environment if not provided
+    appId = appId ?? ProcessInfo.processInfo.environment["INSTANT_APP_ID"]
+    adminToken = adminToken ?? ProcessInfo.processInfo.environment["INSTANT_ADMIN_TOKEN"]
+    
+    // Parse "from" schema (can be file or deployed)
+    let fromSchema: SchemaIR
+    if let from = fromPath {
+      print("📖 Parsing source schema from \(from)...")
+      let parser = CommentPreservingSchemaParser()
+      let content = try String(contentsOfFile: from, encoding: .utf8)
+      fromSchema = try parser.parse(content, sourceFile: from)
+    } else if let app = appId, let token = adminToken {
+      print("📡 Fetching deployed schema as source...")
+      let api = InstantDBAPI(adminToken: token)
+      fromSchema = try await api.fetchSchema(appID: app)
+    } else {
+      print("Error: No source schema specified")
+      print("Usage: instant-schema migrate --from old.schema.ts --to new.schema.ts")
+      print("   or: instant-schema migrate --app-id <id> --to new.schema.ts")
+      exit(1)
+    }
+    
+    // Parse "to" schema
+    guard let to = toPath else {
+      print("Error: No target schema specified")
+      print("Usage: instant-schema migrate --from old.schema.ts --to new.schema.ts")
+      exit(1)
+    }
+    
+    print("📖 Parsing target schema from \(to)...")
+    let parser = CommentPreservingSchemaParser()
+    let content = try String(contentsOfFile: to, encoding: .utf8)
+    let toSchema = try parser.parse(content, sourceFile: to)
+    
+    print("")
+    print("Source: \(fromSchema.entities.count) entities, \(fromSchema.links.count) links")
+    print("Target: \(toSchema.entities.count) entities, \(toSchema.links.count) links")
+    print("")
+    
+    // Generate migration
+    let migration = SchemaMigration(from: fromSchema, to: toSchema)
+    
+    if migration.changes.isEmpty {
+      print("✅ No changes detected - schemas are identical")
+      return
+    }
+    
+    // Print summary
+    print(migration.summary())
+    
+    // Generate script if requested
+    if showScript {
+      print("")
+      print("=" .padding(toLength: 60, withPad: "=", startingAt: 0))
+      print("TypeScript Migration Script")
+      print("=" .padding(toLength: 60, withPad: "=", startingAt: 0))
+      print("")
+      
+      let script = migration.generateTypeScriptMigration()
+      
+      if let output = outputPath {
+        try script.write(toFile: output, atomically: true, encoding: .utf8)
+        print("✅ Migration script saved to \(output)")
+      } else {
+        print(script)
+      }
+    } else if let output = outputPath {
+      let script = migration.generateTypeScriptMigration()
+      try script.write(toFile: output, atomically: true, encoding: .utf8)
+      print("✅ Migration script saved to \(output)")
+    }
+  }
+  
+  // MARK: - Swift to TypeScript Command
+  
+  /// Generate TypeScript from Swift schema files
+  static func swiftToTypeScriptCommand(_ args: [String]) async throws {
+    var inputPath: String?
+    var outputPath: String = "instant.schema.ts"
+    
+    var i = 0
+    while i < args.count {
+      switch args[i] {
+      case "--from", "-f":
+        i += 1
+        inputPath = args[i]
+      case "--to", "-t", "--output", "-o":
+        i += 1
+        outputPath = args[i]
+      default:
+        if inputPath == nil {
+          inputPath = args[i]
+        }
+      }
+      i += 1
+    }
+    
+    guard let input = inputPath else {
+      print("Error: No input path specified")
+      print("Usage: instant-schema swift-to-ts --from Sources/Schema/ --to instant.schema.ts")
+      print("   or: instant-schema swift-to-ts Sources/Schema/*.swift")
+      exit(1)
+    }
+    
+    print("📖 Parsing Swift schema from \(input)...")
+    
+    let parser = SwiftSchemaParser()
+    let schema: SchemaIR
+    
+    // Check if input is a directory or file
+    var isDirectory: ObjCBool = false
+    let exists = FileManager.default.fileExists(atPath: input, isDirectory: &isDirectory)
+    
+    if !exists {
+      print("Error: Input path does not exist: \(input)")
+      exit(1)
+    }
+    
+    if isDirectory.boolValue {
+      // Parse all Swift files in directory
+      schema = try parser.parseDirectory(at: input)
+    } else {
+      // Parse single file
+      schema = try parser.parse(fileAt: input)
+    }
+    
+    print("✅ Found \(schema.entities.count) entities, \(schema.links.count) links")
+    
+    print("🔨 Generating TypeScript schema...")
+    
+    let printer = TypeScriptSchemaPrinter()
+    let output = printer.print(schema)
+    
+    try output.write(toFile: outputPath, atomically: true, encoding: .utf8)
+    print("✅ Generated TypeScript schema: \(outputPath)")
+  }
+  
   // MARK: - Help
   
   static func printUsage() {
@@ -460,11 +640,13 @@ struct InstantSchemaCLI {
     
     COMMANDS:
       generate    Generate Swift code from TypeScript schema or API
+      swift-to-ts Generate TypeScript from Swift schema files (alias: s2t)
       pull        Fetch deployed schema from InstantDB
       parse       Parse a schema file and display the IR
       print       Print IR back to TypeScript format
       verify      Verify local schema matches deployed schema
       diff        Show differences between local and deployed schema
+      migrate     Generate migration script between two schemas
       help        Show this help message
       version     Show version
     
@@ -487,12 +669,27 @@ struct InstantSchemaCLI {
       --local, -l <file>     Local schema file (required)
       --strict               Exit with error code 1 if schemas differ
     
+    SWIFT-TO-TS OPTIONS:
+      --from, -f <path>      Input Swift file or directory
+      --to, -t <file>        Output TypeScript file (default: instant.schema.ts)
+    
+    MIGRATE OPTIONS:
+      --from, -f <file>      Source schema (file or use --app-id for deployed)
+      --to, -t <file>        Target schema file
+      --output, -o <file>    Output migration script file
+      --script               Print migration script to stdout
+      --app-id, -a <id>      Use deployed schema as source
+      --admin-token <token>  Admin token for API access
+    
     EXAMPLES:
       # Generate Swift from TypeScript
       instant-schema generate --from instant.schema.ts --to Sources/Generated/
     
       # Generate Swift directly from deployed schema
       instant-schema generate --app-id abc123 --admin-token xyz --to Sources/Generated/
+    
+      # Generate TypeScript from Swift (iOS-first workflow)
+      instant-schema swift-to-ts --from Sources/Schema/ --to instant.schema.ts
     
       # Pull deployed schema as TypeScript
       instant-schema pull --app-id abc123 --admin-token xyz -o instant.schema.ts
@@ -502,6 +699,12 @@ struct InstantSchemaCLI {
     
       # Show diff between local and deployed
       instant-schema diff --app-id abc123 --admin-token xyz --local instant.schema.ts
+    
+      # Generate migration script from deployed to local
+      instant-schema migrate --app-id abc123 --admin-token xyz --to new.schema.ts --script
+    
+      # Generate migration script between two files
+      instant-schema migrate --from old.schema.ts --to new.schema.ts -o migrate.ts
     
     ENVIRONMENT VARIABLES:
       INSTANT_APP_ID         Default app ID for all commands

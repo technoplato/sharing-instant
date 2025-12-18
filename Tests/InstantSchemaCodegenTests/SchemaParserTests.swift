@@ -3,9 +3,16 @@
 
 import Foundation
 import XCTest
+import SnapshotTesting
 @testable import InstantSchemaCodegen
 
 final class SchemaParserTests: XCTestCase {
+  
+  // Enable recording mode to update snapshots
+  // override func invokeTest() {
+  //   isRecording = true
+  //   super.invokeTest()
+  // }
   
   // MARK: - Parse Tests
   
@@ -157,9 +164,9 @@ final class SchemaParserTests: XCTestCase {
     XCTAssertEqual(original.links.count, reparsed.links.count)
   }
   
-  // MARK: - Swift Generation Tests
+  // MARK: - Swift Generation Snapshot Tests
   
-  func testSwiftGeneration() throws {
+  func testSwiftGenerationSnapshot() throws {
     let schema = try parseFixture("SimpleSchema.ts")
     let generator = SwiftCodeGenerator()
     let files = generator.generate(from: schema)
@@ -167,23 +174,39 @@ final class SchemaParserTests: XCTestCase {
     // Should generate files
     XCTAssertGreaterThan(files.count, 0)
     
-    // Print generated code for review
-    for file in files {
-      print("=== \(file.name) ===")
-      print(file.content.prefix(500))
-      print("...")
-    }
-    
-    // Verify Schema.swift exists
+    // Verify expected files exist
     let schemaFile = files.first { $0.name == "Schema.swift" }
     XCTAssertNotNil(schemaFile, "Should generate Schema.swift")
     
-    // Verify entity files exist
-    let todoFile = files.first { $0.name == "Todo.swift" }
-    XCTAssertNotNil(todoFile, "Should generate Todo.swift")
+    let entitiesFile = files.first { $0.name == "Entities.swift" }
+    XCTAssertNotNil(entitiesFile, "Should generate Entities.swift")
     
-    let userFile = files.first { $0.name == "User.swift" }
-    XCTAssertNotNil(userFile, "Should generate User.swift")
+    // Snapshot test each generated file (without timestamp)
+    for file in files {
+      // Remove the timestamp line for stable snapshots
+      let stableContent = removeTimestamp(from: file.content)
+      assertSnapshot(of: stableContent, as: .lines, named: file.name)
+    }
+  }
+  
+  func testSwiftGenerationLibrarySchemaSnapshot() throws {
+    let schema = try parseFixture("LibrarySchema.ts")
+    let generator = SwiftCodeGenerator()
+    let files = generator.generate(from: schema)
+    
+    // Snapshot test each generated file
+    for file in files {
+      let stableContent = removeTimestamp(from: file.content)
+      assertSnapshot(of: stableContent, as: .lines, named: file.name)
+    }
+  }
+  
+  func testTypeScriptRoundTripSnapshot() throws {
+    let original = try parseFixture("SimpleSchema.ts")
+    let printer = TypeScriptSchemaPrinter()
+    let output = printer.print(original)
+    
+    assertSnapshot(of: output, as: .lines)
   }
   
   // MARK: - Validation Tests
@@ -227,6 +250,8 @@ final class SchemaParserTests: XCTestCase {
     XCTAssertEqual(EntityIR(name: "genre").swiftTypeName, "Genre")
     XCTAssertEqual(EntityIR(name: "people").swiftTypeName, "Person")
     XCTAssertEqual(EntityIR(name: "media").swiftTypeName, "Media")
+    XCTAssertEqual(EntityIR(name: "categories").swiftTypeName, "Category")
+    XCTAssertEqual(EntityIR(name: "data").swiftTypeName, "Data")
   }
   
   func testFieldTypeMapping() {
@@ -252,6 +277,184 @@ final class SchemaParserTests: XCTestCase {
     XCTAssertEqual(FieldType.json.instantDBBuilder, "i.json()")
   }
   
+  // MARK: - Room Parsing Tests
+  
+  func testParseSchemaWithRooms() throws {
+    let schemaContent = """
+    import { i } from "@instantdb/core";
+    
+    const _schema = i.schema({
+      entities: {
+        todos: i.entity({
+          title: i.string(),
+        }),
+      },
+      links: {},
+      rooms: {
+        chat: {
+          presence: i.entity({
+            name: i.string(),
+            isTyping: i.boolean(),
+          }),
+        },
+        cursors: {
+          presence: i.entity({
+            x: i.number(),
+            y: i.number(),
+          }),
+        },
+        reactions: {
+          presence: i.entity({
+            name: i.string(),
+          }),
+          topics: {
+            emoji: i.entity({
+              name: i.string(),
+              angle: i.number(),
+            }),
+          },
+        },
+      },
+    });
+    """
+    
+    let parser = TypeScriptSchemaParser()
+    let schema = try parser.parse(content: schemaContent)
+    
+    // Verify rooms were parsed
+    XCTAssertEqual(schema.rooms.count, 3)
+    
+    // Verify room names
+    let roomNames = schema.rooms.map(\.name).sorted()
+    XCTAssertEqual(roomNames, ["chat", "cursors", "reactions"])
+    
+    // Verify chat room presence
+    let chatRoom = schema.rooms.first { $0.name == "chat" }!
+    XCTAssertNotNil(chatRoom.presence)
+    XCTAssertEqual(chatRoom.presence?.fields.count, 2)
+    XCTAssertTrue(chatRoom.topics.isEmpty)
+    
+    // Verify cursors room presence
+    let cursorsRoom = schema.rooms.first { $0.name == "cursors" }!
+    XCTAssertNotNil(cursorsRoom.presence)
+    XCTAssertEqual(cursorsRoom.presence?.fields.count, 2)
+    
+    // Verify reactions room with topics
+    let reactionsRoom = schema.rooms.first { $0.name == "reactions" }!
+    XCTAssertNotNil(reactionsRoom.presence)
+    XCTAssertEqual(reactionsRoom.topics.count, 1)
+    
+    let emojiTopic = reactionsRoom.topics.first!
+    XCTAssertEqual(emojiTopic.name, "emoji")
+    XCTAssertEqual(emojiTopic.roomName, "reactions")
+    XCTAssertEqual(emojiTopic.payload.fields.count, 2)
+  }
+  
+  func testRoomPresenceTypeName() {
+    let room = RoomIR(
+      name: "chat",
+      presence: EntityIR(name: "chatPresence", fields: []),
+      topics: []
+    )
+    
+    XCTAssertEqual(room.presenceTypeName, "ChatPresence")
+  }
+  
+  func testTopicPayloadTypeName() {
+    let topic = TopicIR(
+      name: "emoji",
+      payload: EntityIR(name: "emoji", fields: []),
+      roomName: "reactions"
+    )
+    
+    XCTAssertEqual(topic.payloadTypeName, "EmojiTopic")
+  }
+  
+  func testSwiftGenerationWithRooms() throws {
+    let schemaContent = """
+    import { i } from "@instantdb/core";
+    
+    const _schema = i.schema({
+      entities: {
+        todos: i.entity({
+          title: i.string(),
+        }),
+      },
+      links: {},
+      rooms: {
+        chat: {
+          presence: i.entity({
+            name: i.string(),
+            isTyping: i.boolean(),
+          }),
+          topics: {
+            emoji: i.entity({
+              name: i.string(),
+              angle: i.number(),
+            }),
+          },
+        },
+      },
+    });
+    """
+    
+    let parser = TypeScriptSchemaParser()
+    let schema = try parser.parse(content: schemaContent)
+    
+    let generator = SwiftCodeGenerator()
+    let files = generator.generate(from: schema)
+    
+    // Should generate Rooms.swift
+    let roomsFile = files.first { $0.name == "Rooms.swift" }
+    XCTAssertNotNil(roomsFile, "Should generate Rooms.swift")
+    
+    // Verify content includes presence type
+    XCTAssertTrue(roomsFile?.content.contains("ChatPresence") ?? false)
+    XCTAssertTrue(roomsFile?.content.contains("var name: String") ?? false)
+    XCTAssertTrue(roomsFile?.content.contains("var isTyping: Bool") ?? false)
+    
+    // Verify content includes topic type
+    XCTAssertTrue(roomsFile?.content.contains("EmojiTopic") ?? false)
+    
+    // Verify content includes room key
+    XCTAssertTrue(roomsFile?.content.contains("Schema.Rooms") ?? false)
+    XCTAssertTrue(roomsFile?.content.contains("RoomKey<ChatPresence>") ?? false)
+    
+    // Verify content includes topic key
+    XCTAssertTrue(roomsFile?.content.contains("Schema.Topics") ?? false)
+    XCTAssertTrue(roomsFile?.content.contains("TopicKey<EmojiTopic>") ?? false)
+  }
+  
+  func testValidationRejectsDuplicateRooms() throws {
+    var schema = SchemaIR()
+    schema.rooms = [
+      RoomIR(name: "chat", presence: nil, topics: []),
+      RoomIR(name: "chat", presence: nil, topics: []),
+    ]
+    
+    XCTAssertThrowsError(try schema.validate()) { error in
+      XCTAssertTrue(error.localizedDescription.contains("Duplicate"))
+    }
+  }
+  
+  func testValidationRejectsDuplicateTopics() throws {
+    var schema = SchemaIR()
+    schema.rooms = [
+      RoomIR(
+        name: "reactions",
+        presence: nil,
+        topics: [
+          TopicIR(name: "emoji", payload: EntityIR(name: "emoji", fields: []), roomName: "reactions"),
+          TopicIR(name: "emoji", payload: EntityIR(name: "emoji", fields: []), roomName: "reactions"),
+        ]
+      ),
+    ]
+    
+    XCTAssertThrowsError(try schema.validate()) { error in
+      XCTAssertTrue(error.localizedDescription.contains("Duplicate"))
+    }
+  }
+  
   // MARK: - Helpers
   
   private func parseFixture(_ name: String) throws -> SchemaIR {
@@ -263,5 +466,14 @@ final class SchemaParserTests: XCTestCase {
     let content = try String(contentsOf: url, encoding: .utf8)
     let parser = TypeScriptSchemaParser()
     return try parser.parse(content: content, sourceFile: name)
+  }
+  
+  /// Remove timestamp from generated code for stable snapshots
+  private func removeTimestamp(from content: String) -> String {
+    let lines = content.components(separatedBy: "\n")
+    return lines.filter { line in
+      // Skip lines that look like timestamps
+      !line.contains("// 20") // Matches "// 2025-12-17T..."
+    }.joined(separator: "\n")
   }
 }

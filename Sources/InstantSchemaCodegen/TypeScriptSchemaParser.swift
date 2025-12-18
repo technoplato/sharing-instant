@@ -52,6 +52,11 @@ public struct TypeScriptSchemaParser {
       schema.links = try parseLinks(from: linksBlock, fullContent: content)
     }
     
+    // Parse rooms
+    if let roomsBlock = extractBlock(named: "rooms", from: schemaBlock) {
+      schema.rooms = try parseRooms(from: roomsBlock, fullContent: content)
+    }
+    
     // Validate the parsed schema
     try schema.validate()
     
@@ -283,6 +288,128 @@ public struct TypeScriptSchemaParser {
       cardinality: cardinality,
       label: label
     )
+  }
+  
+  // MARK: - Room Parsing
+  
+  private func parseRooms(from block: String, fullContent: String) throws -> [RoomIR] {
+    var rooms: [RoomIR] = []
+    
+    // Pattern to find room definitions: roomName: { ... }
+    // Rooms contain presence and/or topics
+    let roomPattern = "([a-zA-Z_][a-zA-Z0-9_]*)\\s*:\\s*\\{"
+    let regex = try NSRegularExpression(pattern: roomPattern)
+    let nsBlock = block as NSString
+    let matches = regex.matches(in: block, range: NSRange(location: 0, length: nsBlock.length))
+    
+    for match in matches {
+      guard match.numberOfRanges >= 2 else { continue }
+      
+      let nameRange = match.range(at: 1)
+      let roomName = nsBlock.substring(with: nameRange)
+      
+      // Skip known non-room keys
+      let skipKeys = ["presence", "topics"]
+      if skipKeys.contains(roomName) { continue }
+      
+      let roomStart = match.range.location + match.range.length - 1
+      let blockStartIndex = block.index(block.startIndex, offsetBy: roomStart)
+      
+      guard let blockEndIndex = findMatchingBrace(in: block, from: blockStartIndex) else {
+        throw TypeScriptParseError.unmatchedBrace(roomName)
+      }
+      
+      let roomBlock = String(block[blockStartIndex...blockEndIndex])
+      let documentation = extractDocumentation(before: roomName, in: fullContent)
+      
+      // Parse presence if present
+      var presence: EntityIR?
+      if let presenceBlock = extractPresenceBlock(from: roomBlock) {
+        let fields = try parseFields(from: presenceBlock, entityName: "\(roomName).presence", fullContent: fullContent)
+        presence = EntityIR(
+          name: "\(roomName)Presence",
+          fields: fields,
+          documentation: nil
+        )
+      }
+      
+      // Parse topics if present
+      var topics: [TopicIR] = []
+      if let topicsBlock = extractBlock(named: "topics", from: roomBlock) {
+        topics = try parseTopics(from: topicsBlock, roomName: roomName, fullContent: fullContent)
+      }
+      
+      rooms.append(RoomIR(
+        name: roomName,
+        presence: presence,
+        topics: topics,
+        documentation: documentation
+      ))
+    }
+    
+    return rooms
+  }
+  
+  private func extractPresenceBlock(from roomBlock: String) -> String? {
+    // Look for presence: i.entity({ ... })
+    let pattern = #"presence\s*:\s*i\.entity\s*\(\s*\{"#
+    
+    guard let range = roomBlock.range(of: pattern, options: .regularExpression) else {
+      return nil
+    }
+    
+    guard let braceStart = roomBlock.range(of: "{", range: range.lowerBound..<roomBlock.endIndex) else {
+      return nil
+    }
+    
+    guard let endIndex = findMatchingBrace(in: roomBlock, from: braceStart.lowerBound) else {
+      return nil
+    }
+    
+    return String(roomBlock[braceStart.lowerBound...endIndex])
+  }
+  
+  private func parseTopics(from block: String, roomName: String, fullContent: String) throws -> [TopicIR] {
+    var topics: [TopicIR] = []
+    
+    // Pattern to find topic definitions: topicName: i.entity({ ... })
+    let topicPattern = "([a-zA-Z_][a-zA-Z0-9_]*)\\s*:\\s*i\\.entity\\s*\\(\\s*\\{"
+    let regex = try NSRegularExpression(pattern: topicPattern)
+    let nsBlock = block as NSString
+    let matches = regex.matches(in: block, range: NSRange(location: 0, length: nsBlock.length))
+    
+    for match in matches {
+      guard match.numberOfRanges >= 2 else { continue }
+      
+      let nameRange = match.range(at: 1)
+      let topicName = nsBlock.substring(with: nameRange)
+      
+      let topicStart = match.range.location + match.range.length - 1
+      let blockStartIndex = block.index(block.startIndex, offsetBy: topicStart)
+      
+      guard let blockEndIndex = findMatchingBrace(in: block, from: blockStartIndex) else {
+        throw TypeScriptParseError.unmatchedBrace(topicName)
+      }
+      
+      let topicBlock = String(block[blockStartIndex...blockEndIndex])
+      let documentation = extractDocumentation(before: topicName, in: fullContent)
+      let fields = try parseFields(from: topicBlock, entityName: "\(roomName).\(topicName)", fullContent: fullContent)
+      
+      let payload = EntityIR(
+        name: topicName,
+        fields: fields,
+        documentation: documentation
+      )
+      
+      topics.append(TopicIR(
+        name: topicName,
+        payload: payload,
+        roomName: roomName,
+        documentation: documentation
+      ))
+    }
+    
+    return topics
   }
   
   // MARK: - Documentation Extraction
