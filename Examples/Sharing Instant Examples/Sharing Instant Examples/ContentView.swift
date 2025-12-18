@@ -5,10 +5,15 @@
 //  Created by Michael Lustig on 12/17/25.
 //
 
+import InstantDB
 import SharingInstant
 import SwiftUI
 
 struct ContentView: View {
+  /// The shared InstantDB client.
+  /// We access it here to show connection status in the UI.
+  @State private var client: InstantClient?
+  
   var body: some View {
     NavigationStack {
       List {
@@ -21,6 +26,13 @@ struct ContentView: View {
               .foregroundStyle(.secondary)
           }
           .padding(.vertical, 8)
+        }
+        
+        // Connection Status Section
+        if let client = client {
+          Section("Connection Status") {
+            ConnectionStatusView(client: client)
+          }
         }
         
         Section {
@@ -51,6 +63,19 @@ struct ContentView: View {
             VStack(alignment: .leading, spacing: 4) {
               Label("Sync Demo", systemImage: "arrow.triangle.2.circlepath")
               Text("Bidirectional sync with optimistic updates")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+          }
+          
+          NavigationLink {
+            CaseStudyView {
+              AdvancedTodoDemo()
+            }
+          } label: {
+            VStack(alignment: .leading, spacing: 4) {
+              Label("Advanced Todo", systemImage: "checklist")
+              Text("Search, sort, and filter todos")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             }
@@ -152,8 +177,16 @@ struct ContentView: View {
           }
         }
       }
+      #if os(iOS)
       .listStyle(.insetGrouped)
+      #endif
       .navigationTitle("Case Studies")
+      .task {
+        // Get the shared InstantDB client on main actor
+        await MainActor.run {
+          client = InstantClientFactory.makeClient()
+        }
+      }
     }
   }
 }
