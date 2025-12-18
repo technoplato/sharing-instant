@@ -100,6 +100,14 @@ public struct SwiftCodeGenerator {
       ))
     }
     
+    // Generate rooms file if there are rooms
+    if !schema.rooms.isEmpty {
+      files.append(GeneratedFile(
+        name: "Rooms.swift",
+        content: generateRooms(from: schema)
+      ))
+    }
+    
     return files
   }
   
@@ -439,6 +447,213 @@ public struct SwiftCodeGenerator {
     }
     
     """
+  }
+  
+  // MARK: - Rooms Generation
+  
+  private func generateRooms(from schema: SchemaIR) -> String {
+    let access = configuration.accessLevel.rawValue
+    var output = fileHeader("Rooms.swift")
+    
+    output += """
+    import Foundation
+    import SharingInstant
+    
+    
+    """
+    
+    // Generate presence types
+    output += "// MARK: - Room Presence Types\n\n"
+    for room in schema.rooms {
+      if let presence = room.presence {
+        output += generatePresenceType(for: room, presence: presence)
+        output += "\n"
+      }
+    }
+    
+    // Generate topic payload types
+    let allTopics = schema.rooms.flatMap { $0.topics }
+    if !allTopics.isEmpty {
+      output += "// MARK: - Topic Payload Types\n\n"
+      for topic in allTopics {
+        output += generateTopicPayloadType(for: topic)
+        output += "\n"
+      }
+    }
+    
+    // Generate Schema.Rooms namespace
+    let roomsWithPresence = schema.rooms.filter { $0.presence != nil }
+    if !roomsWithPresence.isEmpty {
+      output += """
+      // MARK: - Room Keys
+      
+      \(access) extension Schema {
+        /// Type-safe room keys for presence subscriptions.
+        ///
+        /// Use these with `@Shared(.instantPresence(...))`:
+        ///
+        /// ```swift
+        /// @Shared(.instantPresence(
+        ///   Schema.Rooms.\(roomsWithPresence.first?.name ?? "roomName"),
+        ///   roomId: "my-room-id",
+        ///   initialPresence: \(roomsWithPresence.first?.presenceTypeName ?? "Presence")(...)
+        /// ))
+        /// var presence: RoomPresence<\(roomsWithPresence.first?.presenceTypeName ?? "Presence")>
+        /// ```
+        enum Rooms {
+      
+      """
+      
+      for room in roomsWithPresence {
+        output += generateRoomKeyProperty(for: room)
+      }
+      
+      output += "  }\n}\n\n"
+    }
+    
+    // Generate Schema.Topics namespace
+    if !allTopics.isEmpty {
+      output += """
+      // MARK: - Topic Keys
+      
+      \(access) extension Schema {
+        /// Type-safe topic keys for fire-and-forget events.
+        ///
+        /// Use these with `@Shared(.instantTopic(...))`:
+        ///
+        /// ```swift
+        /// @Shared(.instantTopic(
+        ///   Schema.Topics.\(allTopics.first?.name ?? "topicName"),
+        ///   roomId: "my-room-id"
+        /// ))
+        /// var channel: TopicChannel<\(allTopics.first?.payloadTypeName ?? "Payload")>
+        /// ```
+        enum Topics {
+      
+      """
+      
+      for topic in allTopics {
+        output += generateTopicKeyProperty(for: topic)
+      }
+      
+      output += "  }\n}\n"
+    }
+    
+    return output
+  }
+  
+  private func generatePresenceType(for room: RoomIR, presence: EntityIR) -> String {
+    let access = configuration.accessLevel.rawValue
+    let sendable = configuration.generateSendable ? ", Sendable" : ""
+    let typeName = room.presenceTypeName
+    
+    var output = ""
+    
+    if configuration.includeDocumentation {
+      output += "/// Presence data for '\(room.name)' room.\n"
+      if let doc = room.documentation {
+        output += "///\n/// \(doc.replacingOccurrences(of: "\n", with: "\n/// "))\n"
+      }
+    }
+    
+    output += "\(access) struct \(typeName): Codable\(sendable), Equatable {\n"
+    
+    // Fields
+    for field in presence.fields {
+      let optionalMark = field.isOptional ? "?" : ""
+      if configuration.includeDocumentation, let doc = field.documentation {
+        output += "  /// \(doc)\n"
+      }
+      output += "  \(access) var \(field.name): \(field.type.swiftType)\(optionalMark)\n"
+    }
+    
+    // Initializer
+    output += "\n  \(access) init(\n"
+    for (index, field) in presence.fields.enumerated() {
+      let comma = index < presence.fields.count - 1 ? "," : ""
+      let optionalMark = field.isOptional ? "?" : ""
+      let defaultValue = field.isOptional ? " = nil" : (field.defaultValue.map { " = \($0)" } ?? "")
+      output += "    \(field.name): \(field.type.swiftType)\(optionalMark)\(defaultValue)\(comma)\n"
+    }
+    output += "  ) {\n"
+    for field in presence.fields {
+      output += "    self.\(field.name) = \(field.name)\n"
+    }
+    output += "  }\n"
+    
+    output += "}\n"
+    
+    return output
+  }
+  
+  private func generateTopicPayloadType(for topic: TopicIR) -> String {
+    let access = configuration.accessLevel.rawValue
+    let sendable = configuration.generateSendable ? ", Sendable" : ""
+    let typeName = topic.payloadTypeName
+    
+    var output = ""
+    
+    if configuration.includeDocumentation {
+      output += "/// Topic payload for '\(topic.roomName).\(topic.name)' events.\n"
+      if let doc = topic.documentation {
+        output += "///\n/// \(doc.replacingOccurrences(of: "\n", with: "\n/// "))\n"
+      }
+    }
+    
+    output += "\(access) struct \(typeName): Codable\(sendable), Equatable {\n"
+    
+    // Fields
+    for field in topic.payload.fields {
+      let optionalMark = field.isOptional ? "?" : ""
+      if configuration.includeDocumentation, let doc = field.documentation {
+        output += "  /// \(doc)\n"
+      }
+      output += "  \(access) var \(field.name): \(field.type.swiftType)\(optionalMark)\n"
+    }
+    
+    // Initializer
+    output += "\n  \(access) init(\n"
+    for (index, field) in topic.payload.fields.enumerated() {
+      let comma = index < topic.payload.fields.count - 1 ? "," : ""
+      let optionalMark = field.isOptional ? "?" : ""
+      let defaultValue = field.isOptional ? " = nil" : (field.defaultValue.map { " = \($0)" } ?? "")
+      output += "    \(field.name): \(field.type.swiftType)\(optionalMark)\(defaultValue)\(comma)\n"
+    }
+    output += "  ) {\n"
+    for field in topic.payload.fields {
+      output += "    self.\(field.name) = \(field.name)\n"
+    }
+    output += "  }\n"
+    
+    output += "}\n"
+    
+    return output
+  }
+  
+  private func generateRoomKeyProperty(for room: RoomIR) -> String {
+    let access = configuration.accessLevel.rawValue
+    var output = ""
+    
+    if configuration.includeDocumentation {
+      output += "    /// '\(room.name)' room - presence sync\n"
+    }
+    
+    output += "    \(access) static let \(room.name) = RoomKey<\(room.presenceTypeName)>(type: \"\(room.name)\")\n\n"
+    
+    return output
+  }
+  
+  private func generateTopicKeyProperty(for topic: TopicIR) -> String {
+    let access = configuration.accessLevel.rawValue
+    var output = ""
+    
+    if configuration.includeDocumentation {
+      output += "    /// '\(topic.name)' topic in '\(topic.roomName)' room\n"
+    }
+    
+    output += "    \(access) static let \(topic.name) = TopicKey<\(topic.payloadTypeName)>(roomType: \"\(topic.roomName)\", topic: \"\(topic.name)\")\n\n"
+    
+    return output
   }
   
   // MARK: - Helpers

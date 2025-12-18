@@ -7,3 +7,13 @@ DerivedData/
 .swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
 .netrc
 
+# Node modules (for instant-cli schema push)
+node_modules/
+package-lock.json
+
+# Environment files
+.env*
+!.env.example
+
+
+

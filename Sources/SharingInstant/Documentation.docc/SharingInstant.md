@@ -165,6 +165,11 @@ SharingInstant leverages InstantDB's WebSocket connection and triple store to ke
 - <doc:Syncing>
 - <doc:PreparingInstant>
 
+### Real-Time Collaboration
+
+- <doc:Presence>
+- <doc:Topics>
+
 ### Database Configuration
 
 - ``Dependencies/DependencyValues/defaultInstant``
@@ -179,6 +184,18 @@ SharingInstant leverages InstantDB's WebSocket connection and triple store to ke
 - ``Sharing/SharedReaderKey/instantSync(_:client:)``
 - ``Sharing/SharedReaderKey/instantSync(configuration:client:)``
 
+### Presence Types
+
+- ``RoomPresence``
+- ``Peer``
+- ``RoomKey``
+
+### Topic Types
+
+- ``TopicChannel``
+- ``TopicEvent``
+- ``TopicKey``
+
 ### Configuration Types
 
 - ``SharingInstantSync``
@@ -188,4 +205,6 @@ SharingInstant leverages InstantDB's WebSocket connection and triple store to ke
 ### Protocols
 
 - ``EntityIdentifiable``
+
+
 

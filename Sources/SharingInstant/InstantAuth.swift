@@ -359,13 +359,13 @@ extension View {
 
 // MARK: - SharedKey for Auth State
 
-extension SharedReaderKey {
+extension SharedReaderKey where Self == InstantAuthStateKey.Default {
   /// A key that provides the current authentication state.
   ///
   /// Use this to reactively observe authentication state changes.
   ///
   /// ```swift
-  /// @SharedReader(.instantAuthState())
+  /// @SharedReader(.instantAuthState)
   /// private var authState: AuthState
   ///
   /// var body: some View {
@@ -374,9 +374,26 @@ extension SharedReaderKey {
   ///   }
   /// }
   /// ```
+  public static var instantAuthState: Self {
+    Self[InstantAuthStateKey(appID: nil), default: .loading]
+  }
+  
+  /// A key that observes the InstantDB authentication state for a specific app.
+  ///
+  /// ## Multi-App Support (Untested)
+  ///
+  /// This overload exists to support connecting to multiple InstantDB apps
+  /// simultaneously. Each app ID creates a separate cached `InstantClient`.
+  ///
+  /// **This feature has not been tested.** If you need multi-app support,
+  /// please test thoroughly and report any issues.
+  ///
+  /// - Parameter appID: The app ID to observe.
+  /// - Returns: A key that can be passed to `@SharedReader`.
+  @available(*, deprecated, message: "Multi-app support is untested. Use .instantAuthState for the default app ID configured via prepareDependencies.")
   public static func instantAuthState(
-    appID: String? = nil
-  ) -> Self where Self == InstantAuthStateKey.Default {
+    appID: String
+  ) -> Self {
     Self[InstantAuthStateKey(appID: appID), default: .loading]
   }
 }

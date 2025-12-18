@@ -6,8 +6,13 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		945968042EF2FE78009FB8DE /* SharingInstant in Frameworks */ = {isa = PBXBuildFile; productRef = 945968032EF2FE78009FB8DE /* SharingInstant */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		945967E82EF2FDAF009FB8DE /* Sharing Instant Examples.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Sharing Instant Examples.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		945968062EF2FEDE009FB8DE /* sharing-instant */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = "sharing-instant"; path = ../..; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -23,6 +28,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				945968042EF2FE78009FB8DE /* SharingInstant in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -33,6 +39,7 @@
 			isa = PBXGroup;
 			children = (
 				945967EA2EF2FDAF009FB8DE /* Sharing Instant Examples */,
+				945968052EF2FEDE009FB8DE /* Frameworks */,
 				945967E92EF2FDAF009FB8DE /* Products */,
 			);
 			sourceTree = "<group>";
@@ -43,6 +50,14 @@
 				945967E82EF2FDAF009FB8DE /* Sharing Instant Examples.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		945968052EF2FEDE009FB8DE /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				945968062EF2FEDE009FB8DE /* sharing-instant */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -65,6 +80,7 @@
 			);
 			name = "Sharing Instant Examples";
 			packageProductDependencies = (
+				945968032EF2FE78009FB8DE /* SharingInstant */,
 			);
 			productName = "Sharing Instant Examples";
 			productReference = 945967E82EF2FDAF009FB8DE /* Sharing Instant Examples.app */;
@@ -94,6 +110,9 @@
 			);
 			mainGroup = 945967DF2EF2FDAF009FB8DE;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				945968002EF2FE78009FB8DE /* XCLocalSwiftPackageReference "../.." */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 945967E92EF2FDAF009FB8DE /* Products */;
 			projectDirPath = "";
@@ -246,10 +265,11 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 4EC72DECN9;
-				ENABLE_APP_SANDBOX = YES;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
@@ -264,23 +284,32 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.1;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.lustig.sharinginstant.Sharing-Instant-Examples";
+				"PRODUCT_BUNDLE_IDENTIFIER[sdk=watchos*]" = "com.lustig.sharinginstant.Sharing-Instant-Examples.watchkitapp";
+				"PRODUCT_BUNDLE_IDENTIFIER[sdk=watchsimulator*]" = "com.lustig.sharinginstant.Sharing-Instant-Examples.watchkitapp";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SUPPORTED_PLATFORMS = "appletvos appletvsimulator iphoneos iphonesimulator macosx watchos watchsimulator xros xrsimulator";
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = nonisolated;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TARGETED_DEVICE_FAMILY = "1,2,3,4,7";
+				WATCHOS_DEPLOYMENT_TARGET = 26.1;
+				"INFOPLIST_KEY_WKCompanionAppBundleIdentifier[sdk=watchos*]" = "com.lustig.sharinginstant.Sharing-Instant-Examples";
+				"INFOPLIST_KEY_WKCompanionAppBundleIdentifier[sdk=watchsimulator*]" = "com.lustig.sharinginstant.Sharing-Instant-Examples";
+				"INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp[sdk=watchos*]" = YES;
+				"INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp[sdk=watchsimulator*]" = YES;
 				XROS_DEPLOYMENT_TARGET = 26.2;
 			};
 			name = Debug;
@@ -290,10 +319,11 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 4EC72DECN9;
-				ENABLE_APP_SANDBOX = YES;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
@@ -308,23 +338,32 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.1;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.lustig.sharinginstant.Sharing-Instant-Examples";
+				"PRODUCT_BUNDLE_IDENTIFIER[sdk=watchos*]" = "com.lustig.sharinginstant.Sharing-Instant-Examples.watchkitapp";
+				"PRODUCT_BUNDLE_IDENTIFIER[sdk=watchsimulator*]" = "com.lustig.sharinginstant.Sharing-Instant-Examples.watchkitapp";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SUPPORTED_PLATFORMS = "appletvos appletvsimulator iphoneos iphonesimulator macosx watchos watchsimulator xros xrsimulator";
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = nonisolated;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TARGETED_DEVICE_FAMILY = "1,2,3,4,7";
+				WATCHOS_DEPLOYMENT_TARGET = 26.1;
+				"INFOPLIST_KEY_WKCompanionAppBundleIdentifier[sdk=watchos*]" = "com.lustig.sharinginstant.Sharing-Instant-Examples";
+				"INFOPLIST_KEY_WKCompanionAppBundleIdentifier[sdk=watchsimulator*]" = "com.lustig.sharinginstant.Sharing-Instant-Examples";
+				"INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp[sdk=watchos*]" = YES;
+				"INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp[sdk=watchsimulator*]" = YES;
 				XROS_DEPLOYMENT_TARGET = 26.2;
 			};
 			name = Release;
@@ -351,6 +390,20 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		945968002EF2FE78009FB8DE /* XCLocalSwiftPackageReference "../.." */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../..;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		945968032EF2FE78009FB8DE /* SharingInstant */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SharingInstant;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 945967E02EF2FDAF009FB8DE /* Project object */;
 }

@@ -1,5 +1,3 @@
-import Dependencies
-import IdentifiedCollections
 import SharingInstant
 import SwiftUI
 
@@ -17,12 +15,24 @@ struct SwiftUISyncDemo: SwiftUICaseStudy {
     """
   let caseStudyTitle = "Sync Demo"
   
+  var body: some View {
+    TodoListView()
+      .onAppear {
+        InstantLogger.viewAppeared("SwiftUISyncDemo")
+      }
+      .onDisappear {
+        InstantLogger.viewDisappeared("SwiftUISyncDemo")
+      }
+  }
+}
+
+/// The main todo list view with shared state
+private struct TodoListView: View {
   @Shared(
     .instantSync(
       configuration: SharingInstantSync.CollectionConfiguration<Todo>(
         namespace: "todos",
-        orderBy: .desc("createdAt"),
-        animation: .default
+        orderBy: OrderBy.desc("createdAt")
       )
     )
   )
@@ -31,16 +41,18 @@ struct SwiftUISyncDemo: SwiftUICaseStudy {
   @State private var newTodoTitle = ""
   @FocusState private var isInputFocused: Bool
   
+  /// Track previous count to detect data received from server
+  @State private var previousTodoCount: Int = 0
+  
   var body: some View {
     List {
       Section {
         HStack {
-          Text("Todos")
+          Text("Total Todos")
           Spacer()
           Text("\(todos.count)")
             .font(.title2)
             .bold()
-            .contentTransition(.numericText(value: Double(todos.count)))
         }
       }
       
@@ -58,7 +70,7 @@ struct SwiftUISyncDemo: SwiftUICaseStudy {
         }
       }
       
-      Section("Todos") {
+      Section("Todos (Read-Only)") {
         if todos.isEmpty {
           ContentUnavailableView {
             Label("No Todos", systemImage: "checklist")
@@ -66,23 +78,26 @@ struct SwiftUISyncDemo: SwiftUICaseStudy {
             Text("Add your first todo above!")
           }
         } else {
-          ForEach(Binding($todos)) { $todo in
-            TodoRow(todo: $todo)
+          ForEach(todos) { todo in
+            TodoRowReadOnly(todo: todo)
           }
-          .onDelete(perform: deleteTodos)
         }
       }
-      
-      if !todos.isEmpty {
-        Section {
-          Button("Clear Completed", role: .destructive) {
-            $todos.withLock { todos in
-              todos.removeAll { $0.done }
-            }
-          }
-          .disabled(!todos.contains { $0.done })
-        }
+    }
+    .onChange(of: todos.count) { oldCount, newCount in
+      // Log when data is received from server (count changes without user action)
+      if oldCount != previousTodoCount {
+        InstantLogger.dataReceived(
+          "Todos updated",
+          count: newCount,
+          details: ["previousCount": oldCount, "newCount": newCount]
+        )
       }
+      previousTodoCount = newCount
+    }
+    .onAppear {
+      InstantLogger.info("TodoListView appeared", json: ["initialCount": todos.count])
+      previousTodoCount = todos.count
     }
   }
   
@@ -91,37 +106,31 @@ struct SwiftUISyncDemo: SwiftUICaseStudy {
     guard !title.isEmpty else { return }
     
     let todo = Todo(title: title)
-    $todos.withLock { todos in
+    
+    // Log user action
+    InstantLogger.userAction("Add todo", details: ["title": title, "id": todo.id])
+    
+    _ = $todos.withLock { todos in
       todos.insert(todo, at: 0)
     }
     
     newTodoTitle = ""
     isInputFocused = false
   }
-  
-  private func deleteTodos(at offsets: IndexSet) {
-    $todos.withLock { todos in
-      todos.remove(atOffsets: offsets)
-    }
-  }
 }
 
-private struct TodoRow: View {
-  @Binding var todo: Todo
+/// A simple read-only todo row to avoid AttributeGraph cycles
+private struct TodoRowReadOnly: View {
+  let todo: Todo
   
   var body: some View {
     HStack {
-      Button {
-        todo.done.toggle()
-      } label: {
-        Image(systemName: todo.done ? "checkmark.circle.fill" : "circle")
-          .font(.title2)
-          .foregroundStyle(todo.done ? .green : .secondary)
-      }
-      .buttonStyle(.plain)
+      Image(systemName: todo.done ? "checkmark.circle.fill" : "circle")
+        .font(.title2)
+        .foregroundStyle(todo.done ? .green : .secondary)
       
       VStack(alignment: .leading, spacing: 4) {
-        TextField("Todo title", text: $todo.title)
+        Text(todo.title)
           .strikethrough(todo.done)
         
         Text(todo.createdAt, style: .relative)
@@ -129,16 +138,6 @@ private struct TodoRow: View {
           .foregroundStyle(.secondary)
       }
     }
-    #if os(iOS)
-    .swipeActions(edge: .leading) {
-      Button {
-        todo.done.toggle()
-      } label: {
-        Image(systemName: todo.done ? "xmark.circle" : "checkmark.circle")
-      }
-      .tint(todo.done ? .orange : .green)
-    }
-    #endif
   }
 }
 

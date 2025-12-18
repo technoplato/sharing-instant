@@ -15,6 +15,14 @@ struct ContentView: View {
   var body: some View {
     NavigationStack {
       List {
+        #if os(watchOS)
+        // Compact header for watchOS
+        Section {
+          Text("SharingInstant")
+            .font(.headline)
+            .bold()
+        }
+        #else
         Section {
           VStack(alignment: .leading, spacing: 8) {
             Text("SharingInstant")
@@ -30,7 +38,25 @@ struct ContentView: View {
         Section("Connection Status") {
           ConnectionStatusView()
         }
+        #endif
         
+        #if os(tvOS)
+        // tvOS doesn't support DisclosureGroup
+        Section("About") {
+          Text("""
+            SharingInstant brings the power of Point-Free's Sharing library to InstantDB, \
+            enabling local-first, optimistic updates with automatic synchronization.
+            
+            • @Shared - Read-write sync with optimistic updates
+            • @SharedReader - Read-only queries
+            • Dynamic Keys - Filter and search in real-time
+            • Real-time Sync - Changes sync across all devices instantly
+            """)
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+            .padding(.vertical, 4)
+        }
+        #elseif !os(watchOS)
         Section {
           DisclosureGroup {
             Text("""
@@ -49,20 +75,16 @@ struct ContentView: View {
             Label("About", systemImage: "info.circle")
           }
         }
+        #endif
         
-        Section("Data Sync Examples") {
+        Section("Data Sync") {
           #if os(macOS)
           Button {
             if let url = URL(string: "https://www.instantdb.com/dash?s=main&app=b9319949-2f2d-410b-8f8a-6990177c1d44&t=explorer") {
               NSWorkspace.shared.open(url)
             }
           } label: {
-            VStack(alignment: .leading, spacing: 4) {
-              Label("Open Dashboard", systemImage: "globe")
-              Text("View data in InstantDB Explorer")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
+            demoLabel("Open Dashboard", icon: "globe", description: "View data in InstantDB Explorer")
           }
           .buttonStyle(.plain)
           #endif
@@ -72,12 +94,7 @@ struct ContentView: View {
               SwiftUISyncDemo()
             }
           } label: {
-            VStack(alignment: .leading, spacing: 4) {
-              Label("Sync Demo", systemImage: "arrow.triangle.2.circlepath")
-              Text("Bidirectional sync with optimistic updates")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
+            demoLabel("Sync Demo", icon: "arrow.triangle.2.circlepath", description: "Bidirectional sync with optimistic updates")
           }
           
           NavigationLink {
@@ -85,12 +102,7 @@ struct ContentView: View {
               AdvancedTodoDemo()
             }
           } label: {
-            VStack(alignment: .leading, spacing: 4) {
-              Label("Advanced Todo", systemImage: "checklist")
-              Text("Search, sort, and filter todos")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
+            demoLabel("Advanced Todo", icon: "checklist", description: "Search, sort, and filter todos")
           }
           
           NavigationLink {
@@ -98,40 +110,28 @@ struct ContentView: View {
               ObservableModelDemo()
             }
           } label: {
-            VStack(alignment: .leading, spacing: 4) {
-              Label("Observable Model", systemImage: "cube")
-              Text("Use @Shared with @Observable models")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
+            demoLabel("Observable Model", icon: "cube", description: "Use @Shared with @Observable models")
           }
         }
         
-        Section("Presence & Real-time") {
+        Section("Presence") {
+          #if !os(watchOS)
+          // Cursors demo doesn't make sense on watchOS (no cursor)
           NavigationLink {
             CaseStudyView {
               CursorsDemo()
             }
           } label: {
-            VStack(alignment: .leading, spacing: 4) {
-              Label("Cursors", systemImage: "cursorarrow.rays")
-              Text("Real-time cursor tracking across users")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
+            demoLabel("Cursors", icon: "cursorarrow.rays", description: "Real-time cursor tracking across users")
           }
+          #endif
           
           NavigationLink {
             CaseStudyView {
               TypingIndicatorDemo()
             }
           } label: {
-            VStack(alignment: .leading, spacing: 4) {
-              Label("Typing Indicators", systemImage: "text.bubble")
-              Text("Show when other users are typing")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
+            demoLabel("Typing Indicators", icon: "text.bubble", description: "Show when other users are typing")
           }
           
           NavigationLink {
@@ -139,12 +139,7 @@ struct ContentView: View {
               AvatarStackDemo()
             }
           } label: {
-            VStack(alignment: .leading, spacing: 4) {
-              Label("Avatar Stack", systemImage: "person.2.circle")
-              Text("Show who's currently in a room")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
+            demoLabel("Avatar Stack", icon: "person.2.circle", description: "Show who's currently in a room")
           }
           
           NavigationLink {
@@ -152,12 +147,11 @@ struct ContentView: View {
               TopicsDemo()
             }
           } label: {
-            VStack(alignment: .leading, spacing: 4) {
-              Label("Topics (Emoji Reactions)", systemImage: "antenna.radiowaves.left.and.right")
-              Text("Ephemeral broadcast events")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
+            #if os(watchOS)
+            demoLabel("Emoji Reactions", icon: "antenna.radiowaves.left.and.right", description: "Ephemeral broadcast events")
+            #else
+            demoLabel("Topics (Emoji Reactions)", icon: "antenna.radiowaves.left.and.right", description: "Ephemeral broadcast events")
+            #endif
           }
           
           NavigationLink {
@@ -165,48 +159,50 @@ struct ContentView: View {
               TileGameDemo()
             }
           } label: {
-            VStack(alignment: .leading, spacing: 4) {
-              Label("Tile Game", systemImage: "square.grid.3x3.fill")
-              Text("Collaborative game with presence + sync")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
+            demoLabel("Tile Game", icon: "square.grid.3x3.fill", description: "Collaborative game with presence + sync")
           }
         }
         
-        Section("Authentication") {
+        Section("Auth") {
           NavigationLink {
             CaseStudyView {
               AuthDemo()
             }
           } label: {
-            VStack(alignment: .leading, spacing: 4) {
-              Label("Auth Flow", systemImage: "person.badge.key")
-              Text("Guest, magic code, and Apple sign-in")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
+            demoLabel("Auth Flow", icon: "person.badge.key", description: "Guest, magic code, and Apple sign-in")
           }
         }
         
+        #if !os(watchOS)
+        // SSL Debug is too complex for watchOS
         Section("Diagnostics") {
           NavigationLink {
             SSLDebugView()
           } label: {
-            VStack(alignment: .leading, spacing: 4) {
-              Label("SSL Debug", systemImage: "lock.shield")
-              Text("Diagnose SSL/TLS and Zscaler issues")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
+            demoLabel("SSL Debug", icon: "lock.shield", description: "Diagnose SSL/TLS and Zscaler issues")
           }
-        } 
+        }
+        #endif 
       }
       #if os(iOS)
       .listStyle(.insetGrouped)
       #endif
       .navigationTitle("Case Studies")
     }
+  }
+  
+  @ViewBuilder
+  private func demoLabel(_ title: String, icon: String, description: String) -> some View {
+    #if os(watchOS)
+    Label(title, systemImage: icon)
+    #else
+    VStack(alignment: .leading, spacing: 4) {
+      Label(title, systemImage: icon)
+      Text(description)
+        .font(.caption)
+        .foregroundStyle(.secondary)
+    }
+    #endif
   }
 }
 

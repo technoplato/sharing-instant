@@ -8,7 +8,21 @@ import SwiftUI
 /// - Guest sign-in
 /// - Magic code (email) authentication
 /// - Sign out
-struct AuthDemo: View {
+struct AuthDemo: View, SwiftUICaseStudy {
+  var caseStudyTitle: String { "Authentication" }
+  var readMe: String {
+    """
+    This demo shows authentication flows using InstantDB.
+    
+    InstantAuth supports multiple authentication methods:
+    • Guest sign-in - Quick anonymous access
+    • Magic code - Email-based passwordless authentication
+    • Sign in with Apple - Native Apple authentication
+    
+    Guest accounts are temporary. Sign in with email or Apple to persist your data.
+    """
+  }
+  
   @StateObject private var auth = InstantAuth()
   
   var body: some View {
@@ -50,25 +64,31 @@ struct UnauthenticatedView: View {
   @State private var error: String?
   
   var body: some View {
-    VStack(spacing: 24) {
+    VStack(spacing: watchOS ? 12 : 24) {
       Image(systemName: "person.circle")
-        .font(.system(size: 80))
+        .font(.system(size: watchOS ? 40 : 80))
         .foregroundStyle(.secondary)
       
       Text("Welcome!")
-        .font(.title)
+        .font(watchOS ? .headline : .title)
         .fontWeight(.bold)
       
+      #if !os(watchOS)
       Text("Choose how to sign in")
         .foregroundStyle(.secondary)
+      #endif
       
       VStack(spacing: 12) {
         // Guest sign-in
         Button {
           signInAsGuest()
         } label: {
+          #if os(watchOS)
+          Label("Guest", systemImage: "person.fill.questionmark")
+          #else
           Label("Continue as Guest", systemImage: "person.fill.questionmark")
             .frame(maxWidth: .infinity)
+          #endif
         }
         .buttonStyle(.bordered)
         .disabled(isLoading)
@@ -77,8 +97,12 @@ struct UnauthenticatedView: View {
         Button {
           showMagicCode = true
         } label: {
+          #if os(watchOS)
+          Label("Email", systemImage: "envelope.fill")
+          #else
           Label("Sign in with Email", systemImage: "envelope.fill")
             .frame(maxWidth: .infinity)
+          #endif
         }
         .buttonStyle(.borderedProminent)
         .disabled(isLoading)
@@ -96,7 +120,9 @@ struct UnauthenticatedView: View {
         .frame(height: 44)
         #endif
       }
+      #if !os(watchOS)
       .frame(maxWidth: 280)
+      #endif
       
       if let error = error {
         Text(error)
@@ -107,6 +133,14 @@ struct UnauthenticatedView: View {
     .sheet(isPresented: $showMagicCode) {
       MagicCodeSheet(auth: auth, isPresented: $showMagicCode)
     }
+  }
+  
+  private var watchOS: Bool {
+    #if os(watchOS)
+    return true
+    #else
+    return false
+    #endif
   }
   
   private func signInAsGuest() {
@@ -169,7 +203,78 @@ struct AuthenticatedView: View {
   @State private var isSigningOut = false
   @State private var error: String?
   
+  private var watchOS: Bool {
+    #if os(watchOS)
+    return true
+    #else
+    return false
+    #endif
+  }
+  
   var body: some View {
+    #if os(watchOS)
+    ScrollView {
+      watchOSContent
+    }
+    #else
+    regularContent
+    #endif
+  }
+  
+  private var watchOSContent: some View {
+    VStack(spacing: 12) {
+      // Compact avatar
+      ZStack {
+        Circle()
+          .fill(Color.blue.gradient)
+          .frame(width: 50, height: 50)
+        
+        if let email = user.email, let first = email.first {
+          Text(String(first).uppercased())
+            .font(.title3)
+            .fontWeight(.bold)
+            .foregroundStyle(.white)
+        } else {
+          Image(systemName: "person.fill")
+            .font(.title3)
+            .foregroundStyle(.white)
+        }
+      }
+      
+      VStack(spacing: 2) {
+        Text(user.email ?? "Guest")
+          .font(.caption)
+          .fontWeight(.semibold)
+          .lineLimit(1)
+        
+        if isGuest {
+          Text("Guest")
+            .font(.caption2)
+            .foregroundStyle(.orange)
+        } else {
+          Text("Signed In")
+            .font(.caption2)
+            .foregroundStyle(.green)
+        }
+      }
+      
+      // Sign out button
+      Button(role: .destructive) {
+        signOut()
+      } label: {
+        if isSigningOut {
+          ProgressView()
+        } else {
+          Text("Sign Out")
+        }
+      }
+      .buttonStyle(.bordered)
+      .disabled(isSigningOut)
+    }
+    .padding(8)
+  }
+  
+  private var regularContent: some View {
     VStack(spacing: 24) {
       // Avatar
       ZStack {
@@ -219,7 +324,13 @@ struct AuthenticatedView: View {
       .frame(maxWidth: .infinity, alignment: .leading)
       .background(
         RoundedRectangle(cornerRadius: 8)
-          .fill(Color(.secondarySystemBackground))
+          #if os(iOS)
+          .fill(Color(uiColor: .secondarySystemBackground))
+          #elseif os(macOS)
+          .fill(Color(nsColor: .controlBackgroundColor))
+          #else
+          .fill(Color.gray.opacity(0.2))
+          #endif
       )
       
       if isGuest {

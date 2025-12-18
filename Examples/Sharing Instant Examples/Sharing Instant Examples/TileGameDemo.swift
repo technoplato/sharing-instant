@@ -9,7 +9,20 @@ import SwiftUI
 /// This example combines presence (to show who's playing and their colors)
 /// with data sync (to persist the board state). Users can click tiles to
 /// color them, and the board updates in real-time across all clients.
-struct TileGameDemo: View {
+struct TileGameDemo: View, SwiftUICaseStudy {
+  var caseStudyTitle: String { "Tile Game" }
+  var readMe: String {
+    """
+    This demo shows a collaborative tile game combining presence and data sync.
+    
+    Presence is used to show who's playing and their assigned colors. Data sync \
+    persists the board state so it survives page refreshes.
+    
+    Click tiles to color them with your color. The board updates in real-time \
+    across all clients. Try opening multiple windows to play together!
+    """
+  }
+  
   let room = InstantRoom(type: "tile-game", id: "demo-123")
   
   @Shared(.instantSync(configuration: .init(namespace: "boards")))
@@ -23,9 +36,62 @@ struct TileGameDemo: View {
   @State private var myColor: Color = .random
   
   private let boardId = "tile-game-board-1"
+  #if os(watchOS)
+  private let boardSize = 3
+  #else
   private let boardSize = 4
+  #endif
   
   var body: some View {
+    #if os(watchOS)
+    ScrollView {
+      watchOSBody
+    }
+    #else
+    regularBody
+    #endif
+  }
+  
+  private var watchOSBody: some View {
+    VStack(spacing: 6) {
+      // Compact players row - your color indicator
+      HStack(spacing: 4) {
+        Circle()
+          .fill(myColor)
+          .frame(width: 14, height: 14)
+        
+        ForEach(presenceState.peersList.prefix(3), id: \.id) { peer in
+          Circle()
+            .fill(peer.color.flatMap { Color(hex: $0) } ?? .gray)
+            .frame(width: 14, height: 14)
+        }
+        
+        if presenceState.peers.count > 3 {
+          Text("+\(presenceState.peers.count - 3)")
+            .font(.system(size: 10))
+            .foregroundStyle(.secondary)
+        }
+      }
+      
+      // Game board
+      gameBoardView
+      
+      // Reset button
+      Button("Reset") {
+        resetBoard()
+      }
+      .font(.caption2)
+      .buttonStyle(.bordered)
+    }
+    .task {
+      await setupGame()
+    }
+    .onDisappear {
+      unsubscribe?()
+    }
+  }
+  
+  private var regularBody: some View {
     VStack(spacing: 20) {
       // Players section
       VStack(alignment: .leading, spacing: 8) {
@@ -65,41 +131,17 @@ struct TileGameDemo: View {
       .padding()
       .background(
         RoundedRectangle(cornerRadius: 12)
-          .fill(Color(.secondarySystemBackground))
+          #if os(iOS)
+          .fill(Color(uiColor: .secondarySystemBackground))
+          #elseif os(macOS)
+          .fill(Color(nsColor: .controlBackgroundColor))
+          #else
+          .fill(Color.gray.opacity(0.2))
+          #endif
       )
       
       // Game board
-      VStack(spacing: 2) {
-        ForEach(0..<boardSize, id: \.self) { row in
-          HStack(spacing: 2) {
-            ForEach(0..<boardSize, id: \.self) { col in
-              let key = "\(row)-\(col)"
-              let color = tileColor(for: key)
-              
-              Rectangle()
-                .fill(hoveredTile == key ? myColor : color)
-                .frame(width: 60, height: 60)
-                .overlay(
-                  Rectangle()
-                    .strokeBorder(Color.primary.opacity(0.2), lineWidth: 1)
-                )
-                .onTapGesture {
-                  setTileColor(key: key)
-                }
-                #if !os(watchOS) && !os(tvOS)
-                .onHover { isHovered in
-                  hoveredTile = isHovered ? key : nil
-                }
-                #endif
-            }
-          }
-        }
-      }
-      .padding()
-      .background(
-        RoundedRectangle(cornerRadius: 12)
-          .fill(Color(.secondarySystemBackground))
-      )
+      gameBoardView
       
       // Reset button
       Button("Reset Board") {
@@ -118,6 +160,58 @@ struct TileGameDemo: View {
     .onDisappear {
       unsubscribe?()
     }
+  }
+  
+  private var gameBoardView: some View {
+    VStack(spacing: 2) {
+      ForEach(0..<boardSize, id: \.self) { row in
+        HStack(spacing: 2) {
+          ForEach(0..<boardSize, id: \.self) { col in
+            let key = "\(row)-\(col)"
+            let color = tileColor(for: key)
+            
+            Rectangle()
+              .fill(hoveredTile == key ? myColor : color)
+              #if os(watchOS)
+              .frame(width: 38, height: 38)
+              #else
+              .frame(width: 60, height: 60)
+              #endif
+              .overlay(
+                Rectangle()
+                  .strokeBorder(Color.primary.opacity(0.2), lineWidth: 1)
+              )
+              .onTapGesture {
+                setTileColor(key: key)
+              }
+              #if !os(watchOS) && !os(tvOS)
+              .onHover { isHovered in
+                hoveredTile = isHovered ? key : nil
+              }
+              #endif
+          }
+        }
+      }
+    }
+    #if os(watchOS)
+    .padding(2)
+    .background(
+      RoundedRectangle(cornerRadius: 8)
+        .fill(Color.gray.opacity(0.1))
+    )
+    #else
+    .padding()
+    .background(
+      RoundedRectangle(cornerRadius: 12)
+        #if os(iOS)
+        .fill(Color(uiColor: .secondarySystemBackground))
+        #elseif os(macOS)
+        .fill(Color(nsColor: .controlBackgroundColor))
+        #else
+        .fill(Color.gray.opacity(0.2))
+        #endif
+    )
+    #endif
   }
   
   private func tileColor(for key: String) -> Color {

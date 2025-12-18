@@ -6,7 +6,9 @@ let package = Package(
   name: "Examples",
   platforms: [
     .iOS(.v17),
-    .macOS(.v14)
+    .macOS(.v14),
+    .tvOS(.v17),
+    .watchOS(.v10)
   ],
   products: [
     .executable(
@@ -28,9 +30,7 @@ let package = Package(
         .product(name: "InstantDB", package: "instant-ios-sdk"),
       ],
       path: "CaseStudies",
-      resources: [
-        .process("Info.plist"),
-      ]
+      exclude: ["Info.plist", "instant.schema.ts", "instant.perms.ts"]
     ),
   ]
 )
