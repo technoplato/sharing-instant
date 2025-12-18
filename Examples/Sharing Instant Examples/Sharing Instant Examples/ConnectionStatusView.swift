@@ -21,7 +21,8 @@ import SwiftUI
 /// - Current connection state with emoji indicator
 /// - Session info when authenticated (user, schema)
 /// - Error details with SSL-specific guidance
-/// - Recent connection logs
+///
+/// Logs are automatically synced to InstantDB via `InstantLogger`.
 ///
 /// ## Usage
 ///
@@ -32,16 +33,11 @@ struct ConnectionStatusView: View {
   @SharedReader(.instantConnection) private var connection: InstantConnectionState
   
   @State private var isExpanded = false
-  @State private var logs: [String] = []
   
   var body: some View {
     DisclosureGroup(isExpanded: $isExpanded) {
       VStack(alignment: .leading, spacing: 12) {
         stateDetails
-        
-        if !logs.isEmpty {
-          logSection
-        }
       }
       .padding(.vertical, 8)
     } label: {
@@ -70,11 +66,8 @@ struct ConnectionStatusView: View {
         Spacer()
       }
     }
-    .onChange(of: connection) { _, newState in
-      addLog("State: \(newState.statusText)")
-    }
     .onAppear {
-      addLog("View appeared, state: \(connection.statusText)")
+      InstantLogger.viewAppeared("ConnectionStatusView")
     }
   }
   
@@ -232,45 +225,6 @@ struct ConnectionStatusView: View {
       .font(.caption2)
       .foregroundStyle(.secondary)
     }
-  }
-  
-  // MARK: - Logs
-  
-  private var logSection: some View {
-    VStack(alignment: .leading, spacing: 4) {
-      HStack {
-        Text("Recent Logs")
-          .font(.caption)
-          .foregroundStyle(.secondary)
-        Spacer()
-        Button("Clear") {
-          logs.removeAll()
-        }
-        .font(.caption2)
-      }
-      
-      ScrollView {
-        VStack(alignment: .leading, spacing: 2) {
-          ForEach(logs.suffix(10), id: \.self) { log in
-            Text(log)
-              .font(.system(.caption2, design: .monospaced))
-              .foregroundStyle(.secondary)
-          }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-      }
-      .frame(height: 80)
-      .padding(8)
-      .background(Color.gray.opacity(0.1))
-      .cornerRadius(6)
-    }
-  }
-  
-  // MARK: - Helpers
-  
-  private func addLog(_ message: String) {
-    let timestamp = Date().formatted(date: .omitted, time: .standard)
-    logs.append("[\(timestamp)] \(message)")
   }
 }
 
