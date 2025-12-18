@@ -2,10 +2,25 @@
 // SharingInstant
 //
 // A logger that syncs logs to InstantDB for remote debugging.
+//
+// ## Smart Deduplication
+//
+// The logger includes a smart deduplication system that prevents log spam from
+// repeated identical messages. When the same message + JSON payload is logged
+// multiple times in rapid succession:
+//
+// 1. The first occurrence is logged immediately
+// 2. Subsequent identical messages within the deduplication window are suppressed
+// 3. When a different message is logged, a summary is printed showing how many
+//    times the previous message was repeated
+//
+// This is particularly useful for connection state changes and other events that
+// may fire rapidly but only the transitions are meaningful.
 
 import Dependencies
 import Foundation
 import IdentifiedCollections
+import os.lock
 import os.log
 import Sharing
 
@@ -154,20 +169,224 @@ public struct LogEntry: Codable, EntityIdentifiable, Sendable, Equatable {
 public struct InstantLoggerConfig {
   /// Whether to print logs to stdout (using print()).
   /// Default: true
-  public static var printToStdout = true
+  ///
+  /// - Note: Uses `nonisolated(unsafe)` because this is a configuration flag
+  ///   that is typically set once at app launch and then read-only.
+  nonisolated(unsafe) public static var printToStdout = true
   
   /// Whether to log to os.log (system log).
   /// Default: true
-  public static var logToOSLog = true
+  ///
+  /// - Note: Uses `nonisolated(unsafe)` because this is a configuration flag
+  ///   that is typically set once at app launch and then read-only.
+  nonisolated(unsafe) public static var logToOSLog = true
   
   /// Whether to sync logs to InstantDB.
   /// Requires a "logs" namespace in your schema.
   /// Default: true
-  public static var syncToInstantDB = true
+  ///
+  /// - Note: Uses `nonisolated(unsafe)` because this is a configuration flag
+  ///   that is typically set once at app launch and then read-only.
+  nonisolated(unsafe) public static var syncToInstantDB = true
   
   /// Whether logging is enabled at all.
   /// Default: true
-  public static var isEnabled = true
+  ///
+  /// - Note: Uses `nonisolated(unsafe)` because this is a configuration flag
+  ///   that is typically set once at app launch and then read-only.
+  nonisolated(unsafe) public static var isEnabled = true
+  
+  /// Whether smart deduplication is enabled.
+  /// When true, identical consecutive log messages are suppressed and a count
+  /// is shown when the message changes.
+  /// Default: true
+  ///
+  /// - Note: Uses `nonisolated(unsafe)` because this is a configuration flag
+  ///   that is typically set once at app launch and then read-only.
+  nonisolated(unsafe) public static var deduplicationEnabled = true
+  
+  /// Time window (in seconds) for deduplication.
+  /// Messages older than this are considered "new" even if identical.
+  /// Default: 60 seconds
+  ///
+  /// - Note: Uses `nonisolated(unsafe)` because this is a configuration flag
+  ///   that is typically set once at app launch and then read-only.
+  nonisolated(unsafe) public static var deduplicationWindow: TimeInterval = 60.0
+}
+
+// MARK: - Log Deduplication Tracker
+
+/// Tracks recent log messages to detect and suppress duplicates.
+///
+/// ## Why This Exists
+/// Real-time systems like InstantDB often emit the same state repeatedly (e.g.,
+/// connection state changes from CombineLatest publishers). This creates log spam
+/// that obscures meaningful events.
+///
+/// ## Algorithm
+/// 1. Each log message is fingerprinted by combining: message + jsonPayload + file + line
+/// 2. When a log comes in, we check if it matches the previous fingerprint
+/// 3. If it matches and is within the deduplication window, we suppress it and increment a counter
+/// 4. When a different message arrives, we flush the suppressed count as a summary
+///
+/// ## Thread Safety
+/// Uses `os_unfair_lock` for fast, thread-safe access to the tracking state.
+final class LogDeduplicationTracker: @unchecked Sendable {
+  
+  struct TrackedMessage: Equatable {
+    let fingerprint: String
+    let level: LogLevel
+    let message: String
+    let jsonPayload: String?
+    let file: String
+    let line: Int
+    let firstTimestamp: Date
+    var count: Int
+    
+    /// Creates a fingerprint from the log components
+    static func makeFingerprint(
+      message: String,
+      jsonPayload: String?,
+      file: String,
+      line: Int
+    ) -> String {
+      var hasher = Hasher()
+      hasher.combine(message)
+      hasher.combine(jsonPayload)
+      hasher.combine(file)
+      hasher.combine(line)
+      return String(hasher.finalize())
+    }
+  }
+  
+  private var lastMessage: TrackedMessage?
+  private let lock = os_unfair_lock_t.allocate(capacity: 1)
+  
+  init() {
+    lock.initialize(to: os_unfair_lock())
+  }
+  
+  deinit {
+    lock.deinitialize(count: 1)
+    lock.deallocate()
+  }
+  
+  /// Result of checking a log message against the deduplication tracker.
+  enum CheckResult {
+    /// This is a new/different message. Log it and optionally flush the previous summary.
+    case newMessage(suppressedSummary: SuppressedSummary?)
+    /// This is a duplicate. Don't log it.
+    case duplicate
+  }
+  
+  /// Summary of suppressed duplicate messages.
+  struct SuppressedSummary {
+    let level: LogLevel
+    let message: String
+    let count: Int
+    let duration: TimeInterval
+  }
+  
+  /// Check if a log message should be logged or suppressed.
+  ///
+  /// - Parameters:
+  ///   - level: The log level
+  ///   - message: The log message
+  ///   - jsonPayload: Optional JSON payload
+  ///   - file: Source file
+  ///   - line: Source line
+  /// - Returns: Whether to log this message and any suppressed summary to flush
+  func check(
+    level: LogLevel,
+    message: String,
+    jsonPayload: String?,
+    file: String,
+    line: Int
+  ) -> CheckResult {
+    os_unfair_lock_lock(lock)
+    defer { os_unfair_lock_unlock(lock) }
+    
+    let now = Date()
+    let fingerprint = TrackedMessage.makeFingerprint(
+      message: message,
+      jsonPayload: jsonPayload,
+      file: file,
+      line: line
+    )
+    
+    // Check if this matches the last message
+    if let last = lastMessage {
+      let age = now.timeIntervalSince(last.firstTimestamp)
+      let withinWindow = age < InstantLoggerConfig.deduplicationWindow
+      
+      if last.fingerprint == fingerprint && withinWindow {
+        // Same message within window - suppress it
+        lastMessage?.count += 1
+        return .duplicate
+      } else {
+        // Different message or outside window
+        // Create summary if we suppressed any messages
+        let summary: SuppressedSummary?
+        if last.count > 1 {
+          summary = SuppressedSummary(
+            level: last.level,
+            message: last.message,
+            count: last.count,
+            duration: age
+          )
+        } else {
+          summary = nil
+        }
+        
+        // Start tracking the new message
+        lastMessage = TrackedMessage(
+          fingerprint: fingerprint,
+          level: level,
+          message: message,
+          jsonPayload: jsonPayload,
+          file: file,
+          line: line,
+          firstTimestamp: now,
+          count: 1
+        )
+        
+        return .newMessage(suppressedSummary: summary)
+      }
+    } else {
+      // First message ever
+      lastMessage = TrackedMessage(
+        fingerprint: fingerprint,
+        level: level,
+        message: message,
+        jsonPayload: jsonPayload,
+        file: file,
+        line: line,
+        firstTimestamp: now,
+        count: 1
+      )
+      return .newMessage(suppressedSummary: nil)
+    }
+  }
+  
+  /// Reset the tracker, returning any pending summary.
+  func reset() -> SuppressedSummary? {
+    os_unfair_lock_lock(lock)
+    defer { os_unfair_lock_unlock(lock) }
+    
+    guard let last = lastMessage, last.count > 1 else {
+      lastMessage = nil
+      return nil
+    }
+    
+    let summary = SuppressedSummary(
+      level: last.level,
+      message: last.message,
+      count: last.count,
+      duration: Date().timeIntervalSince(last.firstTimestamp)
+    )
+    lastMessage = nil
+    return summary
+  }
 }
 
 // MARK: - Logger
@@ -220,6 +439,9 @@ public final class InstantLogger {
   
   /// OS Logger for system logging
   private static let osLogger = os.Logger(subsystem: "SharingInstant", category: "Logger")
+  
+  /// Deduplication tracker for suppressing repeated identical messages
+  private static let deduplicationTracker = LogDeduplicationTracker()
   
   // MARK: - Public API
   
@@ -344,6 +566,30 @@ public final class InstantLogger {
       }
     }
     
+    // Check deduplication if enabled
+    if InstantLoggerConfig.deduplicationEnabled {
+      let checkResult = deduplicationTracker.check(
+        level: level,
+        message: message,
+        jsonPayload: jsonString,
+        file: fileName,
+        line: line
+      )
+      
+      switch checkResult {
+      case .duplicate:
+        // Suppress this log - it's identical to the previous one
+        return
+        
+      case .newMessage(let suppressedSummary):
+        // Print summary of suppressed messages if any
+        if let summary = suppressedSummary {
+          printSuppressedSummary(summary)
+        }
+        // Continue to log the new message
+      }
+    }
+    
     // Create the log entry
     let entry = LogEntry(
       level: level,
@@ -371,6 +617,28 @@ public final class InstantLogger {
       $logs.withLock { logs in
         logs.insert(entry, at: 0)
       }
+    }
+  }
+  
+  /// Prints a summary of suppressed duplicate messages.
+  private static func printSuppressedSummary(_ summary: LogDeduplicationTracker.SuppressedSummary) {
+    let durationStr: String
+    if summary.duration < 1 {
+      durationStr = String(format: "%.0fms", summary.duration * 1000)
+    } else if summary.duration < 60 {
+      durationStr = String(format: "%.1fs", summary.duration)
+    } else {
+      durationStr = String(format: "%.1fm", summary.duration / 60)
+    }
+    
+    let summaryMessage = "  ↳ (repeated \(summary.count)x over \(durationStr))"
+    
+    if InstantLoggerConfig.printToStdout {
+      print(summaryMessage)
+    }
+    
+    if InstantLoggerConfig.logToOSLog {
+      osLogger.debug("\(summaryMessage)")
     }
   }
   
