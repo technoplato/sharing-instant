@@ -1,5 +1,4 @@
 import IdentifiedCollections
-import InstantDB
 import Sharing
 import SharingInstant
 import SwiftUI
@@ -9,21 +8,34 @@ import SwiftUI
 /// This example combines presence (to show who's playing and their colors)
 /// with data sync (to persist the board state). Users can click tiles to
 /// color them, and the board updates in real-time across all clients.
+///
+/// ## Combined APIs
+///
+/// This demo shows how to use both:
+/// - `@Shared(.instantSync(...))` for persisted board state
+/// - `@Shared(.instantPresence(...))` for ephemeral player presence
 struct TileGameDemo: View {
-  let room = InstantRoom(type: "tile-game", id: "demo-123")
+  private let userId = String(UUID().uuidString.prefix(4))
+  @State private var myColor: Color = .random
+  // InstantDB requires UUIDs for entity IDs. We use a deterministic UUID
+  // so all clients share the same board. This is a UUID v5 generated from
+  // the namespace "tile-game-board-1".
+  private let boardId = "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"
+  private let boardSize = 4
   
+  /// Persisted board state using data sync.
   @Shared(.instantSync(configuration: .init(namespace: "boards")))
   private var boards: IdentifiedArrayOf<Board> = []
   
-  @State private var presenceState = InstantPresenceState()
-  @State private var unsubscribe: (() -> Void)?
+  /// Ephemeral presence for who's playing.
+  @Shared(.instantPresence(
+    Schema.Rooms.tileGame,
+    roomId: "demo-123",
+    initialPresence: TileGamePresence(name: "", color: "")
+  ))
+  private var presence: RoomPresence<TileGamePresence>
+  
   @State private var hoveredTile: String?
-  
-  private let userId = String(UUID().uuidString.prefix(4))
-  @State private var myColor: Color = .random
-  
-  private let boardId = "tile-game-board-1"
-  private let boardSize = 4
   
   var body: some View {
     VStack(spacing: 20) {
@@ -46,14 +58,14 @@ struct TileGameDemo: View {
             .font(.caption)
             .foregroundStyle(.secondary)
           
-          if presenceState.peers.isEmpty {
+          if presence.peers.isEmpty {
             Text("No one else yet")
               .font(.caption)
               .foregroundStyle(.tertiary)
           } else {
-            ForEach(presenceState.peersList, id: \.id) { peer in
+            ForEach(presence.peers) { peer in
               Circle()
-                .fill(peer.color.flatMap { Color(hex: $0) } ?? .gray)
+                .fill(Color(hex: peer.data.color) ?? .gray)
                 .frame(width: 24, height: 24)
                 .overlay(
                   Circle().strokeBorder(Color.primary.opacity(0.3), lineWidth: 1)
@@ -112,11 +124,8 @@ struct TileGameDemo: View {
         .foregroundStyle(.secondary)
     }
     .padding()
-    .task {
-      await setupGame()
-    }
-    .onDisappear {
-      unsubscribe?()
+    .onAppear {
+      initializeGame()
     }
   }
   
@@ -128,17 +137,9 @@ struct TileGameDemo: View {
     return Color(hex: colorHex) ?? .white
   }
   
-  @MainActor
-  private func setupGame() async {
-    let client = InstantClientFactory.makeClient()
-    
-    // Wait for connection
-    while client.connectionState != .authenticated {
-      try? await Task.sleep(nanoseconds: 50_000_000)
-    }
-    
+  private func initializeGame() {
     // Choose a color that's not taken by peers
-    let takenColors = Set(presenceState.peersList.compactMap { $0.color })
+    let takenColors = Set(presence.peers.compactMap { $0.data.color })
     let availableColors: [Color] = [.red, .green, .blue, .yellow, .purple, .orange]
       .filter { !takenColors.contains($0.hexString) }
     
@@ -146,15 +147,9 @@ struct TileGameDemo: View {
       myColor = available
     }
     
-    // Join room with our presence
-    _ = client.presence.joinRoom(room.roomId, initialPresence: [
-      "name": userId,
-      "color": myColor.hexString
-    ])
-    
-    // Subscribe to presence
-    unsubscribe = client.presence.subscribePresence(roomId: room.roomId) { slice in
-      presenceState = InstantPresenceState(from: slice)
+    // Set presence
+    $presence.withLock { state in
+      state.user = TileGamePresence(name: userId, color: myColor.hexString)
     }
     
     // Initialize board if it doesn't exist
@@ -169,14 +164,12 @@ struct TileGameDemo: View {
     }
   }
   
-  @MainActor
   private func setTileColor(key: String) {
     guard var board = boards.first(where: { $0.id == boardId }) else { return }
     board.state[key] = myColor.hexString
     $boards.withLock { $0[id: boardId] = board }
   }
   
-  @MainActor
   private func resetBoard() {
     guard var board = boards.first(where: { $0.id == boardId }) else { return }
     for row in 0..<boardSize {
@@ -202,5 +195,3 @@ extension Board: EntityIdentifiable {
 #Preview {
   TileGameDemo()
 }
-
-
