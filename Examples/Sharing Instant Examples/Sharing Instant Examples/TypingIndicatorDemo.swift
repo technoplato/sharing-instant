@@ -6,7 +6,21 @@ import SwiftUI
 ///
 /// This example shows how to build a typing indicator that shows
 /// when other users are actively typing in a shared input.
-struct TypingIndicatorDemo: View {
+struct TypingIndicatorDemo: View, SwiftUICaseStudy {
+  var caseStudyTitle: String { "Typing Indicators" }
+  var readMe: String {
+    """
+    This demo shows real-time typing indicators using InstantDB presence.
+    
+    When you type in the text field, your typing state is broadcast to all \
+    other users in the room. The avatar shows animated dots when a user is \
+    actively typing.
+    
+    This pattern is commonly used in chat applications to show when other \
+    participants are composing a message.
+    """
+  }
+  
   let room = InstantRoom(type: "typing", id: "demo-123")
   
   @State private var message = ""
@@ -18,6 +32,59 @@ struct TypingIndicatorDemo: View {
   private let userColor = Color.random
   
   var body: some View {
+    #if os(watchOS)
+    watchOSBody
+    #else
+    regularBody
+    #endif
+  }
+  
+  private var watchOSBody: some View {
+    VStack(spacing: 8) {
+      // Compact peers row
+      HStack(spacing: 4) {
+        // Current user
+        PeerAvatar(
+          name: userId,
+          color: userColor,
+          isTyping: isTyping
+        )
+        
+        // Other peers
+        ForEach(presenceState.peersList, id: \.id) { peer in
+          let peerIsTyping = (peer.data["isTyping"]?.value as? Bool) ?? false
+          PeerAvatar(
+            name: peer.name ?? String(peer.id.prefix(4)),
+            color: peer.color.flatMap { Color(hex: $0) } ?? .gray,
+            isTyping: peerIsTyping
+          )
+        }
+      }
+      
+      // Typing indicator text
+      if !activeTypers.isEmpty {
+        Text(typingText)
+          .font(.caption2)
+          .foregroundStyle(.secondary)
+      }
+      
+      // Message input
+      TextField("Type...", text: $message)
+        .onChange(of: message) { _, newValue in
+          updateTypingState(!newValue.isEmpty)
+        }
+      
+      Button {
+        sendMessage()
+      } label: {
+        Image(systemName: "paperplane.fill")
+      }
+      .disabled(message.isEmpty)
+    }
+    .padding(4)
+  }
+  
+  private var regularBody: some View {
     VStack(spacing: 0) {
       // Peers list
       ScrollView(.horizontal, showsIndicators: false) {
@@ -67,7 +134,9 @@ struct TypingIndicatorDemo: View {
       // Message input
       HStack {
         TextField("Type a message...", text: $message)
+          #if !os(tvOS) && !os(watchOS)
           .textFieldStyle(.roundedBorder)
+          #endif
           .onChange(of: message) { _, newValue in
             updateTypingState(!newValue.isEmpty)
           }
@@ -157,24 +226,36 @@ struct PeerAvatar: View {
   let color: Color
   let isTyping: Bool
   
+  #if os(watchOS)
+  private let size: CGFloat = 28
+  private let dotOffset: CGFloat = 10
+  #else
+  private let size: CGFloat = 44
+  private let dotOffset: CGFloat = 16
+  #endif
+  
   var body: some View {
     ZStack {
       Circle()
         .fill(color.opacity(0.2))
-        .frame(width: 44, height: 44)
+        .frame(width: size, height: size)
       
       Circle()
         .strokeBorder(color, lineWidth: 2)
-        .frame(width: 44, height: 44)
+        .frame(width: size, height: size)
       
       Text(String(name.prefix(1)).uppercased())
+        #if os(watchOS)
+        .font(.caption)
+        #else
         .font(.headline)
+        #endif
         .foregroundStyle(color)
       
       // Typing indicator
       if isTyping {
         TypingDots()
-          .offset(x: 16, y: 16)
+          .offset(x: dotOffset, y: dotOffset)
       }
     }
   }
@@ -197,7 +278,13 @@ struct TypingDots: View {
     .padding(4)
     .background(
       Capsule()
-        .fill(Color(.systemBackground))
+        #if os(iOS)
+        .fill(Color(uiColor: .systemBackground))
+        #elseif os(macOS)
+        .fill(Color(nsColor: .windowBackgroundColor))
+        #else
+        .fill(Color.white)
+        #endif
         .shadow(radius: 1)
     )
     .onAppear {
