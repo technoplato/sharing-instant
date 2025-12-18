@@ -1,3 +1,11 @@
+//
+//  SSLDebugView.swift
+//  Sharing Instant Examples
+//
+//  Created by Michael Lustig on 12/18/25.
+//
+
+
 // SSLDebugView.swift
 // A diagnostic view to debug SSL/TLS connection issues in iOS Simulator
 //
@@ -8,12 +16,19 @@
 import SwiftUI
 import Foundation
 import Security
+#if canImport(UIKit)
+import UIKit
+#endif
+#if canImport(AppKit)
+import AppKit
+#endif
 
 // MARK: - SSL Debug View
 
 struct SSLDebugView: View {
   @State private var logs: [LogEntry] = []
   @State private var isRunning = false
+  @State private var zscalerBypassEnabled = false
   
   var body: some View {
     NavigationView {
@@ -41,12 +56,50 @@ struct SSLDebugView: View {
           }
         }
         
+        // Zscaler bypass toggle
+        zscalerBypassToggle
+        
         // Action buttons
         actionButtons
       }
       .navigationTitle("SSL Debug")
+      #if os(iOS)
       .navigationBarTitleDisplayMode(.inline)
+      #endif
     }
+  }
+  
+  // MARK: - Zscaler Bypass Toggle
+  
+  private var zscalerBypassToggle: some View {
+    VStack(spacing: 8) {
+      Toggle(isOn: $zscalerBypassEnabled) {
+        HStack {
+          Image(systemName: "shield.slash")
+            .foregroundColor(zscalerBypassEnabled ? .orange : .gray)
+          VStack(alignment: .leading) {
+            Text("Zscaler Bypass Mode")
+              .font(.subheadline)
+              .fontWeight(.medium)
+            Text(zscalerBypassEnabled 
+              ? "⚠️ Trusting Zscaler certs (DEV ONLY)" 
+              : "Standard SSL validation")
+              .font(.caption2)
+              .foregroundStyle(.secondary)
+          }
+        }
+      }
+      .tint(.orange)
+      
+      if zscalerBypassEnabled {
+        Text("This bypasses SSL validation for Zscaler-intercepted connections. Only use for development!")
+          .font(.caption2)
+          .foregroundStyle(.orange)
+          .multilineTextAlignment(.center)
+      }
+    }
+    .padding()
+    .background(zscalerBypassEnabled ? Color.orange.opacity(0.1) : Color.gray.opacity(0.15))
   }
   
   // MARK: - Subviews
@@ -63,14 +116,44 @@ struct SSLDebugView: View {
       Spacer()
       
       if !logs.isEmpty {
-        Button("Clear") {
+        Button {
+          copyLogsToClipboard()
+        } label: {
+          Label("Copy", systemImage: "doc.on.doc")
+        }
+        .buttonStyle(.bordered)
+        .font(.caption)
+        
+        Button("Clear", role: .destructive) {
           logs.removeAll()
         }
+        .buttonStyle(.bordered)
         .font(.caption)
       }
     }
     .padding()
-    .background(Color(.systemGray6))
+    .background(Color.gray.opacity(0.15))
+  }
+  
+  private func copyLogsToClipboard() {
+    let logText = logs.map { entry in
+      let levelPrefix: String
+      switch entry.level {
+      case .info: levelPrefix = "ℹ️"
+      case .success: levelPrefix = "✅"
+      case .warning: levelPrefix = "⚠️"
+      case .error: levelPrefix = "❌"
+      case .section: levelPrefix = "▶️"
+      }
+      return "\(levelPrefix) \(entry.message)"
+    }.joined(separator: "\n")
+    
+    #if os(iOS)
+    UIPasteboard.general.string = logText
+    #elseif os(macOS)
+    NSPasteboard.general.clearContents()
+    NSPasteboard.general.setString(logText, forType: .string)
+    #endif
   }
   
   private var actionButtons: some View {
@@ -97,7 +180,7 @@ struct SSLDebugView: View {
           }
           .frame(maxWidth: .infinity)
           .padding()
-          .background(Color(.systemGray5))
+          .background(Color.gray.opacity(0.2))
           .cornerRadius(10)
         }
         .disabled(isRunning)
@@ -110,7 +193,7 @@ struct SSLDebugView: View {
           }
           .frame(maxWidth: .infinity)
           .padding()
-          .background(Color(.systemGray5))
+          .background(Color.gray.opacity(0.2))
           .cornerRadius(10)
         }
         .disabled(isRunning)
@@ -123,14 +206,14 @@ struct SSLDebugView: View {
           }
           .frame(maxWidth: .infinity)
           .padding()
-          .background(Color(.systemGray5))
+          .background(Color.gray.opacity(0.2))
           .cornerRadius(10)
         }
         .disabled(isRunning)
       }
     }
     .padding()
-    .background(Color(.systemGray6))
+    .background(Color.gray.opacity(0.15))
   }
   
   private var hasError: Bool {
@@ -149,8 +232,13 @@ struct SSLDebugView: View {
       log(.info, "═══════════════════════════════════════")
       log(.info, "")
       log(.info, "Date: \(Date().formatted())")
+      #if os(iOS)
       log(.info, "Device: \(UIDevice.current.name)")
       log(.info, "iOS: \(UIDevice.current.systemVersion)")
+      #elseif os(macOS)
+      log(.info, "Device: \(Host.current().localizedName ?? "Mac")")
+      log(.info, "macOS: \(ProcessInfo.processInfo.operatingSystemVersionString)")
+      #endif
       log(.info, "")
       
       // Test multiple hosts
@@ -164,6 +252,31 @@ struct SSLDebugView: View {
       log(.info, "═══════════════════════════════════════")
       log(.info, "  DIAGNOSTIC COMPLETE")
       log(.info, "═══════════════════════════════════════")
+      
+      // Add summary
+      log(.info, "")
+      log(.section, "SUMMARY")
+      
+      // Check if InstantDB is intercepted
+      let instantDBIntercepted = logs.contains { entry in
+        entry.message.contains("api.instantdb.com") ||
+        (entry.message.contains("ZSCALER") && logs.firstIndex(where: { $0.message.contains("api.instantdb.com") }) != nil)
+      }
+      
+      // Simple heuristic: if we saw Zscaler in the InstantDB section
+      let logsText = logs.map { $0.message }.joined(separator: "\n")
+      let instantDBSection = logsText.components(separatedBy: "Testing: api.instantdb.com").last?
+        .components(separatedBy: "Testing:").first ?? ""
+      
+      if instantDBSection.contains("ZSCALER") {
+        log(.warning, "⚠️ InstantDB traffic IS being intercepted by Zscaler")
+        log(.info, "  → Your app may have connection issues")
+        log(.info, "  → Consider adding Zscaler cert to simulator trust store")
+      } else if instantDBSection.contains("Amazon") || instantDBSection.contains("TRUSTED") {
+        log(.success, "✅ InstantDB traffic is NOT intercepted by Zscaler")
+        log(.info, "  → Your app should work normally")
+        log(.info, "  → No bypass or certificate changes needed")
+      }
       
       await MainActor.run {
         isRunning = false
@@ -224,6 +337,11 @@ struct SSLDebugView: View {
     // Step 4: HTTP Request
     log(.info, "→ Making HTTPS request...")
     await performHTTPRequest(host: host)
+    
+    // Step 5: WebSocket Test (only for InstantDB)
+    if host == "api.instantdb.com" {
+      await performWebSocketTest(host: host)
+    }
   }
   
   private func resolveDNS(host: String) async -> Result<[String], Error> {
@@ -332,20 +450,38 @@ struct SSLDebugView: View {
   private func getCertificateChain(host: String) async {
     let url = URL(string: "https://\(host)/")!
     
-    let delegate = CertificateInspectorDelegate { [self] trust in
-      self.inspectTrust(trust, host: host)
-    }
+    // Create delegate with bypass mode setting
+    let bypassEnabled = zscalerBypassEnabled
+    let delegate = CertificateInspectorDelegate(
+      bypassEnabled: bypassEnabled,
+      onTrustReceived: { [self] trust in
+        self.inspectTrust(trust, host: host, bypassEnabled: bypassEnabled)
+      }
+    )
+    
+    // Use default configuration instead of ephemeral - ephemeral may have issues
+    // with credential caching needed for the bypass to work
+    let config = URLSessionConfiguration.default
+    config.timeoutIntervalForRequest = 10
+    config.timeoutIntervalForResource = 10
     
     let session = URLSession(
-      configuration: .ephemeral,
+      configuration: config,
       delegate: delegate,
       delegateQueue: nil
     )
+    
+    if zscalerBypassEnabled {
+      log(.warning, "  🛡️ Zscaler bypass mode ENABLED")
+    }
     
     do {
       let (_, response) = try await session.data(from: url)
       if let httpResponse = response as? HTTPURLResponse {
         log(.success, "  HTTP Status: \(httpResponse.statusCode)")
+        if zscalerBypassEnabled {
+          log(.success, "  ✅ Connection succeeded with Zscaler bypass!")
+        }
       }
     } catch {
       log(.error, "  Request failed: \(error.localizedDescription)")
@@ -356,11 +492,17 @@ struct SSLDebugView: View {
         case NSURLErrorServerCertificateUntrusted:
           log(.error, "  ⚠️ CERTIFICATE NOT TRUSTED")
           log(.error, "  This is likely a Zscaler interception issue")
+          if !zscalerBypassEnabled {
+            log(.info, "  💡 Try enabling 'Zscaler Bypass Mode' below")
+          }
         case NSURLErrorServerCertificateHasBadDate:
           log(.error, "  ⚠️ CERTIFICATE DATE INVALID")
         case NSURLErrorServerCertificateHasUnknownRoot:
           log(.error, "  ⚠️ UNKNOWN ROOT CERTIFICATE")
           log(.error, "  The Zscaler root CA is not trusted on this device")
+          if !zscalerBypassEnabled {
+            log(.info, "  💡 Try enabling 'Zscaler Bypass Mode' below")
+          }
         case NSURLErrorSecureConnectionFailed:
           log(.error, "  ⚠️ SECURE CONNECTION FAILED")
         default:
@@ -372,22 +514,28 @@ struct SSLDebugView: View {
     session.invalidateAndCancel()
   }
   
-  private func inspectTrust(_ trust: SecTrust, host: String) {
+  private func inspectTrust(_ trust: SecTrust, host: String, bypassEnabled: Bool = false) {
     let certCount = SecTrustGetCertificateCount(trust)
     log(.info, "  Certificate chain (\(certCount) certs):")
     
-    for i in 0..<certCount {
-      if let cert = SecTrustCopyCertificateChain(trust)?[i] as? SecCertificate {
-        let summary = SecCertificateCopySubjectSummary(cert) as String? ?? "Unknown"
-        let prefix = i == 0 ? "  └─ [Leaf]" : (i == certCount - 1 ? "  └─ [Root]" : "  ├─ [Intermediate]")
-        
-        // Check if this looks like Zscaler
-        let isZscaler = summary.lowercased().contains("zscaler")
-        if isZscaler {
-          log(.warning, "\(prefix) \(summary) ⚡️ ZSCALER")
-        } else {
-          log(.info, "\(prefix) \(summary)")
-        }
+    // Get the certificate chain as a Swift array
+    guard let certChain = SecTrustCopyCertificateChain(trust) as? [SecCertificate] else {
+      log(.error, "  Failed to get certificate chain")
+      return
+    }
+    
+    var hasZscaler = false
+    for (i, cert) in certChain.enumerated() {
+      let summary = SecCertificateCopySubjectSummary(cert) as String? ?? "Unknown"
+      let prefix = i == 0 ? "  └─ [Leaf]" : (i == certCount - 1 ? "  └─ [Root]" : "  ├─ [Intermediate]")
+      
+      // Check if this looks like Zscaler
+      let isZscaler = summary.lowercased().contains("zscaler")
+      if isZscaler {
+        hasZscaler = true
+        log(.warning, "\(prefix) \(summary) ⚡️ ZSCALER")
+      } else {
+        log(.info, "\(prefix) \(summary)")
       }
     }
     
@@ -398,9 +546,14 @@ struct SSLDebugView: View {
     if trusted {
       log(.success, "  ✅ Certificate chain is TRUSTED")
     } else {
-      log(.error, "  ❌ Certificate chain is NOT TRUSTED")
-      if let error = error {
-        log(.error, "  Reason: \(error.localizedDescription)")
+      if bypassEnabled && hasZscaler {
+        // We're going to accept it anyway via bypass
+        log(.warning, "  ⚠️ Certificate NOT trusted by iOS, but BYPASS will accept it")
+      } else {
+        log(.error, "  ❌ Certificate chain is NOT TRUSTED")
+        if let error = error {
+          log(.error, "  Reason: \(error.localizedDescription)")
+        }
       }
     }
   }
@@ -410,14 +563,91 @@ struct SSLDebugView: View {
     var request = URLRequest(url: url)
     request.timeoutInterval = 10
     
+    // Use bypass-enabled session if bypass is on
+    let session: URLSession
+    if zscalerBypassEnabled {
+      let delegate = ZscalerBypassDelegate()
+      let config = URLSessionConfiguration.default
+      config.timeoutIntervalForRequest = 10
+      session = URLSession(configuration: config, delegate: delegate, delegateQueue: nil)
+    } else {
+      session = URLSession.shared
+    }
+    
     do {
-      let (data, response) = try await URLSession.shared.data(for: request)
+      let (data, response) = try await session.data(for: request)
       if let httpResponse = response as? HTTPURLResponse {
         log(.success, "  Response: \(httpResponse.statusCode)")
         log(.info, "  Data size: \(data.count) bytes")
       }
     } catch {
       log(.error, "  HTTP Request failed: \(error.localizedDescription)")
+    }
+    
+    if zscalerBypassEnabled {
+      session.invalidateAndCancel()
+    }
+  }
+  
+  // MARK: - WebSocket Test
+  //
+  // Tests WebSocket connectivity separately from HTTP.
+  // This is important because Zscaler may treat WebSocket connections
+  // differently than regular HTTP requests.
+  
+  private func performWebSocketTest(host: String) async {
+    log(.info, "→ Testing WebSocket connection...")
+    
+    let wsURL = URL(string: "wss://\(host)/runtime/session")!
+    
+    // Create session with or without bypass
+    let session: URLSession
+    if zscalerBypassEnabled {
+      let delegate = ZscalerBypassDelegate()
+      let config = URLSessionConfiguration.default
+      config.timeoutIntervalForRequest = 10
+      session = URLSession(configuration: config, delegate: delegate, delegateQueue: nil)
+      log(.warning, "  🛡️ WebSocket bypass mode ENABLED")
+    } else {
+      session = URLSession.shared
+    }
+    
+    let wsTask = session.webSocketTask(with: wsURL)
+    
+    do {
+      // Just try to connect - we don't need to actually complete the handshake
+      wsTask.resume()
+      
+      // Wait a moment for connection to establish or fail
+      try await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+      
+      // Check the state
+      switch wsTask.state {
+      case .running:
+        log(.success, "  ✅ WebSocket connection established!")
+        wsTask.cancel(with: .goingAway, reason: nil)
+      case .suspended:
+        log(.warning, "  ⏸️ WebSocket suspended")
+      case .canceling:
+        log(.warning, "  ⏳ WebSocket canceling")
+      case .completed:
+        log(.info, "  WebSocket completed")
+      @unknown default:
+        log(.info, "  WebSocket state: unknown")
+      }
+    } catch {
+      log(.error, "  WebSocket error: \(error.localizedDescription)")
+      
+      let nsError = error as NSError
+      if nsError.code == -1200 {
+        log(.error, "  ⚠️ WebSocket SSL/TLS FAILURE")
+        log(.error, "  This confirms Zscaler intercepts WebSocket differently than HTTP!")
+      }
+    }
+    
+    wsTask.cancel()
+    if zscalerBypassEnabled {
+      session.invalidateAndCancel()
     }
   }
   
@@ -517,17 +747,47 @@ struct SSLDebugView: View {
 }
 
 // MARK: - Certificate Inspector Delegate
+//
+// ## Zscaler Bypass Mode
+//
+// When `bypassEnabled` is true, this delegate will:
+// 1. Check if the certificate chain contains "Zscaler" in any certificate's subject
+// 2. If so, accept the certificate regardless of iOS trust evaluation
+// 3. This allows connections through Zscaler-intercepted networks in the simulator
+//
+// ⚠️ WARNING: This bypasses SSL security and should ONLY be used for development!
+// Never ship this to production.
 
-private class CertificateInspectorDelegate: NSObject, URLSessionDelegate {
+private class CertificateInspectorDelegate: NSObject, URLSessionDelegate, URLSessionTaskDelegate {
+  let bypassEnabled: Bool
   let onTrustReceived: (SecTrust) -> Void
   
-  init(onTrustReceived: @escaping (SecTrust) -> Void) {
+  init(bypassEnabled: Bool = false, onTrustReceived: @escaping (SecTrust) -> Void) {
+    self.bypassEnabled = bypassEnabled
     self.onTrustReceived = onTrustReceived
   }
   
+  // Session-level challenge (called first)
   func urlSession(
     _ session: URLSession,
     didReceive challenge: URLAuthenticationChallenge,
+    completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
+  ) {
+    handleChallenge(challenge, completionHandler: completionHandler)
+  }
+  
+  // Task-level challenge (called for per-task challenges)
+  func urlSession(
+    _ session: URLSession,
+    task: URLSessionTask,
+    didReceive challenge: URLAuthenticationChallenge,
+    completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
+  ) {
+    handleChallenge(challenge, completionHandler: completionHandler)
+  }
+  
+  private func handleChallenge(
+    _ challenge: URLAuthenticationChallenge,
     completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
   ) {
     guard challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
@@ -536,11 +796,81 @@ private class CertificateInspectorDelegate: NSObject, URLSessionDelegate {
       return
     }
     
-    // Inspect the trust object
+    // Always inspect the trust object for logging (do this AFTER we decide to accept)
+    // to avoid any timing issues
+    let isZscaler = isZscalerCertificate(trust: trust)
+    
+    // If bypass is enabled, accept the certificate
+    if bypassEnabled {
+      // Accept the certificate by providing credentials
+      let credential = URLCredential(trust: trust)
+      completionHandler(.useCredential, credential)
+      
+      // Log after accepting
+      onTrustReceived(trust)
+      return
+    }
+    
+    // Log before default handling
     onTrustReceived(trust)
     
     // Use default handling (will fail if cert not trusted)
     completionHandler(.performDefaultHandling, nil)
+  }
+  
+  /// Check if any certificate in the chain is from Zscaler
+  private func isZscalerCertificate(trust: SecTrust) -> Bool {
+    guard let certChain = SecTrustCopyCertificateChain(trust) as? [SecCertificate] else {
+      return false
+    }
+    
+    for cert in certChain {
+      if let summary = SecCertificateCopySubjectSummary(cert) as String? {
+        if summary.lowercased().contains("zscaler") {
+          return true
+        }
+      }
+    }
+    
+    return false
+  }
+}
+
+// MARK: - Simple Zscaler Bypass Delegate
+//
+// A minimal delegate that just accepts all certificates.
+// Used for the final HTTP request test when bypass is enabled.
+
+private class ZscalerBypassDelegate: NSObject, URLSessionDelegate, URLSessionTaskDelegate {
+  func urlSession(
+    _ session: URLSession,
+    didReceive challenge: URLAuthenticationChallenge,
+    completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
+  ) {
+    handleChallenge(challenge, completionHandler: completionHandler)
+  }
+  
+  func urlSession(
+    _ session: URLSession,
+    task: URLSessionTask,
+    didReceive challenge: URLAuthenticationChallenge,
+    completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
+  ) {
+    handleChallenge(challenge, completionHandler: completionHandler)
+  }
+  
+  private func handleChallenge(
+    _ challenge: URLAuthenticationChallenge,
+    completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
+  ) {
+    if challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
+       let trust = challenge.protectionSpace.serverTrust {
+      // Accept any certificate
+      let credential = URLCredential(trust: trust)
+      completionHandler(.useCredential, credential)
+    } else {
+      completionHandler(.performDefaultHandling, nil)
+    }
   }
 }
 

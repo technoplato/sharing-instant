@@ -7,6 +7,9 @@
 
 import SharingInstant
 import SwiftUI
+#if os(macOS)
+import AppKit
+#endif
 
 struct ContentView: View {
   var body: some View {
@@ -48,6 +51,22 @@ struct ContentView: View {
         }
         
         Section("Data Sync Examples") {
+          #if os(macOS)
+          Button {
+            if let url = URL(string: "https://www.instantdb.com/dash?s=main&app=b9319949-2f2d-410b-8f8a-6990177c1d44&t=explorer") {
+              NSWorkspace.shared.open(url)
+            }
+          } label: {
+            VStack(alignment: .leading, spacing: 4) {
+              Label("Open Dashboard", systemImage: "globe")
+              Text("View data in InstantDB Explorer")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+          }
+          .buttonStyle(.plain)
+          #endif
+          
           NavigationLink {
             CaseStudyView {
               SwiftUISyncDemo()
@@ -169,6 +188,19 @@ struct ContentView: View {
             }
           }
         }
+        
+        Section("Diagnostics") {
+          NavigationLink {
+            SSLDebugView()
+          } label: {
+            VStack(alignment: .leading, spacing: 4) {
+              Label("SSL Debug", systemImage: "lock.shield")
+              Text("Diagnose SSL/TLS and Zscaler issues")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+          }
+        } 
       }
       #if os(iOS)
       .listStyle(.insetGrouped)
