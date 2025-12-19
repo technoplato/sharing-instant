@@ -129,7 +129,27 @@ public struct EntityIR: Codable, Sendable, Equatable, Identifiable {
   
   /// The Swift struct name (PascalCase singular)
   /// "todos" → "Todo", "users" → "User", "people" → "Person"
+  ///
+  /// ## System Entities
+  ///
+  /// InstantDB has system entities prefixed with `$` (e.g., `$files`, `$users`).
+  /// These are converted to Swift-safe names:
+  /// - `$files` → `InstantFile`
+  /// - `$users` → `InstantUser`
+  ///
+  /// The `$` prefix is reserved in Swift for compiler-synthesized declarations
+  /// (like property wrapper projections), so we use the `Instant` prefix instead.
   public var swiftTypeName: String {
+    // Handle InstantDB system entities (prefixed with $)
+    // The $ prefix is reserved in Swift for compiler-synthesized declarations
+    // like $foo for @State property wrappers, so we convert to Instant prefix
+    if name.hasPrefix("$") {
+      let baseName = String(name.dropFirst()) // Remove $
+      // Convert "$files" → "InstantFile", "$users" → "InstantUser"
+      let singular = singularize(baseName)
+      return "Instant" + singular.prefix(1).uppercased() + singular.dropFirst()
+    }
+    
     // Handle irregular plurals
     let irregularPlurals: [String: String] = [
       "people": "Person",
@@ -151,20 +171,49 @@ public struct EntityIR: Codable, Sendable, Equatable, Identifiable {
     }
     
     // Handle regular plurals
-    let singular: String
-    if name.hasSuffix("ies") {
-      // "categories" → "category"
-      singular = String(name.dropLast(3)) + "y"
-    } else if name.hasSuffix("es") && (name.hasSuffix("sses") || name.hasSuffix("xes") || name.hasSuffix("ches") || name.hasSuffix("shes")) {
-      // "classes" → "class", "boxes" → "box"
-      singular = String(name.dropLast(2))
-    } else if name.hasSuffix("s") && !name.hasSuffix("ss") {
-      singular = String(name.dropLast())
-    } else {
-      singular = name
-    }
+    let singular = singularize(name)
     
     return singular.prefix(1).uppercased() + singular.dropFirst()
+  }
+  
+  /// Whether this entity is a system entity (prefixed with $)
+  ///
+  /// System entities like `$files` and `$users` are managed by InstantDB
+  /// and have special behavior. They are rarely used directly in app code.
+  public var isSystemEntity: Bool {
+    name.hasPrefix("$")
+  }
+  
+  /// The Swift property name for Schema.xxx
+  ///
+  /// For regular entities, this is the same as `name` (e.g., "todos").
+  /// For system entities, the `$` is replaced with `instant` prefix:
+  /// - `$files` → `instantFiles`
+  /// - `$users` → `instantUsers`
+  ///
+  /// This ensures valid Swift property names while maintaining clarity
+  /// that these are InstantDB system entities.
+  public var swiftPropertyName: String {
+    if name.hasPrefix("$") {
+      // Convert "$files" → "instantFiles"
+      return "instant" + String(name.dropFirst()).prefix(1).uppercased() + String(name.dropFirst()).dropFirst()
+    }
+    return name
+  }
+  
+  /// Convert a plural name to singular
+  private func singularize(_ name: String) -> String {
+    if name.hasSuffix("ies") {
+      // "categories" → "category"
+      return String(name.dropLast(3)) + "y"
+    } else if name.hasSuffix("es") && (name.hasSuffix("sses") || name.hasSuffix("xes") || name.hasSuffix("ches") || name.hasSuffix("shes")) {
+      // "classes" → "class", "boxes" → "box"
+      return String(name.dropLast(2))
+    } else if name.hasSuffix("s") && !name.hasSuffix("ss") {
+      return String(name.dropLast())
+    } else {
+      return name
+    }
   }
 }
 
@@ -342,6 +391,23 @@ public struct LinkIR: Codable, Sendable, Equatable, Identifiable {
     self.forward = forward
     self.reverse = reverse
     self.documentation = documentation
+  }
+  
+  /// Whether this link involves a system entity (prefixed with $)
+  public var involvesSystemEntity: Bool {
+    forward.entityName.hasPrefix("$") || reverse.entityName.hasPrefix("$")
+  }
+  
+  /// The Swift property name for SchemaLinks.xxx
+  ///
+  /// For regular links, this is the same as `name`.
+  /// For links involving system entities, the `$` is replaced:
+  /// - `$usersLinkedPrimaryUser` → `instantUsersLinkedPrimaryUser`
+  public var swiftPropertyName: String {
+    if name.hasPrefix("$") {
+      return "instant" + String(name.dropFirst()).prefix(1).uppercased() + String(name.dropFirst()).dropFirst()
+    }
+    return name
   }
 }
 
