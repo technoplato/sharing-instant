@@ -712,5 +712,71 @@ final class ParserUnitTests: XCTestCase {
       XCTAssertTrue(error.localizedDescription.contains("SCHEMA NOT FOUND"))
     }
   }
+  
+  // MARK: - Error Message Tests
+  
+  func testSourceLocation_fromIndex_calculatesCorrectly() throws {
+    let content = """
+    line1
+    line2
+    line3
+    """
+    
+    // "line2" starts at index 6 (after "line1\n")
+    let index = content.index(content.startIndex, offsetBy: 6)
+    let location = SourceLocation.from(index: index, in: content)
+    
+    XCTAssertEqual(location.line, 2)
+    XCTAssertEqual(location.column, 1)
+    XCTAssertEqual(location.offset, 6)
+  }
+  
+  func testExtractContext_showsSurroundingLines() throws {
+    let content = """
+    line1
+    line2
+    line3
+    line4
+    line5
+    """
+    
+    // Error on line 3 (offset ~12)
+    let context = extractContext(around: 12, in: content, radius: 1)
+    
+    XCTAssertTrue(context.contains("line2"))
+    XCTAssertTrue(context.contains("line3"))
+    XCTAssertTrue(context.contains("line4"))
+    XCTAssertTrue(context.contains("ERROR HERE"))
+  }
+  
+  func testDetailedParseError_formatsNicely() throws {
+    let error = DetailedParseError(
+      message: "Unknown field type 'i.text()'",
+      location: SourceLocation(line: 15, column: 23, offset: 456),
+      context: "  15 | description: i.text(),  // <-- ERROR HERE",
+      suggestion: "Did you mean 'i.string()'?",
+      sourceFile: "test.schema.ts"
+    )
+    
+    let description = error.errorDescription!
+    
+    XCTAssertTrue(description.contains("PARSE ERROR"))
+    XCTAssertTrue(description.contains("line 15"))
+    XCTAssertTrue(description.contains("column 23"))
+    XCTAssertTrue(description.contains("test.schema.ts"))
+    XCTAssertTrue(description.contains("Unknown field type"))
+    XCTAssertTrue(description.contains("Context:"))
+    XCTAssertTrue(description.contains("Suggestion:"))
+  }
+  
+  func testParseErrors_unknownFieldType_includesSuggestion() throws {
+    let error = ParseErrors.unknownFieldType("text")
+    let description = error.errorDescription!
+    
+    XCTAssertTrue(description.contains("i.text()"))
+    XCTAssertTrue(description.contains("i.string()"))
+    XCTAssertTrue(description.contains("i.number()"))
+    XCTAssertTrue(description.contains("i.boolean()"))
+  }
 }
 
