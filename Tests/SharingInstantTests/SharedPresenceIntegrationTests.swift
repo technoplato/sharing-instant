@@ -1,3 +1,52 @@
+// SharedPresenceIntegrationTests.swift
+// SharingInstantTests
+//
+// Integration tests that exercise @Shared APIs exactly as end users would.
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GUIDING PRINCIPLES
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// These integration tests exercise the `@Shared` API exactly as end users would.
+//
+// ## Why Generated Types?
+//
+// We use the SAME generated Schema.swift and Entities.swift that the CLI produces.
+// This ensures our tests catch:
+//
+// 1. Codegen bugs (wrong property names, types, initializer order)
+// 2. API mismatches between generated code and library
+// 3. Real-world usage patterns
+//
+// The generated files live in Tests/SharingInstantTests/Generated/ and are
+// committed to git as test fixtures.
+//
+// ## If Tests Fail to Compile
+//
+// The generated files may be stale. Regenerate with:
+//
+//   cd sharing-instant
+//   swift run instant-schema generate \
+//     --from Examples/CaseStudies/instant.schema.ts \
+//     --to Tests/SharingInstantTests/Generated/
+//
+// ## What These Tests Verify
+//
+// - @Shared(.instantSync(...)) connects and syncs data
+// - @Shared(.instantPresence(...)) handles presence callbacks on main thread
+// - $shared.withLock mutations work correctly
+// - Full CRUD lifecycle through the @Shared API
+//
+// ## The Bug These Tests Would Have Caught
+//
+// The crash reports in sharing-instant/crashes/ showed a Swift concurrency
+// executor assertion failure in TypedPresenceKey.subscribe. The callback was
+// being invoked on the NSURLSession delegate queue instead of the main actor.
+// Tests that bypass @Shared wouldn't catch this - only tests that exercise
+// the full @Shared → TypedPresenceKey → InstantClient → WebSocket stack would.
+//
+// ═══════════════════════════════════════════════════════════════════════════════
+
 import Dependencies
 import DependenciesTestSupport
 import IdentifiedCollections

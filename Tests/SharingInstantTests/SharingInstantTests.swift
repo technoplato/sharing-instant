@@ -1,3 +1,27 @@
+// SharingInstantTests.swift
+// SharingInstantTests
+//
+// Unit tests for SharingInstant library components.
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SCHEMA GENERATION REQUIREMENT
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// These tests use the generated Schema and Entity types from:
+//   Tests/SharingInstantTests/Generated/
+//
+// If you see compile errors like "cannot find 'Todo' in scope" or
+// "cannot find 'Schema' in scope", the generated files are missing.
+//
+// To generate them, run:
+//
+//   cd sharing-instant
+//   swift run instant-schema generate \
+//     --from Examples/CaseStudies/instant.schema.ts \
+//     --to Tests/SharingInstantTests/Generated/
+//
+// ═══════════════════════════════════════════════════════════════════════════════
+
 import Dependencies
 import DependenciesTestSupport
 import IdentifiedCollections
@@ -7,22 +31,15 @@ import XCTest
 
 @testable import SharingInstant
 
-// MARK: - Test Models
+// MARK: - Schema Generation Check
 
-struct Todo: Codable, EntityIdentifiable, Sendable, Equatable {
-  static var namespace: String { "todos" }
-  
-  var id: String
-  var title: String
-  var done: Bool
-  var createdAt: Date
-  
-  init(id: String = UUID().uuidString, title: String, done: Bool = false, createdAt: Date = Date()) {
-    self.id = id
-    self.title = title
-    self.done = done
-    self.createdAt = createdAt
-  }
+/// This extension provides a compile-time check that the generated schema exists.
+/// If this fails to compile, run the schema generator (see instructions above).
+private enum SchemaGenerationCheck {
+  // These type aliases will fail to compile if the generated types don't exist.
+  // This gives a clear error message pointing developers to the generation command.
+  typealias _TodoCheck = Todo
+  typealias _SchemaCheck = Schema
 }
 
 // MARK: - Configuration Tests
@@ -71,12 +88,12 @@ final class SharingInstantConfigurationTests: XCTestCase {
 final class EntityIdentifiableTests: XCTestCase {
   
   func testTodoConformsToEntityIdentifiable() {
-    let todo = Todo(id: "test-id", title: "Test Todo")
-    XCTAssertEqual(todo.id, "test-id")
+    let todo = Todo(createdAt: Date().timeIntervalSince1970, done: false, title: "Test Todo")
+    XCTAssertFalse(todo.id.isEmpty)
   }
   
   func testTodoEncodingDecoding() throws {
-    let todo = Todo(id: "test-id", title: "Test Todo", done: true)
+    let todo = Todo(createdAt: Date().timeIntervalSince1970, done: true, title: "Test Todo")
     
     let encoder = JSONEncoder()
     let data = try encoder.encode(todo)
@@ -84,7 +101,9 @@ final class EntityIdentifiableTests: XCTestCase {
     let decoder = JSONDecoder()
     let decoded = try decoder.decode(Todo.self, from: data)
     
-    XCTAssertEqual(todo, decoded)
+    XCTAssertEqual(todo.id, decoded.id)
+    XCTAssertEqual(todo.title, decoded.title)
+    XCTAssertEqual(todo.done, decoded.done)
   }
 }
 
@@ -147,8 +166,8 @@ final class TestingValueTests: XCTestCase {
   
   func testCollectionConfigurationWithTestingValue() {
     let testTodos = [
-      Todo(id: "1", title: "Test 1"),
-      Todo(id: "2", title: "Test 2")
+      Todo(createdAt: 1.0, done: false, title: "Test 1"),
+      Todo(createdAt: 2.0, done: false, title: "Test 2")
     ]
     
     let config = SharingInstantSync.CollectionConfiguration<Todo>(
@@ -162,7 +181,7 @@ final class TestingValueTests: XCTestCase {
   
   func testQueryConfigurationWithTestingValue() {
     let testTodos = [
-      Todo(id: "1", title: "Test 1")
+      Todo(createdAt: 1.0, done: false, title: "Test 1")
     ]
     
     let config = SharingInstantQuery.Configuration<Todo>(
@@ -189,7 +208,7 @@ final class EntityKeyTests: XCTestCase {
   
   func testEntityKeyOrderByKeyPath() {
     let key = EntityKey<Todo>(namespace: "todos")
-      .orderBy(\.createdAt, .desc)
+      .orderBy(\Todo.createdAt, EntityKeyOrderDirection.desc)
     
     XCTAssertEqual(key.namespace, "todos")
     XCTAssertEqual(key.orderByField, "createdAt")
@@ -198,7 +217,7 @@ final class EntityKeyTests: XCTestCase {
   
   func testEntityKeyOrderByString() {
     let key = EntityKey<Todo>(namespace: "todos")
-      .orderBy("title", .asc)
+      .orderBy("title", EntityKeyOrderDirection.asc)
     
     XCTAssertEqual(key.orderByField, "title")
     XCTAssertEqual(key.orderDirection, .asc)
@@ -213,7 +232,7 @@ final class EntityKeyTests: XCTestCase {
   
   func testEntityKeyChainedModifiers() {
     let key = EntityKey<Todo>(namespace: "todos")
-      .orderBy(\.createdAt, .desc)
+      .orderBy(\Todo.createdAt, EntityKeyOrderDirection.desc)
       .limit(20)
     
     XCTAssertEqual(key.orderByField, "createdAt")
@@ -223,7 +242,7 @@ final class EntityKeyTests: XCTestCase {
   
   func testEntityKeyWhereClause() {
     let key = EntityKey<Todo>(namespace: "todos")
-      .where(\.done, .eq(false))
+      .where(\Todo.done, EntityKeyPredicate.eq(false))
     
     XCTAssertEqual(key.whereClauses.count, 1)
     XCTAssertNotNil(key.whereClauses["done"])
@@ -231,8 +250,8 @@ final class EntityKeyTests: XCTestCase {
   
   func testEntityKeyMultipleWhereClauses() {
     let key = EntityKey<Todo>(namespace: "todos")
-      .where(\.done, .eq(false))
-      .where("title", .neq(""))
+      .where(\Todo.done, EntityKeyPredicate.eq(false))
+      .where("title", EntityKeyPredicate.neq(""))
     
     XCTAssertEqual(key.whereClauses.count, 2)
     XCTAssertNotNil(key.whereClauses["done"])
@@ -241,7 +260,7 @@ final class EntityKeyTests: XCTestCase {
   
   func testEntityKeyImmutability() {
     let key1 = EntityKey<Todo>(namespace: "todos")
-    let key2 = key1.orderBy(\.createdAt, .desc)
+    let key2 = key1.orderBy(\Todo.createdAt, EntityKeyOrderDirection.desc)
     let key3 = key1.limit(10)
     
     // Original should be unchanged
@@ -278,8 +297,8 @@ final class EntityKeyTests: XCTestCase {
   
   func testEntityKeyFullQueryBuilder() {
     let key = EntityKey<Todo>(namespace: "todos")
-      .where(\.done, .eq(false))
-      .orderBy(\.createdAt, .desc)
+      .where(\Todo.done, EntityKeyPredicate.eq(false))
+      .orderBy(\Todo.createdAt, EntityKeyOrderDirection.desc)
       .limit(10)
       .with("owner")
     
@@ -289,6 +308,19 @@ final class EntityKeyTests: XCTestCase {
     XCTAssertEqual(key.orderDirection, .desc)
     XCTAssertEqual(key.limitCount, 10)
     XCTAssertTrue(key.includedLinks.contains("owner"))
+  }
+  
+  /// Tests using the generated Schema namespace - this is how users actually use the API
+  func testSchemaNamespaceUsage() {
+    // This is the actual user-facing API
+    let key = Schema.todos
+      .orderBy(\Todo.createdAt, EntityKeyOrderDirection.desc)
+      .limit(10)
+    
+    XCTAssertEqual(key.namespace, "todos")
+    XCTAssertEqual(key.orderByField, "createdAt")
+    XCTAssertEqual(key.orderDirection, .desc)
+    XCTAssertEqual(key.limitCount, 10)
   }
 }
 
@@ -429,7 +461,7 @@ final class EntityKeyPredicateTests: XCTestCase {
   
   func testEntityKeyWithStringSearch() {
     let key = EntityKey<Todo>(namespace: "todos")
-      .where(\.title, .contains("groceries"))
+      .where(\Todo.title, EntityKeyPredicate.contains("groceries"))
     
     XCTAssertEqual(key.whereClauses.count, 1)
     if let predicate = key.whereClauses["title"],
@@ -442,9 +474,9 @@ final class EntityKeyPredicateTests: XCTestCase {
   
   func testEntityKeyWithMultiplePredicatesIncludingSearch() {
     let key = EntityKey<Todo>(namespace: "todos")
-      .where(\.done, .eq(false))
-      .where(\.title, .startsWith("Buy"))
-      .orderBy(\.createdAt, .desc)
+      .where(\Todo.done, EntityKeyPredicate.eq(false))
+      .where(\Todo.title, EntityKeyPredicate.startsWith("Buy"))
+      .orderBy(\Todo.createdAt, EntityKeyOrderDirection.desc)
       .limit(10)
     
     XCTAssertEqual(key.whereClauses.count, 2)
@@ -469,4 +501,3 @@ final class EntityKeyPredicateTests: XCTestCase {
     }
   }
 }
-
