@@ -1,5 +1,9 @@
 # SharingInstant
 
+## Demo
+
+[youtube](https://www.youtube.com/watch?v=wuGd6pt1reA)
+
 A Swift Sharing integration for InstantDB, providing local-first reactive state management.
 
 [![Swift 6.0](https://img.shields.io/badge/Swift-6.0-orange.svg)](https://swift.org)
