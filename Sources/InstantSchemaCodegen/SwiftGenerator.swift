@@ -476,11 +476,14 @@ public struct SwiftCodeGenerator {
     // Build available entities listing with Schema. prefix
     var availableItems = ""
     for entity in schema.entities {
-      availableItems += "/// Schema.\(entity.name) → \(entity.swiftTypeName) {\n"
+      availableItems += "/// Schema.\(entity.swiftPropertyName) → \(entity.swiftTypeName) {\n"
       availableItems += "///   id: String\n"
       for field in entity.fields {
         let optionalMark = field.isOptional ? "?" : ""
         availableItems += "///   \(field.name): \(field.type.swiftType)\(optionalMark)\n"
+      }
+      if entity.isSystemEntity {
+        availableItems += "///   // Note: InstantDB system entity\n"
       }
       availableItems += "/// }\n///\n"
     }
@@ -521,13 +524,16 @@ public struct SwiftCodeGenerator {
     
     if configuration.includeDocumentation {
       output += "  /// \(entity.swiftTypeName) entity - bidirectional sync\n"
+      if entity.isSystemEntity {
+        output += "  /// - Note: This is an InstantDB system entity.\n"
+      }
       if let doc = entity.documentation {
         output += "  ///\n"
         output += "  /// \(doc.replacingOccurrences(of: "\n", with: "\n  /// "))\n"
       }
     }
     
-    output += "  \(access) static let \(entity.name) = EntityKey<\(entity.swiftTypeName)>(namespace: \"\(entity.name)\")\n\n"
+    output += "  \(access) static let \(entity.swiftPropertyName) = EntityKey<\(entity.swiftTypeName)>(namespace: \"\(entity.name)\")\n\n"
     
     return output
   }
@@ -688,6 +694,9 @@ public struct SwiftCodeGenerator {
     
     if configuration.includeDocumentation {
       output += "  /// \(link.forward.entityName) ↔ \(link.reverse.entityName) relationship\n"
+      if link.involvesSystemEntity {
+        output += "  /// - Note: Involves InstantDB system entity.\n"
+      }
       if let doc = link.documentation {
         output += "  /// \(doc)\n"
       }
@@ -697,7 +706,7 @@ public struct SwiftCodeGenerator {
     let toEntity = schema.entity(named: link.reverse.entityName)?.swiftTypeName ?? "Unknown"
     
     output += """
-      \(access) static let \(link.name) = Link(
+      \(access) static let \(link.swiftPropertyName) = Link(
         name: "\(link.name)",
         from: \(fromEntity).self, fromLabel: "\(link.forward.label)", fromCardinality: .\(link.forward.cardinality.rawValue),
         to: \(toEntity).self, toLabel: "\(link.reverse.label)", toCardinality: .\(link.reverse.cardinality.rawValue)
