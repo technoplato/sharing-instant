@@ -1,4 +1,9 @@
 // Docs: https://www.instantdb.com/docs/modeling-data
+// 
+// This schema demonstrates:
+// - Basic entities (todos, facts, logs)
+// - Microblog-style entities with rich relationships (profiles, posts, comments)
+// - Real-time rooms for presence and topics
 
 import { i } from "@instantdb/core";
 
@@ -13,12 +18,17 @@ const _schema = i.schema({
       imageURL: i.string().optional(),
       type: i.string().optional(),
     }),
+    
+    // ─────────────────────────────────────────────────────────────────────────
+    // Basic Demo Entities
+    // ─────────────────────────────────────────────────────────────────────────
+    
     facts: i.entity({
       count: i.number(),
       text: i.string(),
     }),
+    
     // Remote logging entity for debugging iOS apps
-    // Logs are synced from the iOS app and can be tailed via ReadLogs.swift
     logs: i.entity({
       level: i.string().indexed(),
       message: i.string(),
@@ -29,13 +39,49 @@ const _schema = i.schema({
       formattedDate: i.string(),
       timezone: i.string(),
     }),
+    
     todos: i.entity({
       createdAt: i.number().indexed(),
       done: i.boolean(),
       title: i.string(),
     }),
+    
+    // ─────────────────────────────────────────────────────────────────────────
+    // Microblog Demo Entities
+    // Demonstrates rich relationships between entities
+    // ─────────────────────────────────────────────────────────────────────────
+    
+    // User profiles with display name and handle
+    profiles: i.entity({
+      displayName: i.string(),
+      handle: i.string().unique().indexed(),
+      bio: i.string().optional(),
+      avatarUrl: i.string().optional(),
+      createdAt: i.number().indexed(),
+    }),
+    
+    // Posts/tweets with content and metadata
+    posts: i.entity({
+      content: i.string(),
+      imageUrl: i.string().optional(),
+      createdAt: i.number().indexed(),
+      likesCount: i.number(),
+    }),
+    
+    // Comments on posts
+    comments: i.entity({
+      text: i.string(),
+      createdAt: i.number().indexed(),
+    }),
+    
+    // Likes junction entity (for many-to-many between profiles and posts)
+    likes: i.entity({
+      createdAt: i.number().indexed(),
+    }),
   },
+  
   links: {
+    // $users self-referential link (for guest accounts)
     $usersLinkedPrimaryUser: {
       forward: {
         on: "$users",
@@ -49,7 +95,87 @@ const _schema = i.schema({
         label: "linkedGuestUsers",
       },
     },
+    
+    // ─────────────────────────────────────────────────────────────────────────
+    // Microblog Links
+    // ─────────────────────────────────────────────────────────────────────────
+    
+    // Profile → Posts (one-to-many: a profile has many posts)
+    profilePosts: {
+      forward: {
+        on: "profiles",
+        has: "many",
+        label: "posts",
+      },
+      reverse: {
+        on: "posts",
+        has: "one",
+        label: "author",
+        onDelete: "cascade",
+      },
+    },
+    
+    // Profile → Comments (one-to-many: a profile has many comments)
+    profileComments: {
+      forward: {
+        on: "profiles",
+        has: "many",
+        label: "comments",
+      },
+      reverse: {
+        on: "comments",
+        has: "one",
+        label: "author",
+        onDelete: "cascade",
+      },
+    },
+    
+    // Post → Comments (one-to-many: a post has many comments)
+    postComments: {
+      forward: {
+        on: "posts",
+        has: "many",
+        label: "comments",
+      },
+      reverse: {
+        on: "comments",
+        has: "one",
+        label: "post",
+        onDelete: "cascade",
+      },
+    },
+    
+    // Profile → Likes (one-to-many: a profile has many likes)
+    profileLikes: {
+      forward: {
+        on: "profiles",
+        has: "many",
+        label: "likes",
+      },
+      reverse: {
+        on: "likes",
+        has: "one",
+        label: "profile",
+        onDelete: "cascade",
+      },
+    },
+    
+    // Post → Likes (one-to-many: a post has many likes)
+    postLikes: {
+      forward: {
+        on: "posts",
+        has: "many",
+        label: "likes",
+      },
+      reverse: {
+        on: "likes",
+        has: "one",
+        label: "post",
+        onDelete: "cascade",
+      },
+    },
   },
+  
   rooms: {
     // Avatar stack demo - shows who's online
     avatars: {

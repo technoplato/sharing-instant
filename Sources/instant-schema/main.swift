@@ -110,20 +110,30 @@ struct InstantSchemaCLI {
       i += 1
     }
     
+    // STEP 1: Ensure git working directory is clean
+    // We require a clean git state so generated code can be traced back to a commit
+    print("🔍 Checking git status...")
+    try GitUtilities.ensureCleanWorkingDirectory()
+    print("✅ Working directory is clean")
+    
     // Get credentials from environment if not provided
     appId = appId ?? ProcessInfo.processInfo.environment["INSTANT_APP_ID"]
     adminToken = adminToken ?? ProcessInfo.processInfo.environment["INSTANT_ADMIN_TOKEN"]
     
     // If no input file, try to pull from API
     let schema: SchemaIR
+    let resolvedInputPath: String
+    
     if let input = inputPath {
       print("📖 Parsing \(input)...")
       let parser = CommentPreservingSchemaParser()
       schema = try parser.parse(String(contentsOfFile: input, encoding: .utf8), sourceFile: input)
+      resolvedInputPath = input
     } else if let app = appId, let token = adminToken {
       print("📡 Fetching schema from InstantDB for app \(app)...")
       let api = InstantDBAPI(adminToken: token)
       schema = try await api.fetchSchema(appID: app)
+      resolvedInputPath = "InstantDB API (app: \(app))"
     } else {
       print("Error: No input file or API credentials specified")
       print("Usage: instant-schema generate --from instant.schema.ts --to Sources/Generated/")
@@ -131,12 +141,20 @@ struct InstantSchemaCLI {
       exit(1)
     }
     
-    print("✅ Found \(schema.entities.count) entities, \(schema.links.count) links")
+    print("✅ Found \(schema.entities.count) entities, \(schema.links.count) links, \(schema.rooms.count) rooms")
+    
+    // STEP 2: Capture generation context
+    print("📋 Capturing generation context...")
+    let context = try buildGenerationContext(
+      inputPath: resolvedInputPath,
+      outputDir: outputDir,
+      args: args
+    )
     
     print("🔨 Generating Swift code...")
     
     let generator = SwiftCodeGenerator()
-    let files = generator.generate(from: schema)
+    let files = generator.generate(from: schema, context: context)
     
     // Create output directory
     try FileManager.default.createDirectory(atPath: outputDir, withIntermediateDirectories: true)
@@ -148,6 +166,50 @@ struct InstantSchemaCLI {
     }
     
     print("✅ Generated \(files.count) files in \(outputDir)")
+    print("")
+    print("📝 Generation Info:")
+    print("   Date:    \(context.formattedDate)")
+    print("   Machine: \(context.machine.formatted)")
+    print("   Commit:  \(String(context.gitState.headCommit.sha.prefix(8))) - \(context.gitState.headCommit.message)")
+  }
+  
+  /// Build the generation context with all metadata
+  private static func buildGenerationContext(
+    inputPath: String,
+    outputDir: String,
+    args: [String]
+  ) throws -> GenerationContext {
+    // Get git state
+    let headCommit = try GitUtilities.getHeadCommit()
+    let schemaLastModified: GitCommit
+    
+    // Only try to get last modifying commit if it's a file path (not API)
+    if !inputPath.contains("InstantDB API") {
+      schemaLastModified = try GitUtilities.getLastModifyingCommit(forFile: inputPath)
+    } else {
+      schemaLastModified = headCommit
+    }
+    
+    // Build the command string
+    let command = "swift run instant-schema generate " + args.joined(separator: " ")
+    
+    // Get relative paths
+    let relativeInputPath = GitUtilities.relativePath(from: inputPath)
+    let relativeOutputDir = GitUtilities.relativePath(from: outputDir)
+    
+    return GenerationContext(
+      generatedAt: Date(),
+      timezone: .current,
+      machine: MachineInfo.current(),
+      generatorPath: "Sources/instant-schema/main.swift",
+      command: command,
+      sourceSchemaPath: relativeInputPath,
+      outputDirectory: relativeOutputDir,
+      gitState: GitState(
+        headCommit: headCommit,
+        schemaLastModified: schemaLastModified
+      )
+    )
   }
   
   // MARK: - Pull Command
