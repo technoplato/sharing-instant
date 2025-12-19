@@ -201,6 +201,98 @@ final class SchemaParserTests: XCTestCase {
     }
   }
   
+  func testSwiftGenerationWithContextSnapshot() throws {
+    // Test with a mock generation context to verify enhanced headers
+    let schema = try parseFixture("SimpleSchema.ts")
+    let generator = SwiftCodeGenerator()
+    
+    // Create a deterministic mock context for snapshot testing
+    let mockContext = GenerationContext(
+      generatedAt: Date(timeIntervalSince1970: 1734567890), // Fixed timestamp
+      timezone: TimeZone(identifier: "America/New_York")!,
+      machine: MachineInfo(
+        hostname: "test-machine",
+        chip: "Apple M1",
+        osVersion: "macOS 14.0"
+      ),
+      generatorPath: "Sources/instant-schema/main.swift",
+      command: "swift run instant-schema generate --from test.schema.ts --to Sources/Generated/",
+      sourceSchemaPath: "Tests/Fixtures/SimpleSchema.ts",
+      outputDirectory: "Sources/Generated/",
+      gitState: GitState(
+        headCommit: GitCommit(
+          sha: "abc123def456789012345678901234567890abcd",
+          date: Date(timeIntervalSince1970: 1734567800),
+          author: "Test Author <test@example.com>",
+          message: "test: Add test commit for snapshot testing"
+        ),
+        schemaLastModified: GitCommit(
+          sha: "def456abc789012345678901234567890abcdef",
+          date: Date(timeIntervalSince1970: 1734567700),
+          author: "Schema Author <schema@example.com>",
+          message: "feat: Update schema with new entities"
+        )
+      )
+    )
+    
+    let files = generator.generate(from: schema, context: mockContext)
+    
+    // Verify all expected files are generated
+    XCTAssertTrue(files.contains { $0.name == "Schema.swift" })
+    XCTAssertTrue(files.contains { $0.name == "Entities.swift" })
+    XCTAssertTrue(files.contains { $0.name == "Links.swift" })
+    
+    // Snapshot test each file with context
+    for file in files {
+      assertSnapshot(of: file.content, as: .lines, named: "WithContext-\(file.name)")
+    }
+  }
+  
+  func testEnhancedHeadersContainExpectedSections() throws {
+    let schema = try parseFixture("LibrarySchema.ts")
+    let generator = SwiftCodeGenerator()
+    
+    // Create a mock context
+    let mockContext = GenerationContext(
+      generatedAt: Date(),
+      timezone: .current,
+      machine: MachineInfo(hostname: "test", chip: "M1", osVersion: "macOS 14"),
+      generatorPath: "test",
+      command: "test command",
+      sourceSchemaPath: "test.ts",
+      outputDirectory: "output/",
+      gitState: GitState(
+        headCommit: GitCommit(sha: "abc123", date: Date(), author: "Test", message: "Test"),
+        schemaLastModified: GitCommit(sha: "def456", date: Date(), author: "Test", message: "Test")
+      )
+    )
+    
+    let files = generator.generate(from: schema, context: mockContext)
+    
+    // Verify Schema.swift has all expected sections
+    let schemaFile = files.first { $0.name == "Schema.swift" }!
+    XCTAssertTrue(schemaFile.content.contains("DO NOT EDIT"))
+    XCTAssertTrue(schemaFile.content.contains("WHAT THIS FILE IS"))
+    XCTAssertTrue(schemaFile.content.contains("HOW TO USE"))
+    XCTAssertTrue(schemaFile.content.contains("QUICK START"))
+    XCTAssertTrue(schemaFile.content.contains("AVAILABLE IN THIS FILE"))
+    XCTAssertTrue(schemaFile.content.contains("GENERATION INFO"))
+    XCTAssertTrue(schemaFile.content.contains("GIT STATE AT GENERATION"))
+    XCTAssertTrue(schemaFile.content.contains("HEAD Commit"))
+    XCTAssertTrue(schemaFile.content.contains("Schema File Last Modified"))
+    
+    // Verify Entities.swift has expected sections
+    let entitiesFile = files.first { $0.name == "Entities.swift" }!
+    XCTAssertTrue(entitiesFile.content.contains("DO NOT EDIT"))
+    XCTAssertTrue(entitiesFile.content.contains("Copy-pasteable example"))
+    
+    // Verify Links.swift has type safety examples
+    let linksFile = files.first { $0.name == "Links.swift" }!
+    XCTAssertTrue(linksFile.content.contains("TYPE SAFETY EXAMPLES"))
+    XCTAssertTrue(linksFile.content.contains("✅ COMPILES"))
+    XCTAssertTrue(linksFile.content.contains("❌ COMPILE ERROR"))
+  }
+  
   func testTypeScriptRoundTripSnapshot() throws {
     let original = try parseFixture("SimpleSchema.ts")
     let printer = TypeScriptSchemaPrinter()
@@ -468,12 +560,38 @@ final class SchemaParserTests: XCTestCase {
     return try parser.parse(content: content, sourceFile: name)
   }
   
-  /// Remove timestamp from generated code for stable snapshots
+  /// Remove dynamic content from generated code for stable snapshots
+  /// This strips timestamps, git info, and machine-specific content
   private func removeTimestamp(from content: String) -> String {
     let lines = content.components(separatedBy: "\n")
     return lines.filter { line in
-      // Skip lines that look like timestamps
-      !line.contains("// 20") // Matches "// 2025-12-17T..."
+      // Skip lines with dynamic content
+      let trimmed = line.trimmingCharacters(in: .whitespaces)
+      
+      // Skip timestamp lines
+      if trimmed.contains("// 20") { return false } // ISO dates like "// 2025-12-17T..."
+      
+      // Skip generation info section (when context is provided)
+      if trimmed.hasPrefix("/// Generated:") { return false }
+      if trimmed.hasPrefix("/// Machine:") { return false }
+      if trimmed.hasPrefix("/// Generator:") { return false }
+      if trimmed.hasPrefix("/// Source Schema:") { return false }
+      
+      // Skip git state section
+      if trimmed.hasPrefix("/// HEAD Commit:") { return false }
+      if trimmed.hasPrefix("/// Schema File Last Modified:") { return false }
+      if trimmed.hasPrefix("///   SHA:") { return false }
+      if trimmed.hasPrefix("///   Date:") { return false }
+      if trimmed.hasPrefix("///   Author:") { return false }
+      if trimmed.hasPrefix("///   Message:") { return false }
+      
+      // Skip regenerate command block (contains dynamic paths)
+      if trimmed.hasPrefix("/* To regenerate") { return false }
+      if trimmed.hasPrefix("swift run instant-schema") { return false }
+      if trimmed.hasPrefix("--from") { return false }
+      if trimmed.hasPrefix("--to") { return false }
+      
+      return true
     }.joined(separator: "\n")
   }
 }

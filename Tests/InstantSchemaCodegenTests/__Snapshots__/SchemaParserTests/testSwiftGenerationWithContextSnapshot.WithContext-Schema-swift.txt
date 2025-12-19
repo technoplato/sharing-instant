@@ -22,12 +22,12 @@
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// Use `Schema.<entityName>` with `@Shared` for bidirectional sync:
-///   @Shared(Schema.members)
-///   private var items: IdentifiedArrayOf<Member> = []
+///   @Shared(Schema.todos)
+///   private var items: IdentifiedArrayOf<Todo> = []
 /// Chain modifiers for ordering, filtering, and limiting:
-///   Schema.members.orderBy(\.name, .desc)
-///   Schema.members.where(\.name, .eq("value"))
-///   Schema.members.limit(10)
+///   Schema.todos.orderBy(\.title, .desc)
+///   Schema.todos.where(\.title, .eq("value"))
+///   Schema.todos.limit(10)
 ///
 /// ─────────────────────────────────────────────────────────────────────────────────
 /// QUICK START - Copy & Paste Example
@@ -39,10 +39,10 @@ import SwiftUI
 import SharingInstant
 import IdentifiedCollections
 
-struct MemberContentView: View {
+struct TodoContentView: View {
   /// Bidirectional sync with InstantDB - changes sync automatically!
-  @Shared(Schema.members.orderBy(\.name, .desc))
-  private var items: IdentifiedArrayOf<Member> = []
+  @Shared(Schema.todos.orderBy(\.title, .desc))
+  private var items: IdentifiedArrayOf<Todo> = []
 
   @State private var newValue = ""
 
@@ -70,13 +70,13 @@ struct MemberContentView: View {
           }
         }
       }
-      .navigationTitle("Members")
+      .navigationTitle("Todos")
     }
   }
 
   private func addItem() {
     // Create and add - syncs automatically!
-    let item = Member(/* ... */)
+    let item = Todo(/* ... */)
     $items.withLock { $0.append(item) }
     newValue = ""
   }
@@ -88,55 +88,53 @@ struct MemberContentView: View {
 /// AVAILABLE IN THIS FILE
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
-/// Schema.members → Member {
+/// Schema.todos → Todo {
+///   id: String
+///   title: String
+///   done: Bool
+///   priority: Double?
+/// }
+///
+/// Schema.users → User {
 ///   id: String
 ///   name: String
 ///   email: String
-///   memberSince: Date
-///   isActive: Bool
-///   phoneNumber: String?
-///   currentBorrowCount: Double
-///   preferences: AnyCodable?
-/// }
-///
-/// Schema.authors → Author {
-///   id: String
-///   name: String
-///   bio: String?
-///   birthYear: Double?
-///   isActive: Bool
-///   bookCount: Double
-/// }
-///
-/// Schema.books → Book {
-///   id: String
-///   title: String
-///   isbn: String
-///   publicationYear: Double
-///   pageCount: Double?
-///   description: String?
-///   averageRating: Double?
-///   availableCopies: Double
-///   metadata: AnyCodable?
-/// }
-///
-/// Schema.genres → Genre {
-///   id: String
-///   name: String
-///   code: String
-///   description: String?
-///   bookCount: Double
-/// }
-///
-/// Schema.borrowRecords → BorrowRecord {
-///   id: String
-///   borrowedAt: Date
-///   dueAt: Date
-///   returnedAt: Date?
-///   lateFeeInCents: Double?
+///   createdAt: Date
 /// }
 ///
 
+///
+/// ─────────────────────────────────────────────────────────────────────────────────
+/// GENERATION INFO
+/// ─────────────────────────────────────────────────────────────────────────────────
+///
+/// Generated:       December 18, 2024 at 7:24 PM EST
+/// Machine:         test-machine (Apple M1, macOS 14.0)
+/// Generator:       Sources/instant-schema/main.swift
+/// Source Schema:   Tests/Fixtures/SimpleSchema.ts
+
+/* To regenerate this file, run:
+
+swift run instant-schema generate \
+  --from test.schema.ts \
+  --to Sources/Generated/
+*/
+
+/// ─────────────────────────────────────────────────────────────────────────────────
+/// GIT STATE AT GENERATION
+/// ─────────────────────────────────────────────────────────────────────────────────
+///
+/// HEAD Commit:
+///   SHA:      abc123def456789012345678901234567890abcd
+///   Date:     December 18, 2024 at 7:23 PM EST
+///   Author:   Test Author <test@example.com>
+///   Message:  test: Add test commit for snapshot testing
+///
+/// Schema File Last Modified:
+///   SHA:      def456abc789012345678901234567890abcdef
+///   Date:     December 18, 2024 at 7:21 PM EST
+///   Author:   Schema Author <schema@example.com>
+///   Message:  feat: Update schema with new entities
 ///
 /// ═══════════════════════════════════════════════════════════════════════════════
 
@@ -148,45 +146,14 @@ import SharingInstant
 // MARK: - Schema Namespace
 
 public enum Schema {
-  /// Member entity - bidirectional sync
+  /// Todo entity - bidirectional sync
   ///
-  /// A library member who can borrow books.
-  /// Members have a unique email address and can:
-  /// - Borrow multiple books at once
-  /// - Have a favorite author
-  /// - Express interest in multiple genres
-  /// @example
-  /// ```typescript
-  /// const member = {
-  /// id: "mem_123",
-  /// name: "Jane Doe",
-  /// email: "jane@example.com"
-  /// };
-  /// ```
-  public static let members = EntityKey<Member>(namespace: "members")
+  /// A todo item with title and completion status
+  public static let todos = EntityKey<Todo>(namespace: "todos")
 
-  /// Author entity - bidirectional sync
+  /// User entity - bidirectional sync
   ///
-  /// An author who writes books.
-  /// Authors can write multiple books and have fans.
-  public static let authors = EntityKey<Author>(namespace: "authors")
-
-  /// Book entity - bidirectional sync
-  ///
-  /// A book in the library catalog.
-  /// ## ISBN Format
-  /// We support both ISBN-10 and ISBN-13 formats.
-  /// Store without hyphens for consistency.
-  public static let books = EntityKey<Book>(namespace: "books")
-
-  /// Genre entity - bidirectional sync
-  ///
-  /// A book genre/category.
-  public static let genres = EntityKey<Genre>(namespace: "genres")
-
-  /// BorrowRecord entity - bidirectional sync
-  ///
-  /// A record of a book being borrowed.
-  public static let borrowRecords = EntityKey<BorrowRecord>(namespace: "borrowRecords")
+  /// A user who can own todos
+  public static let users = EntityKey<User>(namespace: "users")
 
 }

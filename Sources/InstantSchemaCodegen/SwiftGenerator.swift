@@ -576,6 +576,7 @@ public struct SwiftCodeGenerator {
     
     if let link = exampleLink, let from = fromEntity {
       typeSafetyExample += """
+      
       /// ✅ COMPILES - \(link.forward.label) exists on \(from.swiftTypeName):
       ///    Schema.\(from.name).with(\\.\(link.forward.label))
       ///
@@ -620,7 +621,7 @@ public struct SwiftCodeGenerator {
     """
     
     // Build available links listing
-    var availableItems = typeSafetyExample + "///\n"
+    var availableItems = typeSafetyExample + "\n///\n"
     for link in schema.links {
       let fromType = schema.entity(named: link.forward.entityName)?.swiftTypeName ?? "Unknown"
       let toType = schema.entity(named: link.reverse.entityName)?.swiftTypeName ?? "Unknown"
@@ -628,6 +629,7 @@ public struct SwiftCodeGenerator {
       let reverseType = link.reverse.cardinality == .one ? "\(fromType)?" : "[\(fromType)]?"
       
       availableItems += """
+      
       /// \(link.name) {
       ///   name: "\(link.name)"
       ///

@@ -89,6 +89,38 @@ struct TodoListContentView: View {
 ///
 
 ///
+/// ─────────────────────────────────────────────────────────────────────────────────
+/// GENERATION INFO
+/// ─────────────────────────────────────────────────────────────────────────────────
+///
+/// Generated:       December 18, 2024 at 7:24 PM EST
+/// Machine:         test-machine (Apple M1, macOS 14.0)
+/// Generator:       Sources/instant-schema/main.swift
+/// Source Schema:   Tests/Fixtures/SimpleSchema.ts
+
+/* To regenerate this file, run:
+
+swift run instant-schema generate \
+  --from test.schema.ts \
+  --to Sources/Generated/
+*/
+
+/// ─────────────────────────────────────────────────────────────────────────────────
+/// GIT STATE AT GENERATION
+/// ─────────────────────────────────────────────────────────────────────────────────
+///
+/// HEAD Commit:
+///   SHA:      abc123def456789012345678901234567890abcd
+///   Date:     December 18, 2024 at 7:23 PM EST
+///   Author:   Test Author <test@example.com>
+///   Message:  test: Add test commit for snapshot testing
+///
+/// Schema File Last Modified:
+///   SHA:      def456abc789012345678901234567890abcdef
+///   Date:     December 18, 2024 at 7:21 PM EST
+///   Author:   Schema Author <schema@example.com>
+///   Message:  feat: Update schema with new entities
+///
 /// ═══════════════════════════════════════════════════════════════════════════════
 
 import Foundation
