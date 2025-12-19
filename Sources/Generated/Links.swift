@@ -23,9 +23,9 @@
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// Include linked entities in your queries using the `.with()` modifier:
-///   Schema.$users.with(\.linkedPrimaryUser)
+///   Schema.profiles.with(\.posts)
 /// Chain multiple links:
-///   Schema.$users.with(\.linkedPrimaryUser).with(\.otherLink)
+///   Schema.profiles.with(\.posts).with(\.otherLink)
 /// The compiler ensures you only request links that actually exist!
 ///
 /// ─────────────────────────────────────────────────────────────────────────────────
@@ -38,10 +38,10 @@ import SwiftUI
 import SharingInstant
 import IdentifiedCollections
 
-struct $userWithLinksView: View {
-  /// Query $users and include their linked linkedPrimaryUser
-  @Shared(Schema.$users.with(\.linkedPrimaryUser))
-  private var items: IdentifiedArrayOf<$user> = []
+struct ProfileWithLinksView: View {
+  /// Query profiles and include their linked posts
+  @Shared(Schema.profiles.with(\.posts))
+  private var items: IdentifiedArrayOf<Profile> = []
 
   var body: some View {
     List(items) { item in
@@ -51,7 +51,7 @@ struct $userWithLinksView: View {
 
         // Type-safe access to linked entity!
         // This is Optional because the link may not exist
-        if let linked = item.linkedPrimaryUser {
+        if let linked = item.posts {
           HStack {
             Image(systemName: "link")
             Text("Linked: \(linked.id)")
@@ -75,12 +75,12 @@ struct $userWithLinksView: View {
 ///
 /// The link system is fully type-safe. The compiler catches errors at build time:
 ///
-/// ✅ COMPILES - linkedPrimaryUser exists on $user:
-///    Schema.$users.with(\.linkedPrimaryUser)
+/// ✅ COMPILES - posts exists on Profile:
+///    Schema.profiles.with(\.posts)
 ///
-/// ❌ COMPILE ERROR - "nonexistent" is not a link on $user:
-///    Schema.$users.with(\.nonexistent)
-///    // Error: Type '$user' has no member 'nonexistent'
+/// ❌ COMPILE ERROR - "nonexistent" is not a link on Profile:
+///    Schema.profiles.with(\.nonexistent)
+///    // Error: Type 'Profile' has no member 'nonexistent'
 ///
 ///
 
@@ -88,18 +88,18 @@ struct $userWithLinksView: View {
 ///   name: "$usersLinkedPrimaryUser"
 ///
 ///   forward: {
-///     on: $user
+///     on: InstantUser
 ///     label: "linkedPrimaryUser"
 ///     has: one
 ///   }
-///   // Access: $user.linkedPrimaryUser → $user?
+///   // Access: InstantUser.linkedPrimaryUser → InstantUser?
 ///
 ///   reverse: {
-///     on: $user
+///     on: InstantUser
 ///     label: "linkedGuestUsers"
 ///     has: many
 ///   }
-///   // Access: $user.linkedGuestUsers → [$user]?
+///   // Access: InstantUser.linkedGuestUsers → [InstantUser]?
 /// }
 ///
 /// profilePosts {
@@ -197,7 +197,7 @@ struct $userWithLinksView: View {
 /// GENERATION INFO
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
-/// Generated:       December 19, 2025 at 6:34 AM EST
+/// Generated:       December 19, 2025 at 12:47 PM EST
 /// Machine:         mlustig-hy7l9xrd61.local (Apple M4 Pro, macOS 26.1)
 /// Generator:       Sources/instant-schema/main.swift
 /// Source Schema:   Examples/CaseStudies/instant.schema.ts
@@ -214,10 +214,10 @@ swift run instant-schema generate \
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// HEAD Commit:
-///   SHA:      f87265d14b8e78ea18b461547928c0aef8a7ff08
-///   Date:     December 19, 2025 at 6:34 AM EST
+///   SHA:      2d66554f4f593f756caca70cca7f90e73791865c
+///   Date:     December 19, 2025 at 12:46 PM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  test(codegen): Add snapshot tests for enhanced headers with generation context
+///   Message:  fix(codegen): use swiftPropertyName in documentation examples
 ///
 /// Schema File Last Modified:
 ///   SHA:      e7a94d20022c53013ecf1bb88f99ae5e4b176a5c
@@ -234,10 +234,11 @@ import SharingInstant
 
 public enum SchemaLinks {
   /// $users ↔ $users relationship
-  public static let $usersLinkedPrimaryUser = Link(
+  /// - Note: Involves InstantDB system entity.
+  public static let instantUsersLinkedPrimaryUser = Link(
     name: "$usersLinkedPrimaryUser",
-    from: $user.self, fromLabel: "linkedPrimaryUser", fromCardinality: .one,
-    to: $user.self, toLabel: "linkedGuestUsers", toCardinality: .many
+    from: InstantUser.self, fromLabel: "linkedPrimaryUser", fromCardinality: .one,
+    to: InstantUser.self, toLabel: "linkedGuestUsers", toCardinality: .many
   )
 
   /// profiles ↔ posts relationship
