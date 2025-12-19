@@ -88,17 +88,19 @@ struct FactContentView: View {
 /// AVAILABLE IN THIS FILE
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
-/// Schema.$files → $file {
+/// Schema.instantFiles → InstantFile {
 ///   id: String
 ///   path: String
 ///   url: String
+///   // Note: InstantDB system entity
 /// }
 ///
-/// Schema.$users → $user {
+/// Schema.instantUsers → InstantUser {
 ///   id: String
 ///   email: String
 ///   imageURL: String?
 ///   type: String?
+///   // Note: InstantDB system entity
 /// }
 ///
 /// Schema.facts → Fact {
@@ -160,7 +162,7 @@ struct FactContentView: View {
 /// GENERATION INFO
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
-/// Generated:       December 19, 2025 at 6:34 AM EST
+/// Generated:       December 19, 2025 at 12:47 PM EST
 /// Machine:         mlustig-hy7l9xrd61.local (Apple M4 Pro, macOS 26.1)
 /// Generator:       Sources/instant-schema/main.swift
 /// Source Schema:   Examples/CaseStudies/instant.schema.ts
@@ -177,10 +179,10 @@ swift run instant-schema generate \
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// HEAD Commit:
-///   SHA:      f87265d14b8e78ea18b461547928c0aef8a7ff08
-///   Date:     December 19, 2025 at 6:34 AM EST
+///   SHA:      2d66554f4f593f756caca70cca7f90e73791865c
+///   Date:     December 19, 2025 at 12:46 PM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  test(codegen): Add snapshot tests for enhanced headers with generation context
+///   Message:  fix(codegen): use swiftPropertyName in documentation examples
 ///
 /// Schema File Last Modified:
 ///   SHA:      e7a94d20022c53013ecf1bb88f99ae5e4b176a5c
@@ -198,11 +200,13 @@ import SharingInstant
 // MARK: - Schema Namespace
 
 public enum Schema {
-  /// $file entity - bidirectional sync
-  public static let $files = EntityKey<$file>(namespace: "$files")
+  /// InstantFile entity - bidirectional sync
+  /// - Note: This is an InstantDB system entity.
+  public static let instantFiles = EntityKey<InstantFile>(namespace: "$files")
 
-  /// $user entity - bidirectional sync
-  public static let $users = EntityKey<$user>(namespace: "$users")
+  /// InstantUser entity - bidirectional sync
+  /// - Note: This is an InstantDB system entity.
+  public static let instantUsers = EntityKey<InstantUser>(namespace: "$users")
 
   /// Fact entity - bidirectional sync
   public static let facts = EntityKey<Fact>(namespace: "facts")
