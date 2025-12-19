@@ -1,0 +1,1565 @@
+▿ SchemaIR
+  - documentation: Optional<String>.none
+  ▿ entities: 27 elements
+    ▿ EntityIR
+      - documentation: Optional<String>.none
+      ▿ fields: 2 elements
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "path"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "url"
+          - type: FieldType.string
+      - name: "$files"
+    ▿ EntityIR
+      - documentation: Optional<String>.none
+      ▿ fields: 3 elements
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "email"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "imageURL"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "type"
+          - type: FieldType.string
+      - name: "$users"
+    ▿ EntityIR
+      ▿ documentation: Optional<String>
+        - some: "A person in the real world.\nPeople exist independently of their roles. A person may be an author,\nnarrator, podcast host, guest making an appearance, article writer,\nor just referenced/mentioned in media. Not all"
+      ▿ fields: 4 elements
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "name"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "bio"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "ingested_at"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "metadata"
+          - type: FieldType.json
+      - name: "people"
+    ▿ EntityIR
+      ▿ documentation: Optional<String>
+        - some: "A piece of"
+      ▿ fields: 7 elements
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "title"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "media_type"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "duration_seconds"
+          - type: FieldType.number
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "description"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "ingested_at"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "published_at"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "source_metadata"
+          - type: FieldType.json
+      - name: "media"
+    ▿ EntityIR
+      ▿ documentation: Optional<String>
+        - some: "A file storing media content, either locally or remotely.\nSupports distributed caching: the same media may have files on multiple\nmachines. Query by machine_id to find files available locally.\nMachine identification: Use IOPlatformUUID on macOS (stable, unique per machine).\nGet it via: ioreg -rd1 -c IOPlatformExpertDevice | grep IOPlatformUUID\nExample: \"CF17FBE0-0E64-5426-8FC8-00DB233891F4\"\nExamples:\n- Local MP3: machine_id=\"CF17FBE0-...\", path=\"/Users/me/audiobooks/new-earth.mp3\"\n- Server copy: machine_id=\"ABC123...\", path=\"/srv/audiobooks/new-earth.mp3\"\n- Remote URL: machine_id=null, remote_url=\"https:cdn.example.com/new-earth.mp3\"\nLinks:\n- media: The Media entity this file belongs to"
+      ▿ fields: 9 elements
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "path"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "remote_url"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "machine_id"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "format"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "mime_type"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "size_bytes"
+          - type: FieldType.number
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "access_requirements"
+          - type: FieldType.json
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "ingested_at"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "last_accessed_at"
+          - type: FieldType.string
+      - name: "mediaFiles"
+    ▿ EntityIR
+      ▿ documentation: Optional<String>
+        - some: "A named time range within media.\nPlatform-agnostic: represents chapters, sections, tracks, or any named\nportion of media. Can be nested (parent/child) for sub-chapters.\nSource types (how the segment was created):\n- \"import\": Imported from external metadata\n- \"manual\": Manually annotated by a user\n- \"auto\": Auto-detected (silence detection, topic change, etc.)\n- \"script\": Created by an ingestion script\nSource (where the data came from, when source_type is \"import\" or \"script\"):\n- \"audible_json\": Audible chapter JSON file\n- \"youtube_api\": YouTube Data API chapters\n- \"audio_ingestion.py\": Our audio ingestion script\n- etc.\nExamples:\n- Audiobook chapter: \"Chapter One: The Ego\" (parent)\n- Audiobook sub-chapter: \"Evocation\" (child of above)\n- Podcast segment: \"Interview\", \"Ad Break\"\nLinks:\n- media: The Media this segment belongs to\n- parent: Parent segment (for sub-chapters/nested sections)\n- children: Child"
+      ▿ fields: 9 elements
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "title"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "start_time_ms"
+          - type: FieldType.number
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "end_time_ms"
+          - type: FieldType.number
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "length_ms"
+          - type: FieldType.number
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "ordinal"
+          - type: FieldType.number
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "source_type"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "source"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "source_metadata"
+          - type: FieldType.json
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "ingested_at"
+          - type: FieldType.string
+      - name: "segments"
+    ▿ EntityIR
+      ▿ documentation: Optional<String>
+        - some: "An external platform where media or people can be found.\nExamples:\n- YouTube (video, text posts)\n- Audible (audiobooks)\n- Spotify (podcasts, music)\n- Twitter/X (profiles, posts, videos)\n- Medium (articles)\n- dev.to (articles)\n- Wikipedia (reference)\n- Wikidata (structured data)\n- Libby (library audiobooks/ebooks)\nLinks:\n- externalMediaIds: Media linked to this platform\n- externalPeopleIds: People linked to this platform\n- externalSegmentIds: Segments linked to this platform"
+      ▿ fields: 4 elements
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "name"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "base_url"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "content_types"
+          - type: FieldType.json
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "ingested_at"
+          - type: FieldType.string
+      - name: "platforms"
+    ▿ EntityIR
+      ▿ documentation: Optional<String>
+        - some: "Links media to an external platform with platform-specific identifiers.\nExamples:\n- Audible: platform=\"Audible\", external_id=\"B002V0RAUU\",\nnormalized_url=\"https:www.audible.com/pd/B002V0RAUU\"\n- YouTube: platform=\"YouTube\", external_id=\"jNQXAC9IVRw\",\nnormalized_url=\"https:www.youtube.com/watch?v=jNQXAC9IVRw\"\n(Note: YouTube has many URL formats - use yt-dlp\'s URL normalization)\nLinks:\n- media: The Media entity this refers to\n- platform: The Platform this ID is on\n- accessMetadata: Access restrictions (paywall, subscription, etc.)"
+      ▿ fields: 4 elements
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "external_id"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "normalized_url"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "external_published_at"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "ingested_at"
+          - type: FieldType.string
+      - name: "externalMediaIds"
+    ▿ EntityIR
+      ▿ documentation: Optional<String>
+        - some: "Links people to their profiles on external platforms.\nExamples:\n- YouTube channel: platform=\"YouTube\", external_id=\"UCxxxxxx\",\nnormalized_url=\"https:www.youtube.com/@lexfridman\"\n- Twitter: platform=\"Twitter\", external_id=\"lexfridman\",\nnormalized_url=\"https:twitter.com/lexfridman\"\n- Wikidata: platform=\"Wikidata\", external_id=\"Q123456\",\nnormalized_url=\"https:www.wikidata.org/wiki/Q123456\"\n- Wikipedia: platform=\"Wikipedia\", external_id=\"Eckhart_Tolle\",\nnormalized_url=\"https:en.wikipedia.org/wiki/Eckhart_Tolle\"\nLinks:\n- person: The People entity this refers to\n- platform: The Platform this profile is on"
+      ▿ fields: 4 elements
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "external_id"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "normalized_url"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "external_created_at"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "ingested_at"
+          - type: FieldType.string
+      - name: "externalPeopleIds"
+    ▿ EntityIR
+      ▿ documentation: Optional<String>
+        - some: "Links segments to platform-specific deep links.\nExamples:\n- YouTube timestamp: normalized_url=\"https:www.youtube.com/watch?v=jNQXAC9IVRw&t=120\"\n- Spotify chapter: normalized_url=\"spotify:episode:xxx#t=120\"\nLinks:\n- segment: The Segment entity this refers to\n- platform: The Platform this link is on"
+      ▿ fields: 3 elements
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "external_id"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "normalized_url"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "ingested_at"
+          - type: FieldType.string
+      - name: "externalSegmentIds"
+    ▿ EntityIR
+      ▿ documentation: Optional<String>
+        - some: "Describes access restrictions for external media.\nLinked to ExternalMediaIds because access varies by platform:\n- Same audiobook might be subscription on Audible, one-time on Apple Books,\nor free via Libby (library)\n- Same video might be free on YouTube, paywalled on Nebula\nAccess types (what gets in your way before you can access content):\n- \"free\": No payment required, no account needed\n- \"free_with_ads\": Free but has advertisements\n- \"account_required\": Must create account (no additional payment)\n- \"subscription\": Requires ongoing subscription (e.g., Audible, Netflix)\n- \"one_time_purchase\": Single payment to own\n- \"rental\": Temporary access for a fee\nLinks:\n- externalMediaId: The external media link this describes"
+      ▿ fields: 6 elements
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "access_type"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "has_ads"
+          - type: FieldType.boolean
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "price_cents"
+          - type: FieldType.number
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "currency"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "last_checked_at"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "ingested_at"
+          - type: FieldType.string
+      - name: "accessMetadata"
+    ▿ EntityIR
+      - documentation: Optional<String>.none
+      ▿ fields: 7 elements
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "additional_params"
+          - type: FieldType.json
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "cluster_threshold"
+          - type: FieldType.number
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "clustering_method"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "created_at"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "embedding_model"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "identification_threshold"
+          - type: FieldType.number
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "tool"
+          - type: FieldType.string
+      - name: "diarizationConfigs"
+    ▿ EntityIR
+      - documentation: Optional<String>.none
+      ▿ fields: 12 elements
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "cost_usd"
+          - type: FieldType.number
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "executed_at"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "git_commit_sha"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "input_duration_seconds"
+          - type: FieldType.number
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "is_preferred"
+          - type: FieldType.boolean
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "logs"
+          - type: FieldType.json
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "num_speakers_detected"
+          - type: FieldType.number
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "peak_memory_mb"
+          - type: FieldType.number
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "pipeline_script"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "processing_time_seconds"
+          - type: FieldType.number
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "tool_version"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "workflow"
+          - type: FieldType.string
+      - name: "diarizationRuns"
+    ▿ EntityIR
+      - documentation: Optional<String>.none
+      ▿ fields: 7 elements
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "confidence"
+          - type: FieldType.number
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "created_at"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "embedding_id"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "end_time"
+          - type: FieldType.number
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "is_invalidated"
+          - type: FieldType.boolean
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "speaker_label"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "start_time"
+          - type: FieldType.number
+      - name: "diarizationSegments"
+    ▿ EntityIR
+      - documentation: Optional<String>.none
+      ▿ fields: 6 elements
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "external_id"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "ingested_at"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "name"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "publication_type"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "raw_metadata"
+          - type: FieldType.json
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "url"
+          - type: FieldType.string
+      - name: "publications"
+    ▿ EntityIR
+      - documentation: Optional<String>.none
+      ▿ fields: 3 elements
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "split_at"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "split_by"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "split_time"
+          - type: FieldType.number
+      - name: "segmentSplits"
+    ▿ EntityIR
+      ▿ documentation: Optional<String>
+        - some: "Link shazam catalog entries to media (new entity)."
+      ▿ fields: 5 elements
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "catalog_version"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "cataloged_at"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "end_time"
+          - type: FieldType.number
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "media_item_id"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "start_time"
+          - type: FieldType.number
+      - name: "shazamCatalogEntries"
+    ▿ EntityIR
+      - documentation: Optional<String>.none
+      ▿ fields: 7 elements
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "artist"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "created_at"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "end_time"
+          - type: FieldType.number
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "match_offset"
+          - type: FieldType.number
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "shazam_track_id"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "start_time"
+          - type: FieldType.number
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "title"
+          - type: FieldType.string
+      - name: "shazamMatches"
+    ▿ EntityIR
+      - documentation: Optional<String>.none
+      ▿ fields: 5 elements
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "assigned_at"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "assigned_by"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "confidence"
+          - type: FieldType.number
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "note"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "source"
+          - type: FieldType.string
+      - name: "speakerAssignments"
+    ▿ EntityIR
+      ▿ documentation: Optional<String>
+        - some: "A person who speaks in media.\nSpeakers link a Person to their speaking roles. A person can have multiple\nspeaker entries (different roles, different media, different segments).\nNote: Voice embeddings are stored in PostgreSQL (pgvector) and linked\nvia the speakerAssignments entity, not directly on"
+      ▿ fields: 6 elements
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "role"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "is_human"
+          - type: FieldType.boolean
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "ingested_at"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "metadata"
+          - type: FieldType.json
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "name"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "embedding_centroid_id"
+          - type: FieldType.string
+      - name: "speakers"
+    ▿ EntityIR
+      - documentation: Optional<String>.none
+      ▿ fields: 9 elements
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "additional_params"
+          - type: FieldType.json
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "beam_size"
+          - type: FieldType.number
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "created_at"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "language"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "model"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "temperature"
+          - type: FieldType.number
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "tool"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "vad_filter"
+          - type: FieldType.boolean
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "word_timestamps"
+          - type: FieldType.boolean
+      - name: "transcriptionConfigs"
+    ▿ EntityIR
+      - documentation: Optional<String>.none
+      ▿ fields: 10 elements
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "cost_usd"
+          - type: FieldType.number
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "executed_at"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "git_commit_sha"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "input_duration_seconds"
+          - type: FieldType.number
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "is_preferred"
+          - type: FieldType.boolean
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "logs"
+          - type: FieldType.json
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "peak_memory_mb"
+          - type: FieldType.number
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "pipeline_script"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "processing_time_seconds"
+          - type: FieldType.number
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "tool_version"
+          - type: FieldType.string
+      - name: "transcriptionRuns"
+    ▿ EntityIR
+      ▿ documentation: Optional<String>
+        - some: "Link video (audio file) to its audiobook.\nA video can be a chapter clip from an audiobook."
+      ▿ fields: 9 elements
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "description"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "duration"
+          - type: FieldType.number
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "external_published_at"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "filepath"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "ingested_at"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "raw_metadata"
+          - type: FieldType.json
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "source_id"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "title"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "url"
+          - type: FieldType.string
+      - name: "videos"
+    ▿ EntityIR
+      - documentation: Optional<String>.none
+      ▿ fields: 6 elements
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "confidence"
+          - type: FieldType.number
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "end_time"
+          - type: FieldType.number
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "ingested_at"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "start_time"
+          - type: FieldType.number
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "text"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "transcription_segment_index"
+          - type: FieldType.number
+      - name: "words"
+    ▿ EntityIR
+      - documentation: Optional<String>.none
+      ▿ fields: 4 elements
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "corrected_at"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "corrected_by"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "corrected_text"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "note"
+          - type: FieldType.string
+      - name: "wordTextCorrections"
+    ▿ EntityIR
+      ▿ documentation: Optional<String>
+        - some: "Audiobook entity for tracking audiobook metadata.\nLinks to speakers (narrator, author) and chapters.\nNote: narrator and author are stored as links to speakers, not as string fields."
+      ▿ fields: 7 elements
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "title"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "asin"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "sku"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "runtime_seconds"
+          - type: FieldType.number
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "chapter_count"
+          - type: FieldType.number
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "ingested_at"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "raw_metadata"
+          - type: FieldType.json
+      - name: "audiobooks"
+    ▿ EntityIR
+      ▿ documentation: Optional<String>
+        - some: "Audiobook chapter entity for tracking chapter/sub-chapter metadata.\nChapters have timestamps (start_time_ms, end_time_ms) rather than page numbers.\nSub-chapters link to their parent chapter via the parent link."
+      ▿ fields: 8 elements
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "title"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "chapter_number"
+          - type: FieldType.number
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "start_time_ms"
+          - type: FieldType.number
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "end_time_ms"
+          - type: FieldType.number
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "length_ms"
+          - type: FieldType.number
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "is_subchapter"
+          - type: FieldType.boolean
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "parent_chapter_number"
+          - type: FieldType.number
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "ingested_at"
+          - type: FieldType.string
+      - name: "audiobookChapters"
+  ▿ links: 38 elements
+    ▿ LinkIR
+      ▿ documentation: Optional<String>
+        - some: "Link speakers to their person (People entity).\nA speaker is a person in a specific speaking role."
+      ▿ forward: LinkSide
+        - cardinality: Cardinality.one
+        - entityName: "speakers"
+        - label: "person"
+      - name: "speakersPerson"
+      ▿ reverse: LinkSide
+        - cardinality: Cardinality.many
+        - entityName: "people"
+        - label: "speakers"
+    ▿ LinkIR
+      ▿ documentation: Optional<String>
+        - some: "Link external people IDs to their person."
+      ▿ forward: LinkSide
+        - cardinality: Cardinality.one
+        - entityName: "externalPeopleIds"
+        - label: "person"
+      - name: "externalPeopleIdsPerson"
+      ▿ reverse: LinkSide
+        - cardinality: Cardinality.many
+        - entityName: "people"
+        - label: "externalIds"
+    ▿ LinkIR
+      ▿ documentation: Optional<String>
+        - some: "Link external people IDs to their platform."
+      ▿ forward: LinkSide
+        - cardinality: Cardinality.one
+        - entityName: "externalPeopleIds"
+        - label: "platform"
+      - name: "externalPeopleIdsPlatform"
+      ▿ reverse: LinkSide
+        - cardinality: Cardinality.many
+        - entityName: "platforms"
+        - label: "externalPeopleIds"
+    ▿ LinkIR
+      ▿ documentation: Optional<String>
+        - some: "Link media files to their media."
+      ▿ forward: LinkSide
+        - cardinality: Cardinality.one
+        - entityName: "mediaFiles"
+        - label: "media"
+      - name: "mediaFilesMedia"
+      ▿ reverse: LinkSide
+        - cardinality: Cardinality.many
+        - entityName: "media"
+        - label: "files"
+    ▿ LinkIR
+      ▿ documentation: Optional<String>
+        - some: "Link segments to their media."
+      ▿ forward: LinkSide
+        - cardinality: Cardinality.one
+        - entityName: "segments"
+        - label: "media"
+      - name: "segmentsMedia"
+      ▿ reverse: LinkSide
+        - cardinality: Cardinality.many
+        - entityName: "media"
+        - label: "segments"
+    ▿ LinkIR
+      ▿ documentation: Optional<String>
+        - some: "Link segments to their parent segment (for sub-chapters/nested sections)."
+      ▿ forward: LinkSide
+        - cardinality: Cardinality.one
+        - entityName: "segments"
+        - label: "parent"
+      - name: "segmentsParent"
+      ▿ reverse: LinkSide
+        - cardinality: Cardinality.many
+        - entityName: "segments"
+        - label: "children"
+    ▿ LinkIR
+      ▿ documentation: Optional<String>
+        - some: "Link external media IDs to their media."
+      ▿ forward: LinkSide
+        - cardinality: Cardinality.one
+        - entityName: "externalMediaIds"
+        - label: "media"
+      - name: "externalMediaIdsMedia"
+      ▿ reverse: LinkSide
+        - cardinality: Cardinality.many
+        - entityName: "media"
+        - label: "externalIds"
+    ▿ LinkIR
+      ▿ documentation: Optional<String>
+        - some: "Link external media IDs to their platform."
+      ▿ forward: LinkSide
+        - cardinality: Cardinality.one
+        - entityName: "externalMediaIds"
+        - label: "platform"
+      - name: "externalMediaIdsPlatform"
+      ▿ reverse: LinkSide
+        - cardinality: Cardinality.many
+        - entityName: "platforms"
+        - label: "externalMediaIds"
+    ▿ LinkIR
+      ▿ documentation: Optional<String>
+        - some: "Link external segment IDs to their segment."
+      ▿ forward: LinkSide
+        - cardinality: Cardinality.one
+        - entityName: "externalSegmentIds"
+        - label: "segment"
+      - name: "externalSegmentIdsSegment"
+      ▿ reverse: LinkSide
+        - cardinality: Cardinality.many
+        - entityName: "segments"
+        - label: "externalIds"
+    ▿ LinkIR
+      ▿ documentation: Optional<String>
+        - some: "Link external segment IDs to their platform."
+      ▿ forward: LinkSide
+        - cardinality: Cardinality.one
+        - entityName: "externalSegmentIds"
+        - label: "platform"
+      - name: "externalSegmentIdsPlatform"
+      ▿ reverse: LinkSide
+        - cardinality: Cardinality.many
+        - entityName: "platforms"
+        - label: "externalSegmentIds"
+    ▿ LinkIR
+      ▿ documentation: Optional<String>
+        - some: "Link access metadata to its external media ID."
+      ▿ forward: LinkSide
+        - cardinality: Cardinality.one
+        - entityName: "accessMetadata"
+        - label: "externalMediaId"
+      - name: "accessMetadataExternalMediaId"
+      ▿ reverse: LinkSide
+        - cardinality: Cardinality.one
+        - entityName: "externalMediaIds"
+        - label: "accessMetadata"
+    ▿ LinkIR
+      ▿ documentation: Optional<String>
+        - some: "Link media to its author (Speaker entity)."
+      ▿ forward: LinkSide
+        - cardinality: Cardinality.one
+        - entityName: "media"
+        - label: "author"
+      - name: "mediaAuthor"
+      ▿ reverse: LinkSide
+        - cardinality: Cardinality.many
+        - entityName: "speakers"
+        - label: "authoredMedia"
+    ▿ LinkIR
+      ▿ documentation: Optional<String>
+        - some: "Link media to its narrator (Speaker entity, for audiobooks)."
+      ▿ forward: LinkSide
+        - cardinality: Cardinality.one
+        - entityName: "media"
+        - label: "narrator"
+      - name: "mediaNarrator"
+      ▿ reverse: LinkSide
+        - cardinality: Cardinality.many
+        - entityName: "speakers"
+        - label: "narratedMedia"
+    ▿ LinkIR
+      ▿ documentation: Optional<String>
+        - some: "Link shazam catalog entries to media (new entity)."
+      ▿ forward: LinkSide
+        - cardinality: Cardinality.one
+        - entityName: "shazamCatalogEntries"
+        - label: "media"
+      - name: "shazamCatalogEntriesMedia"
+      ▿ reverse: LinkSide
+        - cardinality: Cardinality.many
+        - entityName: "media"
+        - label: "shazamCatalogEntries"
+    ▿ LinkIR
+      ▿ documentation: Optional<String>
+        - some: "Link diarization runs to media (new entity)."
+      ▿ forward: LinkSide
+        - cardinality: Cardinality.many
+        - entityName: "media"
+        - label: "diarizationRuns"
+      - name: "mediaDiarizationRuns"
+      ▿ reverse: LinkSide
+        - cardinality: Cardinality.one
+        - entityName: "diarizationRuns"
+        - label: "media"
+    ▿ LinkIR
+      ▿ documentation: Optional<String>
+        - some: "Link transcription runs to media (new entity)."
+      ▿ forward: LinkSide
+        - cardinality: Cardinality.many
+        - entityName: "media"
+        - label: "transcriptionRuns"
+      - name: "mediaTranscriptionRuns"
+      ▿ reverse: LinkSide
+        - cardinality: Cardinality.one
+        - entityName: "transcriptionRuns"
+        - label: "media"
+    ▿ LinkIR
+      - documentation: Optional<String>.none
+      ▿ forward: LinkSide
+        - cardinality: Cardinality.one
+        - entityName: "$users"
+        - label: "linkedPrimaryUser"
+      - name: "$usersLinkedPrimaryUser"
+      ▿ reverse: LinkSide
+        - cardinality: Cardinality.many
+        - entityName: "$users"
+        - label: "linkedGuestUsers"
+    ▿ LinkIR
+      - documentation: Optional<String>.none
+      ▿ forward: LinkSide
+        - cardinality: Cardinality.one
+        - entityName: "diarizationRuns"
+        - label: "config"
+      - name: "diarizationRunsConfig"
+      ▿ reverse: LinkSide
+        - cardinality: Cardinality.many
+        - entityName: "diarizationConfigs"
+        - label: "diarizationRuns"
+    ▿ LinkIR
+      - documentation: Optional<String>.none
+      ▿ forward: LinkSide
+        - cardinality: Cardinality.many
+        - entityName: "diarizationRuns"
+        - label: "diarizationSegments"
+      - name: "diarizationRunsDiarizationSegments"
+      ▿ reverse: LinkSide
+        - cardinality: Cardinality.one
+        - entityName: "diarizationSegments"
+        - label: "diarizationRun"
+    ▿ LinkIR
+      - documentation: Optional<String>.none
+      ▿ forward: LinkSide
+        - cardinality: Cardinality.many
+        - entityName: "diarizationSegments"
+        - label: "speakerAssignments"
+      - name: "diarizationSegmentsSpeakerAssignments"
+      ▿ reverse: LinkSide
+        - cardinality: Cardinality.one
+        - entityName: "speakerAssignments"
+        - label: "diarizationSegment"
+    ▿ LinkIR
+      - documentation: Optional<String>.none
+      ▿ forward: LinkSide
+        - cardinality: Cardinality.one
+        - entityName: "segmentSplits"
+        - label: "originalSegment"
+      - name: "segmentSplitsOriginalSegment"
+      ▿ reverse: LinkSide
+        - cardinality: Cardinality.many
+        - entityName: "diarizationSegments"
+        - label: "splits"
+    ▿ LinkIR
+      - documentation: Optional<String>.none
+      ▿ forward: LinkSide
+        - cardinality: Cardinality.many
+        - entityName: "segmentSplits"
+        - label: "resultingSegments"
+      - name: "segmentSplitsResultingSegments"
+      ▿ reverse: LinkSide
+        - cardinality: Cardinality.one
+        - entityName: "diarizationSegments"
+        - label: "createdFromSplit"
+    ▿ LinkIR
+      - documentation: Optional<String>.none
+      ▿ forward: LinkSide
+        - cardinality: Cardinality.one
+        - entityName: "shazamCatalogEntries"
+        - label: "video"
+      - name: "shazamCatalogEntriesVideo"
+      ▿ reverse: LinkSide
+        - cardinality: Cardinality.many
+        - entityName: "videos"
+        - label: "shazamCatalogEntries"
+    ▿ LinkIR
+      - documentation: Optional<String>.none
+      ▿ forward: LinkSide
+        - cardinality: Cardinality.one
+        - entityName: "speakerAssignments"
+        - label: "speaker"
+      - name: "speakerAssignmentsSpeaker"
+      ▿ reverse: LinkSide
+        - cardinality: Cardinality.many
+        - entityName: "speakers"
+        - label: "speakerAssignments"
+    ▿ LinkIR
+      - documentation: Optional<String>.none
+      ▿ forward: LinkSide
+        - cardinality: Cardinality.many
+        - entityName: "speakers"
+        - label: "publications"
+      - name: "speakersPublications"
+      ▿ reverse: LinkSide
+        - cardinality: Cardinality.many
+        - entityName: "publications"
+        - label: "regularSpeakers"
+    ▿ LinkIR
+      - documentation: Optional<String>.none
+      ▿ forward: LinkSide
+        - cardinality: Cardinality.one
+        - entityName: "transcriptionRuns"
+        - label: "config"
+      - name: "transcriptionRunsConfig"
+      ▿ reverse: LinkSide
+        - cardinality: Cardinality.many
+        - entityName: "transcriptionConfigs"
+        - label: "transcriptionRuns"
+    ▿ LinkIR
+      - documentation: Optional<String>.none
+      ▿ forward: LinkSide
+        - cardinality: Cardinality.many
+        - entityName: "transcriptionRuns"
+        - label: "words"
+      - name: "transcriptionRunsWords"
+      ▿ reverse: LinkSide
+        - cardinality: Cardinality.one
+        - entityName: "words"
+        - label: "transcriptionRun"
+    ▿ LinkIR
+      - documentation: Optional<String>.none
+      ▿ forward: LinkSide
+        - cardinality: Cardinality.many
+        - entityName: "videos"
+        - label: "diarizationRuns"
+      - name: "videosDiarizationRuns"
+      ▿ reverse: LinkSide
+        - cardinality: Cardinality.one
+        - entityName: "diarizationRuns"
+        - label: "video"
+    ▿ LinkIR
+      - documentation: Optional<String>.none
+      ▿ forward: LinkSide
+        - cardinality: Cardinality.one
+        - entityName: "videos"
+        - label: "publication"
+      - name: "videosPublication"
+      ▿ reverse: LinkSide
+        - cardinality: Cardinality.many
+        - entityName: "publications"
+        - label: "videos"
+    ▿ LinkIR
+      - documentation: Optional<String>.none
+      ▿ forward: LinkSide
+        - cardinality: Cardinality.many
+        - entityName: "videos"
+        - label: "shazamMatches"
+      - name: "videosShazamMatches"
+      ▿ reverse: LinkSide
+        - cardinality: Cardinality.one
+        - entityName: "shazamMatches"
+        - label: "video"
+    ▿ LinkIR
+      - documentation: Optional<String>.none
+      ▿ forward: LinkSide
+        - cardinality: Cardinality.many
+        - entityName: "videos"
+        - label: "transcriptionRuns"
+      - name: "videosTranscriptionRuns"
+      ▿ reverse: LinkSide
+        - cardinality: Cardinality.one
+        - entityName: "transcriptionRuns"
+        - label: "video"
+    ▿ LinkIR
+      - documentation: Optional<String>.none
+      ▿ forward: LinkSide
+        - cardinality: Cardinality.many
+        - entityName: "words"
+        - label: "textCorrections"
+      - name: "wordsTextCorrections"
+      ▿ reverse: LinkSide
+        - cardinality: Cardinality.one
+        - entityName: "wordTextCorrections"
+        - label: "word"
+    ▿ LinkIR
+      ▿ documentation: Optional<String>
+        - some: "Link audiobook to its narrator (speaker entity)."
+      ▿ forward: LinkSide
+        - cardinality: Cardinality.one
+        - entityName: "audiobooks"
+        - label: "narrator"
+      - name: "audiobooksNarrator"
+      ▿ reverse: LinkSide
+        - cardinality: Cardinality.many
+        - entityName: "speakers"
+        - label: "narratedAudiobooks"
+    ▿ LinkIR
+      ▿ documentation: Optional<String>
+        - some: "Link audiobook to its author (speaker entity, optional - author may also be narrator)."
+      ▿ forward: LinkSide
+        - cardinality: Cardinality.one
+        - entityName: "audiobooks"
+        - label: "author"
+      - name: "audiobooksAuthor"
+      ▿ reverse: LinkSide
+        - cardinality: Cardinality.many
+        - entityName: "speakers"
+        - label: "authoredAudiobooks"
+    ▿ LinkIR
+      ▿ documentation: Optional<String>
+        - some: "Link chapters to their audiobook."
+      ▿ forward: LinkSide
+        - cardinality: Cardinality.one
+        - entityName: "audiobookChapters"
+        - label: "audiobook"
+      - name: "audiobookChaptersAudiobook"
+      ▿ reverse: LinkSide
+        - cardinality: Cardinality.many
+        - entityName: "audiobooks"
+        - label: "chapters"
+    ▿ LinkIR
+      ▿ documentation: Optional<String>
+        - some: "Link sub-chapters to their parent chapter."
+      ▿ forward: LinkSide
+        - cardinality: Cardinality.one
+        - entityName: "audiobookChapters"
+        - label: "parentChapter"
+      - name: "audiobookChaptersParent"
+      ▿ reverse: LinkSide
+        - cardinality: Cardinality.many
+        - entityName: "audiobookChapters"
+        - label: "subchapters"
+    ▿ LinkIR
+      ▿ documentation: Optional<String>
+        - some: "Link video (audio file) to its audiobook.\nA video can be a chapter clip from an audiobook."
+      ▿ forward: LinkSide
+        - cardinality: Cardinality.one
+        - entityName: "videos"
+        - label: "audiobook"
+      - name: "videosAudiobook"
+      ▿ reverse: LinkSide
+        - cardinality: Cardinality.many
+        - entityName: "audiobooks"
+        - label: "audioFiles"
+    ▿ LinkIR
+      ▿ documentation: Optional<String>
+        - some: "Link video (audio file) to its chapter.\nUsed when a video represents a specific chapter clip."
+      ▿ forward: LinkSide
+        - cardinality: Cardinality.one
+        - entityName: "videos"
+        - label: "audiobookChapter"
+      - name: "videosAudiobookChapter"
+      ▿ reverse: LinkSide
+        - cardinality: Cardinality.many
+        - entityName: "audiobookChapters"
+        - label: "audioFiles"
+  - rooms: 0 elements
+  ▿ sourceFile: Optional<String>
+    - some: "StressTestSchema.ts"
