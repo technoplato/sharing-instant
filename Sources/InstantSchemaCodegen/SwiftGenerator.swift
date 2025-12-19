@@ -542,11 +542,11 @@ public struct SwiftCodeGenerator {
   // MARK: - Links Generation
   
   private func generateLinks(from schema: SchemaIR) -> String {
-    // Find a good example link
-    let exampleLink = schema.links.first
+    // Find a good example link (prefer one not involving system entities)
+    let exampleLink = schema.links.first { !$0.involvesSystemEntity } ?? schema.links.first
     let fromEntity = exampleLink.flatMap { schema.entity(named: $0.forward.entityName) }
     let fromName = fromEntity?.swiftTypeName ?? "Entity"
-    let fromSchemaName = fromEntity?.name ?? "entities"
+    let fromSchemaName = fromEntity?.swiftPropertyName ?? "entities"
     let linkLabel = exampleLink?.forward.label ?? "related"
     
     let fileDescription = """
@@ -584,10 +584,10 @@ public struct SwiftCodeGenerator {
       typeSafetyExample += """
       
       /// ✅ COMPILES - \(link.forward.label) exists on \(from.swiftTypeName):
-      ///    Schema.\(from.name).with(\\.\(link.forward.label))
+      ///    Schema.\(from.swiftPropertyName).with(\\.\(link.forward.label))
       ///
       /// ❌ COMPILE ERROR - "nonexistent" is not a link on \(from.swiftTypeName):
-      ///    Schema.\(from.name).with(\\.nonexistent)
+      ///    Schema.\(from.swiftPropertyName).with(\\.nonexistent)
       ///    // Error: Type '\(from.swiftTypeName)' has no member 'nonexistent'
       ///
       """

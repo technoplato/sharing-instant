@@ -64,6 +64,40 @@ Run `swift build` - the plugin automatically generates:
 - `Schema.swift` - Namespace with EntityKey instances
 - `Todo.swift` - Codable struct for the todos entity
 
+## System Entities
+
+InstantDB has system entities prefixed with `$` (e.g., `$files`, `$users`).
+These are automatically converted to Swift-safe names:
+
+| InstantDB Name | Swift Type Name | Swift Property Name |
+|----------------|-----------------|---------------------|
+| `$files`       | `InstantFile`   | `Schema.instantFiles` |
+| `$users`       | `InstantUser`   | `Schema.instantUsers` |
+
+### Why the Conversion?
+
+Swift reserves the `$` prefix for compiler-synthesized declarations like
+property wrapper projections (`@State var foo` creates `$foo`). While
+explicitly naming a type `$file` technically compiles, it:
+
+1. Conflicts with Swift conventions
+2. Causes confusion with property wrapper projections
+3. May break in future Swift versions
+
+The `Instant` prefix clearly indicates these are InstantDB system entities
+while maintaining valid Swift identifiers.
+
+### Usage
+
+```swift
+// Access system entities via Schema namespace
+@Shared(Schema.instantFiles)
+private var files: IdentifiedArrayOf<InstantFile> = []
+
+@Shared(Schema.instantUsers)  
+private var users: IdentifiedArrayOf<InstantUser> = []
+```
+
 ## Topics
 
 ### Getting Started
