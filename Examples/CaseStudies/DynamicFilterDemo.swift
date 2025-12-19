@@ -32,11 +32,8 @@ enum TodoFilter: String, CaseIterable, Identifiable {
 }
 
 private struct DynamicFilterView: View {
-  /// Type-safe sync using EntityKey.
-  ///
-  /// Uses `Schema.todos` which is defined in SwiftUISyncDemo.swift.
-  /// Once the schema generator is fixed, this will come from the generated Schema.swift.
-  @Shared(Schema.todos.orderBy(\.createdAt, .desc))
+  /// Type-safe sync using EntityKey from generated Schema.
+  @Shared(Schema.todos.orderBy(\Todo.createdAt, .desc))
   private var todos: IdentifiedArrayOf<Todo> = []
   
   @State private var searchText = ""
@@ -153,7 +150,7 @@ private struct DynamicFilterView: View {
   }
   
   private func toggleTodo(_ todo: Todo) {
-    $todos.withLock { todos in
+    _ = $todos.withLock { todos in
       if let index = todos.firstIndex(where: { $0.id == todo.id }) {
         todos[index].done.toggle()
       }
@@ -199,7 +196,8 @@ private struct TodoFilterRow: View {
           .strikethrough(todo.done)
           .foregroundStyle(todo.done ? .secondary : .primary)
         
-        Text(todo.createdAt, style: .relative)
+        // Convert Unix timestamp to Date for display
+        Text(Date(timeIntervalSince1970: todo.createdAt), style: .relative)
           .font(.caption)
           .foregroundStyle(.secondary)
       }

@@ -58,11 +58,8 @@ enum TodoFilterOption: String, CaseIterable, Identifiable {
 // MARK: - Main View
 
 private struct AdvancedTodoView: View {
-  // Base EntityKey for todos
-  private static let todosKey = EntityKey<Todo>(namespace: "todos")
-  
   // Main data source - we'll reload this with different queries
-  @Shared(.instantSync(todosKey.orderBy("createdAt", .desc)))
+  @Shared(Schema.todos.orderBy(\Todo.createdAt, .desc))
   private var todos: IdentifiedArrayOf<Todo> = []
   
   @State private var searchText = ""
@@ -74,13 +71,12 @@ private struct AdvancedTodoView: View {
   private func logQueryChange(_ reason: String) {
     print("[AdvancedTodoDemo] Query change: \(reason)")
     print("[AdvancedTodoDemo]   queryKey: \(queryKey)")
-    print("[AdvancedTodoDemo]   currentQuery: \(currentQuery)")
     print("[AdvancedTodoDemo]   todos count: \(todos.count)")
   }
   
   // Build dynamic query based on current filters
   private var currentQuery: EntityKey<Todo> {
-    var query = Self.todosKey
+    var query = Schema.todos
       .orderBy(sortOption.field, sortOption.direction)
     
     // Add status filter
@@ -88,14 +84,14 @@ private struct AdvancedTodoView: View {
     case .all:
       break
     case .active:
-      query = query.where(\.done, .eq(false))
+      query = query.where(\Todo.done, .eq(false))
     case .completed:
-      query = query.where(\.done, .eq(true))
+      query = query.where(\Todo.done, .eq(true))
     }
     
     // Add search filter (server-side with $ilike)
     if !searchText.isEmpty {
-      query = query.where(\.title, .contains(searchText))
+      query = query.where(\Todo.title, .contains(searchText))
     }
     
     return query
@@ -196,13 +192,18 @@ private struct AdvancedTodoView: View {
     let title = newTodoTitle.trimmingCharacters(in: .whitespaces)
     guard !title.isEmpty else { return }
     
-    let todo = Todo(title: title)
+    // Generated Todo uses Double for createdAt (Unix timestamp)
+    let todo = Todo(
+      createdAt: Date().timeIntervalSince1970,
+      done: false,
+      title: title
+    )
     _ = $todos.withLock { $0.insert(todo, at: 0) }
     newTodoTitle = ""
   }
   
   private func toggleTodo(_ todo: Todo) {
-    $todos.withLock { todos in
+    _ = $todos.withLock { todos in
       if let index = todos.firstIndex(where: { $0.id == todo.id }) {
         todos[index].done.toggle()
       }
@@ -210,7 +211,7 @@ private struct AdvancedTodoView: View {
   }
   
   private func deleteTodos(at offsets: IndexSet) {
-    $todos.withLock { todos in
+    _ = $todos.withLock { todos in
       todos.remove(atOffsets: offsets)
     }
   }
@@ -256,7 +257,8 @@ private struct TodoRowView: View {
           .strikethrough(todo.done)
           .foregroundStyle(todo.done ? .secondary : .primary)
         
-        Text(todo.createdAt, style: .relative)
+        // Convert Unix timestamp to Date for display
+        Text(Date(timeIntervalSince1970: todo.createdAt), style: .relative)
           .font(.caption)
           .foregroundStyle(.secondary)
       }
