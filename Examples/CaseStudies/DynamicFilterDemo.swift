@@ -3,17 +3,17 @@ import SwiftUI
 
 struct DynamicFilterDemo: SwiftUICaseStudy {
   let readMe = """
-    This demo shows how to use dynamic keys with SharingInstant to filter \
-    and search data in real-time.
+    This demo shows how to filter and search data in real-time using \
+    the type-safe `@Shared(Schema.todos)` API.
     
     **Features demonstrated:**
-    • Search todos by title using `$todos.load(.search(text))`
+    • Search todos by title (client-side filtering)
     • Filter by completion status (All, Active, Completed)
-    • Dynamic key changes reload data from InstantDB
-    • Real-time updates still work with filtered results
+    • Toggle todo completion with optimistic updates
+    • Real-time sync - changes appear across all clients
     
-    Dynamic keys are useful when you need to change what data is displayed \
-    based on user input, like search queries or filter selections.
+    This demo shares the same `todos` collection as the Sync Demo. \
+    Add todos there and filter them here!
     """
   let caseStudyTitle = "Dynamic Filtering"
   
@@ -32,14 +32,11 @@ enum TodoFilter: String, CaseIterable, Identifiable {
 }
 
 private struct DynamicFilterView: View {
-  @Shared(
-    .instantSync(
-      configuration: SharingInstantSync.CollectionConfiguration<Todo>(
-        namespace: "todos",
-        orderBy: OrderBy.desc("createdAt")
-      )
-    )
-  )
+  /// Type-safe sync using EntityKey.
+  ///
+  /// Uses `Schema.todos` which is defined in SwiftUISyncDemo.swift.
+  /// Once the schema generator is fixed, this will come from the generated Schema.swift.
+  @Shared(Schema.todos.orderBy(\.createdAt, .desc))
   private var todos: IdentifiedArrayOf<Todo> = []
   
   @State private var searchText = ""
@@ -217,5 +214,3 @@ private struct TodoFilterRow: View {
     }
   }
 }
-
-

@@ -1,13 +1,33 @@
-import InstantDB
+import Sharing
 import SharingInstant
 import SwiftUI
 
 /// Demonstrates authentication flows using InstantDB.
 ///
-/// This example shows how to use `InstantAuth` for:
-/// - Guest sign-in
-/// - Magic code (email) authentication
-/// - Sign out
+/// This example shows how to use `InstantAuth` for authentication actions
+/// and `@SharedReader(.instantAuthState)` for reactive state observation.
+///
+/// ## Two Patterns for Auth
+///
+/// **Pattern 1: `@StateObject InstantAuth`** (used here)
+/// - Provides both state observation AND action methods
+/// - Good for views that need to trigger auth actions
+///
+/// **Pattern 2: `@SharedReader(.instantAuthState)`**
+/// - Read-only state observation
+/// - Good for views that only need to display auth state
+///
+/// ```swift
+/// // Read-only observation
+/// @SharedReader(.instantAuthState)
+/// private var authState: AuthState
+///
+/// var body: some View {
+///   if authState.isSignedIn {
+///     Text("Welcome!")
+///   }
+/// }
+/// ```
 struct AuthDemo: SwiftUICaseStudy {
   var caseStudyTitle: String { "Authentication" }
   
@@ -21,10 +41,21 @@ struct AuthDemo: SwiftUICaseStudy {
     • Sign out functionality
     • User profile display
     
+    **API Options:**
+    • `@StateObject InstantAuth()` - for views that need auth actions
+    • `@SharedReader(.instantAuthState)` - for read-only state observation
+    
     Try signing in as a guest or with your email!
     """
   }
   
+  /// InstantAuth provides both state observation AND action methods.
+  ///
+  /// For read-only state observation, you could also use:
+  /// ```swift
+  /// @SharedReader(.instantAuthState)
+  /// private var authState: AuthState
+  /// ```
   @StateObject private var auth = InstantAuth()
   
   var body: some View {
@@ -58,7 +89,7 @@ struct AuthDemo: SwiftUICaseStudy {
 
 // MARK: - Unauthenticated View
 
-struct UnauthenticatedView: View {
+private struct UnauthenticatedView: View {
   @ObservedObject var auth: InstantAuth
   
   @State private var showMagicCode = false
@@ -142,7 +173,7 @@ struct UnauthenticatedView: View {
 
 // MARK: - Magic Code Sheet
 
-struct MagicCodeSheet: View {
+private struct MagicCodeSheet: View {
   @ObservedObject var auth: InstantAuth
   @Binding var isPresented: Bool
   
@@ -153,7 +184,8 @@ struct MagicCodeSheet: View {
         case .success:
           isPresented = false
         case .failure:
-          break // Error is shown in the MagicCodeView
+          break
+          // Error is shown in the MagicCodeView
         }
       }
       .padding()
@@ -177,7 +209,7 @@ struct MagicCodeSheet: View {
 
 // MARK: - Authenticated View
 
-struct AuthenticatedView: View {
+private struct AuthenticatedView: View {
   let user: User
   let isGuest: Bool
   @ObservedObject var auth: InstantAuth
@@ -289,5 +321,3 @@ struct AuthenticatedView: View {
 #Preview {
   AuthDemo()
 }
-
-
