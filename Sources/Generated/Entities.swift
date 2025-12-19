@@ -71,19 +71,19 @@ struct FactListContentView: View {
 /// AVAILABLE IN THIS FILE
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
-/// $file {
+/// InstantFile {
 ///   id: String
 ///   path: String
 ///   url: String
 /// }
 ///
-/// $user {
+/// InstantUser {
 ///   id: String
 ///   email: String
 ///   imageURL: String?
 ///   type: String?
-///   linkedPrimaryUser: $user?  // Link (has: one)
-///   linkedGuestUsers: [$user]?  // Link (has: many)
+///   linkedPrimaryUser: InstantUser?  // Link (has: one)
+///   linkedGuestUsers: [InstantUser]?  // Link (has: many)
 /// }
 ///
 /// Fact {
@@ -155,7 +155,7 @@ struct FactListContentView: View {
 /// GENERATION INFO
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
-/// Generated:       December 19, 2025 at 6:34 AM EST
+/// Generated:       December 19, 2025 at 12:47 PM EST
 /// Machine:         mlustig-hy7l9xrd61.local (Apple M4 Pro, macOS 26.1)
 /// Generator:       Sources/instant-schema/main.swift
 /// Source Schema:   Examples/CaseStudies/instant.schema.ts
@@ -172,10 +172,10 @@ swift run instant-schema generate \
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// HEAD Commit:
-///   SHA:      f87265d14b8e78ea18b461547928c0aef8a7ff08
-///   Date:     December 19, 2025 at 6:34 AM EST
+///   SHA:      2d66554f4f593f756caca70cca7f90e73791865c
+///   Date:     December 19, 2025 at 12:46 PM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  test(codegen): Add snapshot tests for enhanced headers with generation context
+///   Message:  fix(codegen): use swiftPropertyName in documentation examples
 ///
 /// Schema File Last Modified:
 ///   SHA:      e7a94d20022c53013ecf1bb88f99ae5e4b176a5c
@@ -188,7 +188,7 @@ swift run instant-schema generate \
 import Foundation
 import SharingInstant
 
-public struct $file: EntityIdentifiable, Codable, Sendable {
+public struct InstantFile: EntityIdentifiable, Codable, Sendable {
   public static var namespace: String { "$files" }
   
   // MARK: - Fields
@@ -212,7 +212,7 @@ public struct $file: EntityIdentifiable, Codable, Sendable {
 }
 
 
-public struct $user: EntityIdentifiable, Codable, Sendable {
+public struct InstantUser: EntityIdentifiable, Codable, Sendable {
   public static var namespace: String { "$users" }
   
   // MARK: - Fields
@@ -228,11 +228,11 @@ public struct $user: EntityIdentifiable, Codable, Sendable {
 
   /// Link to $users via '$usersLinkedPrimaryUser'
   /// - Note: Only populated when queried with `.with(\.linkedPrimaryUser)`
-  public var linkedPrimaryUser: $user?
+  public var linkedPrimaryUser: InstantUser?
 
   /// Link to $users via '$usersLinkedPrimaryUser'
   /// - Note: Only populated when queried with `.with(\.linkedGuestUsers)`
-  public var linkedGuestUsers: [$user]?
+  public var linkedGuestUsers: [InstantUser]?
 
 
   // MARK: - Initializer
@@ -242,8 +242,8 @@ public struct $user: EntityIdentifiable, Codable, Sendable {
     email: String,
     imageURL: String? = nil,
     type: String? = nil,
-    linkedPrimaryUser: $user? = nil,
-    linkedGuestUsers: [$user]? = nil
+    linkedPrimaryUser: InstantUser? = nil,
+    linkedGuestUsers: [InstantUser]? = nil
   ) {
     self.id = id
     self.email = email
