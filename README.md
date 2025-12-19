@@ -1,4 +1,4 @@
-# SharingInstant
+# sharing-instant
 
 [![Swift 6.0](https://img.shields.io/badge/Swift-6.0-orange.svg)](https://swift.org)
 [![Platforms](https://img.shields.io/badge/Platforms-iOS%20|%20macOS%20|%20tvOS%20|%20watchOS-blue.svg)](https://developer.apple.com)
@@ -13,8 +13,14 @@ Point-Free's [Sharing](https://github.com/pointfreeco/swift-sharing) library.
 > **Note:** This library depends on [instant-ios-sdk PR #6](https://github.com/instantdb/instant-ios-sdk/pull/6) 
 > which adds presence support and threading fixes.
 
+> **⚠️ Demo Status (December 19, 2025 1:00 PM EST):** The demos are a little flaky right now. 
+> I'm actively working on fixing them.
+
   * [Overview](#overview)
+  * [Quick example](#quick-example)
   * [Getting started](#getting-started)
+  * [Modeling data](#modeling-data)
+  * [Permissions](#permissions)
   * [Sync](#sync)
   * [Presence](#presence)
   * [Schema codegen](#schema-codegen)
@@ -25,7 +31,7 @@ Point-Free's [Sharing](https://github.com/pointfreeco/swift-sharing) library.
 
 ## Overview
 
-SharingInstant brings InstantDB's real-time sync to Swift using the familiar `@Shared` property 
+`sharing-instant` brings InstantDB's real-time sync to Swift using the familiar `@Shared` property 
 wrapper from Point-Free's Sharing library. It provides:
 
 - **`@Shared(.instantSync(...))`** – Bidirectional sync with optimistic updates
@@ -34,26 +40,107 @@ wrapper from Point-Free's Sharing library. It provides:
 - **Offline support** – Works offline, syncs when back online
 - **Full type safety** – No `[String: Any]`, everything is generic and `Codable`
 
-As a simple example, you can have a SwiftUI view that syncs todos with InstantDB:
+## Quick example
+
+Copy this into your app to see real-time sync in action. **Run on multiple simulators or devices 
+to watch changes sync instantly!**
 
 ```swift
+import IdentifiedCollections
 import SharingInstant
 import SwiftUI
 
-struct TodoListView: View {
-  @Shared(.instantSync(Schema.todos)) 
-  private var todos: IdentifiedArrayOf<Todo> = []
-  
-  var body: some View {
-    List(todos) { todo in
-      Text(todo.title)
+// MARK: - App Entry Point
+
+@main
+struct TodoApp: App {
+  init() {
+    // Configure InstantDB with your App ID
+    // Get yours at: https://instantdb.com/dash/new
+    prepareDependencies {
+      $0.defaultInstant = InstantClient(appId: "YOUR_APP_ID")
     }
   }
   
-  func addTodo(title: String) {
-    $todos.withLock { todos in
-      todos.append(Todo(title: title, done: false, createdAt: Date().timeIntervalSince1970))
+  var body: some Scene {
+    WindowGroup {
+      TodoListView()
     }
+  }
+}
+
+// MARK: - Todo Model (or use generated types from schema codegen)
+
+struct Todo: EntityIdentifiable, Codable, Sendable {
+  static var namespace: String { "todos" }
+  var id: String
+  var title: String
+  var done: Bool
+  var createdAt: Double
+  
+  init(id: String = UUID().uuidString, title: String, done: Bool, createdAt: Double) {
+    self.id = id
+    self.title = title
+    self.done = done
+    self.createdAt = createdAt
+  }
+}
+
+// MARK: - Todo List View
+
+struct TodoListView: View {
+  @Shared(.instantSync(EntityKey<Todo>(namespace: "todos")))
+  private var todos: IdentifiedArrayOf<Todo> = []
+  
+  @State private var newTitle = ""
+  
+  var body: some View {
+    NavigationStack {
+      List {
+        // Add new todo
+        HStack {
+          TextField("What needs to be done?", text: $newTitle)
+            .onSubmit { addTodo() }
+          Button(action: addTodo) {
+            Image(systemName: "plus.circle.fill")
+          }
+          .disabled(newTitle.trimmingCharacters(in: .whitespaces).isEmpty)
+        }
+        
+        // Todo list
+        ForEach(todos) { todo in
+          HStack {
+            Image(systemName: todo.done ? "checkmark.circle.fill" : "circle")
+              .foregroundStyle(todo.done ? .green : .secondary)
+              .onTapGesture { toggleTodo(todo) }
+            Text(todo.title)
+              .strikethrough(todo.done)
+            Spacer()
+          }
+        }
+        .onDelete { indexSet in
+          $todos.withLock { $0.remove(atOffsets: indexSet) }
+        }
+      }
+      .navigationTitle("Todos (\(todos.count))")
+    }
+  }
+  
+  private func addTodo() {
+    let title = newTitle.trimmingCharacters(in: .whitespaces)
+    guard !title.isEmpty else { return }
+    
+    let todo = Todo(
+      title: title,
+      done: false,
+      createdAt: Date().timeIntervalSince1970
+    )
+    $todos.withLock { $0.append(todo) }
+    newTitle = ""
+  }
+  
+  private func toggleTodo(_ todo: Todo) {
+    $todos.withLock { $0[id: todo.id]?.done.toggle() }
   }
 }
 ```
@@ -68,13 +155,15 @@ types, and building your first synced view.
 
 ### 1. Create an InstantDB project
 
-Go to [instantdb.com/dash/new](https://www.instantdb.com/dash/new) and create a new project. 
+Go to **[instantdb.com/dash/new](https://www.instantdb.com/dash/new)** and create a new project. 
 Copy your **App ID** – you'll need it to configure the client.
 
 ### 2. Define your schema
 
 Create an `instant.schema.ts` file in your project. This TypeScript file defines your data model 
-and is the source of truth for both your backend and Swift types:
+and is the source of truth for both your backend and Swift types.
+
+See [Modeling Data](https://instantdb.com/docs/modeling-data) for the full schema reference.
 
 ```typescript
 // instant.schema.ts
@@ -90,6 +179,7 @@ const _schema = i.schema({
   },
   
   // Optional: Define rooms for presence features
+  // See: https://instantdb.com/docs/presence-and-topics
   rooms: {
     chat: {
       presence: i.entity({
@@ -111,7 +201,7 @@ export default schema;
 
 ### 3. Push your schema to InstantDB
 
-Use the Instant CLI to push your schema to the server:
+Use the [Instant CLI](https://instantdb.com/docs/cli) to push your schema to the server:
 
 ```bash
 # Login to InstantDB (first time only)
@@ -123,8 +213,11 @@ npx instant-cli@latest push schema --app YOUR_APP_ID
 
 ### 4. Generate Swift types
 
-SharingInstant includes a schema codegen tool that generates type-safe Swift structs from your 
-TypeScript schema:
+`sharing-instant` includes a schema codegen tool that generates type-safe Swift structs from your 
+TypeScript schema.
+
+> **Important:** The generator requires a **clean git workspace** so that generated changes can 
+> always be traced back to a specific commit.
 
 ```bash
 # Generate Swift types
@@ -164,75 +257,125 @@ struct MyApp: App {
 }
 ```
 
-### 6. Build your first synced view
+### 6. Use in your views
 
-Now you can use `@Shared(.instantSync(...))` in any SwiftUI view:
+Now you can use `@Shared(.instantSync(...))` in any SwiftUI view with the generated types:
 
 ```swift
-import IdentifiedCollections
 import SharingInstant
-import SwiftUI
 
 struct TodoListView: View {
   // Type-safe sync using generated Schema and Todo types
   @Shared(.instantSync(Schema.todos.orderBy(\.createdAt, .desc)))
   private var todos: IdentifiedArrayOf<Todo> = []
   
-  @State private var newTitle = ""
-  
-  var body: some View {
-    NavigationStack {
-      List {
-        Section("Add Todo") {
-          HStack {
-            TextField("What needs to be done?", text: $newTitle)
-            Button("Add") { addTodo() }
-              .disabled(newTitle.isEmpty)
-          }
-        }
-        
-        Section("Todos (\(todos.count))") {
-          ForEach(todos) { todo in
-            HStack {
-              Image(systemName: todo.done ? "checkmark.circle.fill" : "circle")
-                .foregroundStyle(todo.done ? .green : .secondary)
-                .onTapGesture { toggleTodo(todo) }
-              
-              Text(todo.title)
-                .strikethrough(todo.done)
-            }
-          }
-          .onDelete { indexSet in
-            $todos.withLock { todos in
-              todos.remove(atOffsets: indexSet)
-            }
-          }
-        }
-      }
-      .navigationTitle("Todos")
-    }
-  }
-  
-  private func addTodo() {
-    let todo = Todo(
-      title: newTitle,
-      done: false,
-      createdAt: Date().timeIntervalSince1970
-    )
-    $todos.withLock { $0.append(todo) }
-    newTitle = ""
-  }
-  
-  private func toggleTodo(_ todo: Todo) {
-    $todos.withLock { todos in
-      todos[id: todo.id]?.done.toggle()
-    }
-  }
+  // ... your view code
 }
 ```
 
-That's it! Your todos now sync in real-time across all devices. Open the app on multiple 
-simulators or devices to see changes appear instantly.
+## Modeling data
+
+InstantDB uses a **schema-first** approach. Your `instant.schema.ts` file defines:
+
+- **Entities** – Your data types (like tables)
+- **Links** – Relationships between entities
+- **Rooms** – Real-time presence channels
+
+### Entities
+
+```typescript
+entities: {
+  todos: i.entity({
+    title: i.string(),
+    done: i.boolean(),
+    createdAt: i.number().indexed(),  // .indexed() for faster queries
+    priority: i.string().optional(),   // .optional() for nullable fields
+  }),
+  
+  users: i.entity({
+    email: i.string().unique().indexed(),  // .unique() for uniqueness constraint
+    displayName: i.string(),
+  }),
+}
+```
+
+### Links (Relationships)
+
+```typescript
+links: {
+  // One user has many todos
+  userTodos: {
+    forward: { on: "todos", has: "one", label: "owner" },
+    reverse: { on: "users", has: "many", label: "todos" },
+  },
+}
+```
+
+### Rooms (Presence)
+
+```typescript
+rooms: {
+  chat: {
+    presence: i.entity({
+      name: i.string(),
+      isTyping: i.boolean(),
+    }),
+  },
+}
+```
+
+📚 **Learn more:** [Modeling Data](https://instantdb.com/docs/modeling-data)
+
+## Permissions
+
+InstantDB uses a **CEL-based rule language** to secure your data. Define permissions in 
+`instant.perms.ts`:
+
+```typescript
+// instant.perms.ts
+import type { InstantRules } from "@instantdb/react";
+
+const rules = {
+  todos: {
+    allow: {
+      // Anyone can view todos
+      view: "true",
+      // Only the owner can create/update/delete
+      create: "isOwner",
+      update: "isOwner",
+      delete: "isOwner",
+    },
+    bind: [
+      "isOwner", "auth.id != null && auth.id == data.ownerId"
+    ]
+  },
+  
+  // Lock down creating new attributes in production
+  attrs: {
+    allow: {
+      create: "false"
+    }
+  }
+} satisfies InstantRules;
+
+export default rules;
+```
+
+Push permissions with the CLI:
+
+```bash
+npx instant-cli@latest push perms --app YOUR_APP_ID
+```
+
+### Key concepts
+
+- **`auth`** – The authenticated user (`auth.id`, `auth.email`)
+- **`data`** – The entity being accessed
+- **`newData`** – The entity after an update (for `update` rules)
+- **`ref()`** – Traverse relationships: `data.ref('owner.id')`
+- **`bind`** – Reusable rule aliases
+
+📚 **Learn more:** [Permissions](https://instantdb.com/docs/permissions)
 
 ## Sync
 
@@ -301,16 +444,45 @@ Schema.todos
   .limit(20)                       // Limit: first 20 results
 ```
 
+📚 **Learn more:** [Reading Data](https://instantdb.com/docs/instaql) | [Writing Data](https://instantdb.com/docs/instaml)
+
 ## Presence
 
 The `@Shared(.instantPresence(...))` property wrapper provides real-time presence – know who's 
 online and share ephemeral state like typing indicators and cursor positions.
 
+### How it works
+
+The generic type `T` in `RoomPresence<T>` is inferred from your schema's room definition. When you 
+define a room in `instant.schema.ts`:
+
+```typescript
+rooms: {
+  chat: {
+    presence: i.entity({
+      name: i.string(),
+      color: i.string(),
+      isTyping: i.boolean(),
+    }),
+  },
+}
+```
+
+The codegen produces `ChatPresence` and `Schema.Rooms.chat`, which you use with `@Shared`:
+
+```swift
+@Shared(.instantPresence(
+  Schema.Rooms.chat,           // RoomKey<ChatPresence> - determines the generic T
+  roomId: "room-123",
+  initialPresence: ChatPresence(name: "", color: "", isTyping: false)
+))
+private var presence: RoomPresence<ChatPresence>  // T = ChatPresence, inferred from RoomKey
+```
+
 ### Basic usage
 
 ```swift
 struct ChatView: View {
-  // Type-safe presence using generated room and presence types
   @Shared(.instantPresence(
     Schema.Rooms.chat,
     roomId: "room-123",
@@ -368,9 +540,11 @@ The `RoomPresence<T>` type provides:
 - `isLoading: Bool` – Whether the connection is being established
 - `error: Error?` – Any connection error
 
+📚 **Learn more:** [Presence, Cursors, and Activity](https://instantdb.com/docs/presence-and-topics)
+
 ## Schema codegen
 
-SharingInstant includes a powerful schema codegen tool that generates type-safe Swift code from 
+`sharing-instant` includes a powerful schema codegen tool that generates type-safe Swift code from 
 your InstantDB TypeScript schema.
 
 ### CLI usage
@@ -386,6 +560,9 @@ swift run instant-schema generate \
   --app YOUR_APP_ID \
   --to Sources/Generated
 ```
+
+> **Important:** The generator requires a **clean git workspace**. This ensures generated code 
+> can always be traced back to a specific commit. Commit your changes before running codegen.
 
 ### Generated code
 
@@ -472,8 +649,48 @@ For automatic codegen on every build, add the plugin to your target:
 )
 ```
 
-Place your `instant.schema.ts` in the target's source directory, and Swift types will be 
-regenerated automatically whenever the schema changes.
+#### Where to place `instant.schema.ts`
+
+The plugin looks for `instant.schema.ts` in your target's source directory. Here are example 
+project structures:
+
+**Single-target app:**
+```
+MyApp/
+├── Package.swift
+├── Sources/
+│   └── MyApp/
+│       ├── instant.schema.ts    ← Place schema here
+│       ├── MyApp.swift
+│       └── ContentView.swift
+```
+
+**Multi-target workspace:**
+```
+MyProject/
+├── Package.swift
+├── Sources/
+│   ├── Shared/                  ← Shared code target
+│   │   ├── instant.schema.ts    ← Schema in shared target
+│   │   └── Generated/           ← Generated types here
+│   ├── iOSApp/
+│   │   └── iOSApp.swift
+│   └── macOSApp/
+│       └── macOSApp.swift
+```
+
+**Xcode project with SPM:**
+```
+MyApp.xcodeproj/
+MyApp/
+├── instant.schema.ts            ← In your main app folder
+├── Generated/
+├── AppDelegate.swift
+└── ContentView.swift
+```
+
+> **Note:** You only need the schema in **one** target. Other targets can import the generated 
+> types from that target. You don't need to duplicate the schema for each platform.
 
 ## Demos
 
@@ -502,15 +719,28 @@ xcodebuild -workspace SharingInstant.xcworkspace \
 
 ## Documentation
 
-- **[InstantDB Docs](https://instantdb.com/docs)** – Official InstantDB documentation
+### InstantDB
+
+- **[Getting Started](https://instantdb.com/docs)** – Official InstantDB documentation
+- **[Modeling Data](https://instantdb.com/docs/modeling-data)** – Schema design guide
+- **[Permissions](https://instantdb.com/docs/permissions)** – CEL-based rule language
+- **[Instant CLI](https://instantdb.com/docs/cli)** – Push schema and permissions
+- **[Presence & Topics](https://instantdb.com/docs/presence-and-topics)** – Real-time presence
+- **[Patterns](https://instantdb.com/docs/patterns)** – Common recipes
+
+### Swift
+
 - **[Swift Sharing](https://swiftpackageindex.com/pointfreeco/swift-sharing/main/documentation/sharing)** – Point-Free's Sharing library docs
 - **[Schema Codegen](./Sources/InstantSchemaCodegen/Documentation.docc/SchemaCodegen.md)** – Schema codegen documentation
 
 ## Installation
 
-### Swift Package Manager
+You can add `sharing-instant` to your project using **either** Swift Package Manager **or** Xcode's 
+package manager UI. Choose whichever method you prefer – you only need to do one.
 
-Add SharingInstant to your `Package.swift`:
+### Option A: Swift Package Manager
+
+Add `sharing-instant` to your `Package.swift`:
 
 ```swift
 dependencies: [
@@ -529,7 +759,7 @@ Then add the product to your target:
 )
 ```
 
-### Xcode
+### Option B: Xcode
 
 1. File → Add Package Dependencies...
 2. Enter: `https://github.com/instantdb/sharing-instant`
