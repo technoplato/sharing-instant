@@ -1,0 +1,65 @@
+▿ SchemaIR
+  - documentation: Optional<String>.none
+  ▿ entities: 2 elements
+    ▿ EntityIR
+      ▿ documentation: Optional<String>
+        - some: "A todo item with title and completion status"
+      ▿ fields: 3 elements
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "title"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "done"
+          - type: FieldType.boolean
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: true
+          - name: "priority"
+          - type: FieldType.number
+      - name: "todos"
+    ▿ EntityIR
+      ▿ documentation: Optional<String>
+        - some: "A user who can own todos"
+      ▿ fields: 3 elements
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "name"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "email"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - isOptional: false
+          - name: "createdAt"
+          - type: FieldType.date
+      - name: "users"
+  ▿ links: 1 element
+    ▿ LinkIR
+      ▿ documentation: Optional<String>
+        - some: "User owns todos relationship"
+      ▿ forward: LinkSide
+        - cardinality: Cardinality.many
+        - entityName: "users"
+        - label: "todos"
+      - name: "userTodos"
+      ▿ reverse: LinkSide
+        - cardinality: Cardinality.one
+        - entityName: "todos"
+        - label: "owner"
+  - rooms: 0 elements
+  ▿ sourceFile: Optional<String>
+    - some: "SimpleSchema.ts"
