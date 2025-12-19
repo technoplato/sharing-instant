@@ -73,7 +73,7 @@ struct ObservableModelDemo: SwiftUICaseStudy {
 @Observable
 final class TodoListModel {
   @ObservationIgnored
-  @Shared(Schema.todos.orderBy(\Todo.createdAt, .desc))
+  @Shared(.instantSync(Schema.todos.orderBy(\Todo.createdAt, EntityKeyOrderDirection.desc)))
   var todos: IdentifiedArrayOf<Todo> = []
   
   var newTodoTitle = ""
