@@ -1,6 +1,28 @@
 import SharingInstant
 import SwiftUI
 
+// MARK: - Schema Extension for Todos
+//
+// ⚠️ TEMPORARY: This extension manually adds `todos` to the Schema namespace.
+//
+// Once the schema generator is updated to parse the CaseStudies instant.schema.ts,
+// this extension should be DELETED and `Schema.todos` will be auto-generated.
+//
+// The generated Schema.swift currently contains entities from a different project
+// (audiobooks, media, etc.) instead of the CaseStudies schema (todos, logs, facts).
+//
+// TODO: Regenerate schema from Examples/CaseStudies/instant.schema.ts:
+//   swift run instant-schema generate \
+//     --from Examples/CaseStudies/instant.schema.ts \
+//     --to Sources/Generated/
+
+extension Schema {
+  /// todos entity - bidirectional sync
+  ///
+  /// ⚠️ Should be auto-generated from instant.schema.ts
+  public static let todos = EntityKey<Todo>(namespace: "todos")
+}
+
 struct SwiftUISyncDemo: SwiftUICaseStudy {
   let readMe = """
     This demo shows how to use the `@Shared` annotation with `.instantSync` \
@@ -28,14 +50,16 @@ struct SwiftUISyncDemo: SwiftUICaseStudy {
 
 /// The main todo list view with shared state
 private struct TodoListView: View {
-  @Shared(
-    .instantSync(
-      configuration: SharingInstantSync.CollectionConfiguration<Todo>(
-        namespace: "todos",
-        orderBy: OrderBy.desc("createdAt")
-      )
-    )
-  )
+  /// Type-safe sync using EntityKey.
+  ///
+  /// The `@Shared` property wrapper handles:
+  /// - Connecting to InstantDB
+  /// - Subscribing to the "todos" collection
+  /// - Bidirectional sync with optimistic updates
+  /// - Automatic cleanup on view disappear
+  ///
+  /// Uses `Schema.todos` for type safety - no string literals needed!
+  @Shared(Schema.todos.orderBy(\.createdAt, .desc))
   private var todos: IdentifiedArrayOf<Todo> = []
   
   @State private var newTodoTitle = ""
@@ -148,4 +172,3 @@ private struct TodoRowReadOnly: View {
     }
   }
 }
-

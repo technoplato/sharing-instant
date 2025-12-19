@@ -45,6 +45,27 @@ struct TypingIndicatorDemo: SwiftUICaseStudy {
   
   var body: some View {
     VStack(spacing: 0) {
+      // Connection status indicator
+      if presence.isLoading {
+        HStack {
+          ProgressView()
+            .scaleEffect(0.7)
+          Text("Connecting...")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+        .padding(.vertical, 8)
+      } else if let error = presence.error {
+        HStack {
+          Image(systemName: "exclamationmark.triangle.fill")
+            .foregroundStyle(.orange)
+          Text("Error: \(error.localizedDescription)")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+        .padding(.vertical, 8)
+      }
+      
       // Peers list
       ScrollView(.horizontal, showsIndicators: false) {
         HStack(spacing: 12) {
