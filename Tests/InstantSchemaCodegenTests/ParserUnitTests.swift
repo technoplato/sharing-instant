@@ -568,5 +568,142 @@ final class ParserUnitTests: XCTestCase {
     XCTAssertEqual(result.topics[0].roomName, "reactions")
     XCTAssertEqual(result.topics[0].payload.fields.count, 2)
   }
+  
+  // MARK: - Full Schema Parser Tests
+  
+  func testSwiftParsingSchemaParser_simpleSchema_parses() throws {
+    let content = """
+    import { i } from "@instantdb/core";
+    
+    const _schema = i.schema({
+      entities: {
+        /** A todo item */
+        todos: i.entity({
+          title: i.string(),
+          done: i.boolean(),
+          priority: i.number().optional(),
+        }),
+        users: i.entity({
+          name: i.string(),
+          email: i.string(),
+        }),
+      },
+      links: {
+        userTodos: {
+          forward: { on: "users", has: "many", label: "todos" },
+          reverse: { on: "todos", has: "one", label: "owner" },
+        },
+      },
+    });
+    
+    export type Schema = typeof _schema;
+    """
+    
+    let parser = SwiftParsingSchemaParser()
+    let schema = try parser.parse(content: content)
+    
+    // Verify entities
+    XCTAssertEqual(schema.entities.count, 2)
+    XCTAssertEqual(schema.entities.map(\.name).sorted(), ["todos", "users"])
+    
+    // Verify todos entity
+    let todos = schema.entities.first { $0.name == "todos" }!
+    XCTAssertEqual(todos.fields.count, 3)
+    // Note: Documentation extraction is a stretch goal - the parser captures structure first
+    
+    let titleField = todos.fields.first { $0.name == "title" }!
+    XCTAssertEqual(titleField.type, .string)
+    XCTAssertFalse(titleField.isOptional)
+    
+    let priorityField = todos.fields.first { $0.name == "priority" }!
+    XCTAssertEqual(priorityField.type, .number)
+    XCTAssertTrue(priorityField.isOptional)
+    
+    // Verify links
+    XCTAssertEqual(schema.links.count, 1)
+    let link = schema.links[0]
+    XCTAssertEqual(link.name, "userTodos")
+    XCTAssertEqual(link.forward.entityName, "users")
+    XCTAssertEqual(link.forward.cardinality, .many)
+    XCTAssertEqual(link.reverse.entityName, "todos")
+    XCTAssertEqual(link.reverse.cardinality, .one)
+  }
+  
+  func testSwiftParsingSchemaParser_withRooms_parses() throws {
+    let content = """
+    import { i } from "@instantdb/core";
+    
+    const _schema = i.schema({
+      entities: {
+        todos: i.entity({
+          title: i.string(),
+        }),
+      },
+      links: {},
+      rooms: {
+        chat: {
+          presence: i.entity({
+            name: i.string(),
+            isTyping: i.boolean(),
+          }),
+          topics: {
+            emoji: i.entity({
+              name: i.string(),
+            }),
+          },
+        },
+      },
+    });
+    """
+    
+    let parser = SwiftParsingSchemaParser()
+    let schema = try parser.parse(content: content)
+    
+    // Verify rooms
+    XCTAssertEqual(schema.rooms.count, 1)
+    let chat = schema.rooms[0]
+    XCTAssertEqual(chat.name, "chat")
+    XCTAssertNotNil(chat.presence)
+    XCTAssertEqual(chat.presence?.fields.count, 2)
+    XCTAssertEqual(chat.topics.count, 1)
+    XCTAssertEqual(chat.topics[0].name, "emoji")
+  }
+  
+  func testSwiftParsingSchemaParser_systemEntities_parses() throws {
+    let content = """
+    import { i } from "@instantdb/core";
+    
+    const _schema = i.schema({
+      entities: {
+        $users: i.entity({
+          email: i.string(),
+        }),
+        $files: i.entity({
+          path: i.string(),
+        }),
+      },
+      links: {},
+    });
+    """
+    
+    let parser = SwiftParsingSchemaParser()
+    let schema = try parser.parse(content: content)
+    
+    XCTAssertEqual(schema.entities.count, 2)
+    XCTAssertTrue(schema.entities.allSatisfy { $0.isSystemEntity })
+    XCTAssertEqual(schema.entities.map(\.name).sorted(), ["$files", "$users"])
+  }
+  
+  func testSwiftParsingSchemaParser_noSchema_fails() throws {
+    let content = """
+    // Just some TypeScript code
+    const x = 5;
+    """
+    
+    let parser = SwiftParsingSchemaParser()
+    XCTAssertThrowsError(try parser.parse(content: content)) { error in
+      XCTAssertTrue(error.localizedDescription.contains("SCHEMA NOT FOUND"))
+    }
+  }
 }
 
