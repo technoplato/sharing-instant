@@ -1,27 +1,8 @@
 import SharingInstant
 import SwiftUI
 
-// MARK: - Schema Extension for Todos
-//
-// ⚠️ TEMPORARY: This extension manually adds `todos` to the Schema namespace.
-//
-// Once the schema generator is updated to parse the CaseStudies instant.schema.ts,
-// this extension should be DELETED and `Schema.todos` will be auto-generated.
-//
-// The generated Schema.swift currently contains entities from a different project
-// (audiobooks, media, etc.) instead of the CaseStudies schema (todos, logs, facts).
-//
-// TODO: Regenerate schema from Examples/CaseStudies/instant.schema.ts:
-//   swift run instant-schema generate \
-//     --from Examples/CaseStudies/instant.schema.ts \
-//     --to Sources/Generated/
-
-extension Schema {
-  /// todos entity - bidirectional sync
-  ///
-  /// ⚠️ Should be auto-generated from instant.schema.ts
-  public static let todos = EntityKey<Todo>(namespace: "todos")
-}
+// NOTE: Schema.todos is now auto-generated in Sources/Generated/Schema.swift
+// The generated Todo type uses `createdAt: Double` (Unix timestamp)
 
 struct SwiftUISyncDemo: SwiftUICaseStudy {
   let readMe = """
@@ -59,7 +40,7 @@ private struct TodoListView: View {
   /// - Automatic cleanup on view disappear
   ///
   /// Uses `Schema.todos` for type safety - no string literals needed!
-  @Shared(Schema.todos.orderBy(\.createdAt, .desc))
+  @Shared(Schema.todos.orderBy(\Todo.createdAt, .desc))
   private var todos: IdentifiedArrayOf<Todo> = []
   
   @State private var newTodoTitle = ""
@@ -129,7 +110,12 @@ private struct TodoListView: View {
     let title = newTodoTitle.trimmingCharacters(in: .whitespaces)
     guard !title.isEmpty else { return }
     
-    let todo = Todo(title: title)
+    // Generated Todo uses Double for createdAt (Unix timestamp)
+    let todo = Todo(
+      createdAt: Date().timeIntervalSince1970,
+      done: false,
+      title: title
+    )
     
     // Log user action
     InstantLogger.userAction("Add todo", details: ["title": title, "id": todo.id])
@@ -157,7 +143,8 @@ private struct TodoRowReadOnly: View {
         Text(todo.title)
           .strikethrough(todo.done)
         
-        Text(todo.createdAt, style: .relative)
+        // Convert Unix timestamp to Date for display
+        Text(Date(timeIntervalSince1970: todo.createdAt), style: .relative)
           .font(.caption)
           .foregroundStyle(.secondary)
       }

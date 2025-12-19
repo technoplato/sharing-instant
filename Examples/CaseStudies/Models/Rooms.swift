@@ -25,6 +25,11 @@ import SharingInstant
 // MARK: - Room Presence Types
 
 /// Presence data for 'avatars' room.
+///
+/// ## Sendable Conformance
+/// This type conforms to `Sendable` (not `@MainActor`) because it's used as a
+/// generic type parameter in `RoomPresence<T>` which requires `T: Sendable`.
+/// The type contains only value types (String) which are inherently thread-safe.
 public struct AvatarsPresence: Codable, Sendable, Equatable {
   public var name: String
   public var color: String
@@ -36,6 +41,10 @@ public struct AvatarsPresence: Codable, Sendable, Equatable {
 }
 
 /// Presence data for 'chat' room.
+///
+/// ## Sendable Conformance
+/// This type conforms to `Sendable` (not `@MainActor`) because it's used as a
+/// generic type parameter in `RoomPresence<T>` which requires `T: Sendable`.
 public struct ChatPresence: Codable, Sendable, Equatable {
   public var name: String
   public var color: String
@@ -49,6 +58,10 @@ public struct ChatPresence: Codable, Sendable, Equatable {
 }
 
 /// Presence data for 'cursors' room.
+///
+/// ## Sendable Conformance
+/// This type conforms to `Sendable` (not `@MainActor`) because it's used as a
+/// generic type parameter in `RoomPresence<T>` which requires `T: Sendable`.
 public struct CursorsPresence: Codable, Sendable, Equatable {
   public var name: String
   public var color: String
@@ -64,6 +77,10 @@ public struct CursorsPresence: Codable, Sendable, Equatable {
 }
 
 /// Presence data for 'reactions' room.
+///
+/// ## Sendable Conformance
+/// This type conforms to `Sendable` (not `@MainActor`) because it's used as a
+/// generic type parameter in `RoomPresence<T>` which requires `T: Sendable`.
 public struct ReactionsPresence: Codable, Sendable, Equatable {
   public var name: String
   
@@ -73,6 +90,10 @@ public struct ReactionsPresence: Codable, Sendable, Equatable {
 }
 
 /// Presence data for 'tileGame' room.
+///
+/// ## Sendable Conformance
+/// This type conforms to `Sendable` (not `@MainActor`) because it's used as a
+/// generic type parameter in `RoomPresence<T>` which requires `T: Sendable`.
 public struct TileGamePresence: Codable, Sendable, Equatable {
   public var name: String
   public var color: String
@@ -86,6 +107,10 @@ public struct TileGamePresence: Codable, Sendable, Equatable {
 // MARK: - Topic Payload Types
 
 /// Topic payload for 'reactions.emoji' events.
+///
+/// ## Sendable Conformance
+/// This type conforms to `Sendable` (not `@MainActor`) because it's used as a
+/// generic type parameter in `TopicChannel<T>` which requires `T: Sendable`.
 public struct EmojiTopic: Codable, Sendable, Equatable {
   public var name: String
   public var directionAngle: Double
@@ -100,10 +125,10 @@ public struct EmojiTopic: Codable, Sendable, Equatable {
 
 // MARK: - Room Keys
 
+/// Type-safe room keys for presence subscriptions.
+///
+/// ⚠️ These should be auto-generated from instant.schema.ts
 public extension Schema {
-  /// Type-safe room keys for presence subscriptions.
-  ///
-  /// ⚠️ These should be auto-generated from instant.schema.ts
   enum Rooms {
     /// 'avatars' room - presence sync
     public static let avatars = RoomKey<AvatarsPresence>(type: "avatars")
@@ -124,23 +149,12 @@ public extension Schema {
 
 // MARK: - Topic Keys
 
+/// Type-safe topic keys for fire-and-forget events.
+///
+/// ⚠️ These should be auto-generated from instant.schema.ts
 public extension Schema {
-  /// Type-safe topic keys for fire-and-forget events.
-  ///
-  /// ⚠️ These should be auto-generated from instant.schema.ts
   enum Topics {
     /// 'emoji' topic in 'reactions' room
     public static let emoji = TopicKey<EmojiTopic>(roomType: "reactions", topic: "emoji")
   }
 }
-
-// MARK: - Schema Namespace
-
-/// Schema namespace for generated types.
-///
-/// ⚠️ TEMPORARY: This conflicts with the generated Schema in Sources/Generated/Schema.swift.
-/// Once the schema generator properly generates rooms, this entire file should be deleted
-/// and the generated Schema.swift will contain both entities AND rooms.
-///
-/// For now, this is needed because the generated Schema.swift doesn't include rooms.
-public enum Schema {}

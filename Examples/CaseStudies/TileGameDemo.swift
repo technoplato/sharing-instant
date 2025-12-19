@@ -3,6 +3,18 @@ import Sharing
 import SharingInstant
 import SwiftUI
 
+// MARK: - Cross-Platform Color Helper
+
+private var secondaryBackgroundColor: Color {
+  #if os(iOS) || os(visionOS)
+  Color(.secondarySystemBackground)
+  #elseif os(macOS)
+  Color(.windowBackgroundColor)
+  #else
+  Color.gray.opacity(0.2)
+  #endif
+}
+
 /// Demonstrates a collaborative tile game using InstantDB presence and data sync.
 ///
 /// This example combines presence (to show who's playing and their colors)
@@ -93,7 +105,7 @@ struct TileGameDemo: SwiftUICaseStudy {
       .padding()
       .background(
         RoundedRectangle(cornerRadius: 12)
-          .fill(Color(.secondarySystemBackground))
+          .fill(secondaryBackgroundColor)
       )
       
       // Game board
@@ -126,7 +138,7 @@ struct TileGameDemo: SwiftUICaseStudy {
       .padding()
       .background(
         RoundedRectangle(cornerRadius: 12)
-          .fill(Color(.secondarySystemBackground))
+          .fill(secondaryBackgroundColor)
       )
       
       // Reset button

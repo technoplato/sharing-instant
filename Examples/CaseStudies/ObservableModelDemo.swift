@@ -73,14 +73,7 @@ struct ObservableModelDemo: SwiftUICaseStudy {
 @Observable
 final class TodoListModel {
   @ObservationIgnored
-  @Shared(
-    .instantSync(
-      configuration: SharingInstantSync.CollectionConfiguration<Todo>(
-        namespace: "todos",
-        orderBy: OrderBy.desc("createdAt")
-      )
-    )
-  )
+  @Shared(Schema.todos.orderBy(\Todo.createdAt, .desc))
   var todos: IdentifiedArrayOf<Todo> = []
   
   var newTodoTitle = ""
@@ -93,7 +86,12 @@ final class TodoListModel {
     let title = newTodoTitle.trimmingCharacters(in: .whitespaces)
     guard !title.isEmpty else { return }
     
-    let todo = Todo(title: title)
+    // Generated Todo uses Double for createdAt (Unix timestamp)
+    let todo = Todo(
+      createdAt: Date().timeIntervalSince1970,
+      done: false,
+      title: title
+    )
     _ = $todos.withLock { todos in
       todos.insert(todo, at: 0)
     }
@@ -102,7 +100,7 @@ final class TodoListModel {
   }
   
   func toggleTodo(_ todo: Todo) {
-    $todos.withLock { todos in
+    _ = $todos.withLock { todos in
       if let index = todos.firstIndex(where: { $0.id == todo.id }) {
         todos[index].done.toggle()
       }
@@ -110,13 +108,13 @@ final class TodoListModel {
   }
   
   func deleteTodos(at offsets: IndexSet) {
-    $todos.withLock { todos in
+    _ = $todos.withLock { todos in
       todos.remove(atOffsets: offsets)
     }
   }
   
   func deleteTodo(_ todo: Todo) {
-    $todos.withLock { todos in
+    _ = $todos.withLock { todos in
       todos.remove(id: todo.id)
     }
   }
@@ -141,7 +139,8 @@ private struct ObservableTodoRow: View {
         Text(todo.title)
           .strikethrough(todo.done)
         
-        Text(todo.createdAt, style: .relative)
+        // Convert Unix timestamp to Date for display
+        Text(Date(timeIntervalSince1970: todo.createdAt), style: .relative)
           .font(.caption)
           .foregroundStyle(.secondary)
       }
@@ -188,4 +187,3 @@ private struct ObservableTodoRow: View {
     }
   }
 }
-
