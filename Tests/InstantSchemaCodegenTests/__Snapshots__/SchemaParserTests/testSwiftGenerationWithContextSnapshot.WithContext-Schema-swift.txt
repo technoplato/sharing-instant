@@ -147,13 +147,9 @@ import SharingInstant
 
 public enum Schema {
   /// Todo entity - bidirectional sync
-  ///
-  /// A todo item with title and completion status
   public static let todos = EntityKey<Todo>(namespace: "todos")
 
   /// User entity - bidirectional sync
-  ///
-  /// A user who can own todos
   public static let users = EntityKey<User>(namespace: "users")
 
 }

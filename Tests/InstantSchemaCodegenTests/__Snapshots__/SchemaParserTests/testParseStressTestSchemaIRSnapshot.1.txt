@@ -23,7 +23,7 @@
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
-          - isOptional: false
+          - isOptional: true
           - name: "email"
           - type: FieldType.string
         ▿ FieldIR
@@ -40,8 +40,7 @@
           - type: FieldType.string
       - name: "$users"
     ▿ EntityIR
-      ▿ documentation: Optional<String>
-        - some: "A person in the real world.\nPeople exist independently of their roles. A person may be an author,\nnarrator, podcast host, guest making an appearance, article writer,\nor just referenced/mentioned in media. Not all"
+      - documentation: Optional<String>.none
       ▿ fields: 4 elements
         ▿ FieldIR
           - defaultValue: Optional<String>.none
@@ -69,8 +68,7 @@
           - type: FieldType.json
       - name: "people"
     ▿ EntityIR
-      ▿ documentation: Optional<String>
-        - some: "A piece of"
+      - documentation: Optional<String>.none
       ▿ fields: 7 elements
         ▿ FieldIR
           - defaultValue: Optional<String>.none
@@ -116,13 +114,12 @@
           - type: FieldType.json
       - name: "media"
     ▿ EntityIR
-      ▿ documentation: Optional<String>
-        - some: "A file storing media content, either locally or remotely.\nSupports distributed caching: the same media may have files on multiple\nmachines. Query by machine_id to find files available locally.\nMachine identification: Use IOPlatformUUID on macOS (stable, unique per machine).\nGet it via: ioreg -rd1 -c IOPlatformExpertDevice | grep IOPlatformUUID\nExample: \"CF17FBE0-0E64-5426-8FC8-00DB233891F4\"\nExamples:\n- Local MP3: machine_id=\"CF17FBE0-...\", path=\"/Users/me/audiobooks/new-earth.mp3\"\n- Server copy: machine_id=\"ABC123...\", path=\"/srv/audiobooks/new-earth.mp3\"\n- Remote URL: machine_id=null, remote_url=\"https:cdn.example.com/new-earth.mp3\"\nLinks:\n- media: The Media entity this file belongs to"
+      - documentation: Optional<String>.none
       ▿ fields: 9 elements
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
-          - isOptional: false
+          - isOptional: true
           - name: "path"
           - type: FieldType.string
         ▿ FieldIR
@@ -134,13 +131,13 @@
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
-          - isOptional: false
+          - isOptional: true
           - name: "machine_id"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
-          - isOptional: false
+          - isOptional: true
           - name: "format"
           - type: FieldType.string
         ▿ FieldIR
@@ -175,8 +172,7 @@
           - type: FieldType.string
       - name: "mediaFiles"
     ▿ EntityIR
-      ▿ documentation: Optional<String>
-        - some: "A named time range within media.\nPlatform-agnostic: represents chapters, sections, tracks, or any named\nportion of media. Can be nested (parent/child) for sub-chapters.\nSource types (how the segment was created):\n- \"import\": Imported from external metadata\n- \"manual\": Manually annotated by a user\n- \"auto\": Auto-detected (silence detection, topic change, etc.)\n- \"script\": Created by an ingestion script\nSource (where the data came from, when source_type is \"import\" or \"script\"):\n- \"audible_json\": Audible chapter JSON file\n- \"youtube_api\": YouTube Data API chapters\n- \"audio_ingestion.py\": Our audio ingestion script\n- etc.\nExamples:\n- Audiobook chapter: \"Chapter One: The Ego\" (parent)\n- Audiobook sub-chapter: \"Evocation\" (child of above)\n- Podcast segment: \"Interview\", \"Ad Break\"\nLinks:\n- media: The Media this segment belongs to\n- parent: Parent segment (for sub-chapters/nested sections)\n- children: Child"
+      - documentation: Optional<String>.none
       ▿ fields: 9 elements
         ▿ FieldIR
           - defaultValue: Optional<String>.none
@@ -217,7 +213,7 @@
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
-          - isOptional: false
+          - isOptional: true
           - name: "source"
           - type: FieldType.string
         ▿ FieldIR
@@ -234,8 +230,7 @@
           - type: FieldType.string
       - name: "segments"
     ▿ EntityIR
-      ▿ documentation: Optional<String>
-        - some: "An external platform where media or people can be found.\nExamples:\n- YouTube (video, text posts)\n- Audible (audiobooks)\n- Spotify (podcasts, music)\n- Twitter/X (profiles, posts, videos)\n- Medium (articles)\n- dev.to (articles)\n- Wikipedia (reference)\n- Wikidata (structured data)\n- Libby (library audiobooks/ebooks)\nLinks:\n- externalMediaIds: Media linked to this platform\n- externalPeopleIds: People linked to this platform\n- externalSegmentIds: Segments linked to this platform"
+      - documentation: Optional<String>.none
       ▿ fields: 4 elements
         ▿ FieldIR
           - defaultValue: Optional<String>.none
@@ -263,8 +258,7 @@
           - type: FieldType.string
       - name: "platforms"
     ▿ EntityIR
-      ▿ documentation: Optional<String>
-        - some: "Links media to an external platform with platform-specific identifiers.\nExamples:\n- Audible: platform=\"Audible\", external_id=\"B002V0RAUU\",\nnormalized_url=\"https:www.audible.com/pd/B002V0RAUU\"\n- YouTube: platform=\"YouTube\", external_id=\"jNQXAC9IVRw\",\nnormalized_url=\"https:www.youtube.com/watch?v=jNQXAC9IVRw\"\n(Note: YouTube has many URL formats - use yt-dlp\'s URL normalization)\nLinks:\n- media: The Media entity this refers to\n- platform: The Platform this ID is on\n- accessMetadata: Access restrictions (paywall, subscription, etc.)"
+      - documentation: Optional<String>.none
       ▿ fields: 4 elements
         ▿ FieldIR
           - defaultValue: Optional<String>.none
@@ -275,7 +269,7 @@
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
-          - isOptional: false
+          - isOptional: true
           - name: "normalized_url"
           - type: FieldType.string
         ▿ FieldIR
@@ -292,8 +286,7 @@
           - type: FieldType.string
       - name: "externalMediaIds"
     ▿ EntityIR
-      ▿ documentation: Optional<String>
-        - some: "Links people to their profiles on external platforms.\nExamples:\n- YouTube channel: platform=\"YouTube\", external_id=\"UCxxxxxx\",\nnormalized_url=\"https:www.youtube.com/@lexfridman\"\n- Twitter: platform=\"Twitter\", external_id=\"lexfridman\",\nnormalized_url=\"https:twitter.com/lexfridman\"\n- Wikidata: platform=\"Wikidata\", external_id=\"Q123456\",\nnormalized_url=\"https:www.wikidata.org/wiki/Q123456\"\n- Wikipedia: platform=\"Wikipedia\", external_id=\"Eckhart_Tolle\",\nnormalized_url=\"https:en.wikipedia.org/wiki/Eckhart_Tolle\"\nLinks:\n- person: The People entity this refers to\n- platform: The Platform this profile is on"
+      - documentation: Optional<String>.none
       ▿ fields: 4 elements
         ▿ FieldIR
           - defaultValue: Optional<String>.none
@@ -304,7 +297,7 @@
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
-          - isOptional: false
+          - isOptional: true
           - name: "normalized_url"
           - type: FieldType.string
         ▿ FieldIR
@@ -321,13 +314,12 @@
           - type: FieldType.string
       - name: "externalPeopleIds"
     ▿ EntityIR
-      ▿ documentation: Optional<String>
-        - some: "Links segments to platform-specific deep links.\nExamples:\n- YouTube timestamp: normalized_url=\"https:www.youtube.com/watch?v=jNQXAC9IVRw&t=120\"\n- Spotify chapter: normalized_url=\"spotify:episode:xxx#t=120\"\nLinks:\n- segment: The Segment entity this refers to\n- platform: The Platform this link is on"
+      - documentation: Optional<String>.none
       ▿ fields: 3 elements
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
-          - isOptional: false
+          - isOptional: true
           - name: "external_id"
           - type: FieldType.string
         ▿ FieldIR
@@ -344,8 +336,7 @@
           - type: FieldType.string
       - name: "externalSegmentIds"
     ▿ EntityIR
-      ▿ documentation: Optional<String>
-        - some: "Describes access restrictions for external media.\nLinked to ExternalMediaIds because access varies by platform:\n- Same audiobook might be subscription on Audible, one-time on Apple Books,\nor free via Libby (library)\n- Same video might be free on YouTube, paywalled on Nebula\nAccess types (what gets in your way before you can access content):\n- \"free\": No payment required, no account needed\n- \"free_with_ads\": Free but has advertisements\n- \"account_required\": Must create account (no additional payment)\n- \"subscription\": Requires ongoing subscription (e.g., Audible, Netflix)\n- \"one_time_purchase\": Single payment to own\n- \"rental\": Temporary access for a fee\nLinks:\n- externalMediaId: The external media link this describes"
+      - documentation: Optional<String>.none
       ▿ fields: 6 elements
         ▿ FieldIR
           - defaultValue: Optional<String>.none
@@ -558,7 +549,7 @@
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
-          - isOptional: false
+          - isOptional: true
           - name: "external_id"
           - type: FieldType.string
         ▿ FieldIR
@@ -615,8 +606,7 @@
           - type: FieldType.number
       - name: "segmentSplits"
     ▿ EntityIR
-      ▿ documentation: Optional<String>
-        - some: "Link shazam catalog entries to media (new entity)."
+      - documentation: Optional<String>.none
       ▿ fields: 5 elements
         ▿ FieldIR
           - defaultValue: Optional<String>.none
@@ -730,13 +720,12 @@
           - type: FieldType.string
       - name: "speakerAssignments"
     ▿ EntityIR
-      ▿ documentation: Optional<String>
-        - some: "A person who speaks in media.\nSpeakers link a Person to their speaking roles. A person can have multiple\nspeaker entries (different roles, different media, different segments).\nNote: Voice embeddings are stored in PostgreSQL (pgvector) and linked\nvia the speakerAssignments entity, not directly on"
+      - documentation: Optional<String>.none
       ▿ fields: 6 elements
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
-          - isOptional: false
+          - isOptional: true
           - name: "role"
           - type: FieldType.string
         ▿ FieldIR
@@ -760,7 +749,7 @@
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
-          - isOptional: false
+          - isOptional: true
           - name: "name"
           - type: FieldType.string
         ▿ FieldIR
@@ -893,8 +882,7 @@
           - type: FieldType.string
       - name: "transcriptionRuns"
     ▿ EntityIR
-      ▿ documentation: Optional<String>
-        - some: "Link video (audio file) to its audiobook.\nA video can be a chapter clip from an audiobook."
+      - documentation: Optional<String>.none
       ▿ fields: 9 elements
         ▿ FieldIR
           - defaultValue: Optional<String>.none
@@ -1020,8 +1008,7 @@
           - type: FieldType.string
       - name: "wordTextCorrections"
     ▿ EntityIR
-      ▿ documentation: Optional<String>
-        - some: "Audiobook entity for tracking audiobook metadata.\nLinks to speakers (narrator, author) and chapters.\nNote: narrator and author are stored as links to speakers, not as string fields."
+      - documentation: Optional<String>.none
       ▿ fields: 7 elements
         ▿ FieldIR
           - defaultValue: Optional<String>.none
@@ -1032,13 +1019,13 @@
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
-          - isOptional: false
+          - isOptional: true
           - name: "asin"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
-          - isOptional: false
+          - isOptional: true
           - name: "sku"
           - type: FieldType.string
         ▿ FieldIR
@@ -1067,8 +1054,7 @@
           - type: FieldType.json
       - name: "audiobooks"
     ▿ EntityIR
-      ▿ documentation: Optional<String>
-        - some: "Audiobook chapter entity for tracking chapter/sub-chapter metadata.\nChapters have timestamps (start_time_ms, end_time_ms) rather than page numbers.\nSub-chapters link to their parent chapter via the parent link."
+      - documentation: Optional<String>.none
       ▿ fields: 8 elements
         ▿ FieldIR
           - defaultValue: Optional<String>.none
@@ -1121,8 +1107,7 @@
       - name: "audiobookChapters"
   ▿ links: 38 elements
     ▿ LinkIR
-      ▿ documentation: Optional<String>
-        - some: "Link speakers to their person (People entity).\nA speaker is a person in a specific speaking role."
+      - documentation: Optional<String>.none
       ▿ forward: LinkSide
         - cardinality: Cardinality.one
         - entityName: "speakers"
@@ -1133,8 +1118,7 @@
         - entityName: "people"
         - label: "speakers"
     ▿ LinkIR
-      ▿ documentation: Optional<String>
-        - some: "Link external people IDs to their person."
+      - documentation: Optional<String>.none
       ▿ forward: LinkSide
         - cardinality: Cardinality.one
         - entityName: "externalPeopleIds"
@@ -1145,8 +1129,7 @@
         - entityName: "people"
         - label: "externalIds"
     ▿ LinkIR
-      ▿ documentation: Optional<String>
-        - some: "Link external people IDs to their platform."
+      - documentation: Optional<String>.none
       ▿ forward: LinkSide
         - cardinality: Cardinality.one
         - entityName: "externalPeopleIds"
@@ -1157,8 +1140,7 @@
         - entityName: "platforms"
         - label: "externalPeopleIds"
     ▿ LinkIR
-      ▿ documentation: Optional<String>
-        - some: "Link media files to their media."
+      - documentation: Optional<String>.none
       ▿ forward: LinkSide
         - cardinality: Cardinality.one
         - entityName: "mediaFiles"
@@ -1169,8 +1151,7 @@
         - entityName: "media"
         - label: "files"
     ▿ LinkIR
-      ▿ documentation: Optional<String>
-        - some: "Link segments to their media."
+      - documentation: Optional<String>.none
       ▿ forward: LinkSide
         - cardinality: Cardinality.one
         - entityName: "segments"
@@ -1181,8 +1162,7 @@
         - entityName: "media"
         - label: "segments"
     ▿ LinkIR
-      ▿ documentation: Optional<String>
-        - some: "Link segments to their parent segment (for sub-chapters/nested sections)."
+      - documentation: Optional<String>.none
       ▿ forward: LinkSide
         - cardinality: Cardinality.one
         - entityName: "segments"
@@ -1193,8 +1173,7 @@
         - entityName: "segments"
         - label: "children"
     ▿ LinkIR
-      ▿ documentation: Optional<String>
-        - some: "Link external media IDs to their media."
+      - documentation: Optional<String>.none
       ▿ forward: LinkSide
         - cardinality: Cardinality.one
         - entityName: "externalMediaIds"
@@ -1205,8 +1184,7 @@
         - entityName: "media"
         - label: "externalIds"
     ▿ LinkIR
-      ▿ documentation: Optional<String>
-        - some: "Link external media IDs to their platform."
+      - documentation: Optional<String>.none
       ▿ forward: LinkSide
         - cardinality: Cardinality.one
         - entityName: "externalMediaIds"
@@ -1217,8 +1195,7 @@
         - entityName: "platforms"
         - label: "externalMediaIds"
     ▿ LinkIR
-      ▿ documentation: Optional<String>
-        - some: "Link external segment IDs to their segment."
+      - documentation: Optional<String>.none
       ▿ forward: LinkSide
         - cardinality: Cardinality.one
         - entityName: "externalSegmentIds"
@@ -1229,8 +1206,7 @@
         - entityName: "segments"
         - label: "externalIds"
     ▿ LinkIR
-      ▿ documentation: Optional<String>
-        - some: "Link external segment IDs to their platform."
+      - documentation: Optional<String>.none
       ▿ forward: LinkSide
         - cardinality: Cardinality.one
         - entityName: "externalSegmentIds"
@@ -1241,8 +1217,7 @@
         - entityName: "platforms"
         - label: "externalSegmentIds"
     ▿ LinkIR
-      ▿ documentation: Optional<String>
-        - some: "Link access metadata to its external media ID."
+      - documentation: Optional<String>.none
       ▿ forward: LinkSide
         - cardinality: Cardinality.one
         - entityName: "accessMetadata"
@@ -1253,8 +1228,7 @@
         - entityName: "externalMediaIds"
         - label: "accessMetadata"
     ▿ LinkIR
-      ▿ documentation: Optional<String>
-        - some: "Link media to its author (Speaker entity)."
+      - documentation: Optional<String>.none
       ▿ forward: LinkSide
         - cardinality: Cardinality.one
         - entityName: "media"
@@ -1265,8 +1239,7 @@
         - entityName: "speakers"
         - label: "authoredMedia"
     ▿ LinkIR
-      ▿ documentation: Optional<String>
-        - some: "Link media to its narrator (Speaker entity, for audiobooks)."
+      - documentation: Optional<String>.none
       ▿ forward: LinkSide
         - cardinality: Cardinality.one
         - entityName: "media"
@@ -1277,8 +1250,7 @@
         - entityName: "speakers"
         - label: "narratedMedia"
     ▿ LinkIR
-      ▿ documentation: Optional<String>
-        - some: "Link shazam catalog entries to media (new entity)."
+      - documentation: Optional<String>.none
       ▿ forward: LinkSide
         - cardinality: Cardinality.one
         - entityName: "shazamCatalogEntries"
@@ -1289,8 +1261,7 @@
         - entityName: "media"
         - label: "shazamCatalogEntries"
     ▿ LinkIR
-      ▿ documentation: Optional<String>
-        - some: "Link diarization runs to media (new entity)."
+      - documentation: Optional<String>.none
       ▿ forward: LinkSide
         - cardinality: Cardinality.many
         - entityName: "media"
@@ -1301,8 +1272,7 @@
         - entityName: "diarizationRuns"
         - label: "media"
     ▿ LinkIR
-      ▿ documentation: Optional<String>
-        - some: "Link transcription runs to media (new entity)."
+      - documentation: Optional<String>.none
       ▿ forward: LinkSide
         - cardinality: Cardinality.many
         - entityName: "media"
@@ -1489,8 +1459,7 @@
         - entityName: "wordTextCorrections"
         - label: "word"
     ▿ LinkIR
-      ▿ documentation: Optional<String>
-        - some: "Link audiobook to its narrator (speaker entity)."
+      - documentation: Optional<String>.none
       ▿ forward: LinkSide
         - cardinality: Cardinality.one
         - entityName: "audiobooks"
@@ -1501,8 +1470,7 @@
         - entityName: "speakers"
         - label: "narratedAudiobooks"
     ▿ LinkIR
-      ▿ documentation: Optional<String>
-        - some: "Link audiobook to its author (speaker entity, optional - author may also be narrator)."
+      - documentation: Optional<String>.none
       ▿ forward: LinkSide
         - cardinality: Cardinality.one
         - entityName: "audiobooks"
@@ -1513,8 +1481,7 @@
         - entityName: "speakers"
         - label: "authoredAudiobooks"
     ▿ LinkIR
-      ▿ documentation: Optional<String>
-        - some: "Link chapters to their audiobook."
+      - documentation: Optional<String>.none
       ▿ forward: LinkSide
         - cardinality: Cardinality.one
         - entityName: "audiobookChapters"
@@ -1525,8 +1492,7 @@
         - entityName: "audiobooks"
         - label: "chapters"
     ▿ LinkIR
-      ▿ documentation: Optional<String>
-        - some: "Link sub-chapters to their parent chapter."
+      - documentation: Optional<String>.none
       ▿ forward: LinkSide
         - cardinality: Cardinality.one
         - entityName: "audiobookChapters"
@@ -1537,8 +1503,7 @@
         - entityName: "audiobookChapters"
         - label: "subchapters"
     ▿ LinkIR
-      ▿ documentation: Optional<String>
-        - some: "Link video (audio file) to its audiobook.\nA video can be a chapter clip from an audiobook."
+      - documentation: Optional<String>.none
       ▿ forward: LinkSide
         - cardinality: Cardinality.one
         - entityName: "videos"
@@ -1549,8 +1514,7 @@
         - entityName: "audiobooks"
         - label: "audioFiles"
     ▿ LinkIR
-      ▿ documentation: Optional<String>
-        - some: "Link video (audio file) to its chapter.\nUsed when a video represents a specific chapter clip."
+      - documentation: Optional<String>.none
       ▿ forward: LinkSide
         - cardinality: Cardinality.one
         - entityName: "videos"

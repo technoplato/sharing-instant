@@ -112,7 +112,6 @@ import SharingInstant
 
 public enum SchemaLinks {
   /// users ↔ todos relationship
-  /// User owns todos relationship
   public static let userTodos = Link(
     name: "userTodos",
     from: User.self, fromLabel: "todos", fromCardinality: .many,

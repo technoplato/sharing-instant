@@ -143,19 +143,6 @@ struct MemberListContentView: View {
 import Foundation
 import SharingInstant
 
-/// A library member who can borrow books.
-/// Members have a unique email address and can:
-/// - Borrow multiple books at once
-/// - Have a favorite author
-/// - Express interest in multiple genres
-/// @example
-/// ```typescript
-/// const member = {
-/// id: "mem_123",
-/// name: "Jane Doe",
-/// email: "jane@example.com"
-/// };
-/// ```
 public struct Member: EntityIdentifiable, Codable, Sendable {
   public static var namespace: String { "members" }
   
@@ -223,8 +210,6 @@ public struct Member: EntityIdentifiable, Codable, Sendable {
 }
 
 
-/// An author who writes books.
-/// Authors can write multiple books and have fans.
 public struct Author: EntityIdentifiable, Codable, Sendable {
   public static var namespace: String { "authors" }
   
@@ -274,10 +259,6 @@ public struct Author: EntityIdentifiable, Codable, Sendable {
 }
 
 
-/// A book in the library catalog.
-/// ## ISBN Format
-/// We support both ISBN-10 and ISBN-13 formats.
-/// Store without hyphens for consistency.
 public struct Book: EntityIdentifiable, Codable, Sendable {
   public static var namespace: String { "books" }
   
@@ -348,7 +329,6 @@ public struct Book: EntityIdentifiable, Codable, Sendable {
 }
 
 
-/// A book genre/category.
 public struct Genre: EntityIdentifiable, Codable, Sendable {
   public static var namespace: String { "genres" }
   
@@ -395,7 +375,6 @@ public struct Genre: EntityIdentifiable, Codable, Sendable {
 }
 
 
-/// A record of a book being borrowed.
 public struct BorrowRecord: EntityIdentifiable, Codable, Sendable {
   public static var namespace: String { "borrowRecords" }
   

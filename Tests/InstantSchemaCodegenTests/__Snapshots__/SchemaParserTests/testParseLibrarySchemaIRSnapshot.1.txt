@@ -2,8 +2,7 @@
   - documentation: Optional<String>.none
   ▿ entities: 5 elements
     ▿ EntityIR
-      ▿ documentation: Optional<String>
-        - some: "A library member who can borrow books.\nMembers have a unique email address and can:\n- Borrow multiple books at once\n- Have a favorite author\n- Express interest in multiple genres\n@example\n```typescript\nconst member = {\nid: \"mem_123\",\nname: \"Jane Doe\",\nemail: \"jane@example.com\"\n};\n```"
+      - documentation: Optional<String>.none
       ▿ fields: 7 elements
         ▿ FieldIR
           - defaultValue: Optional<String>.none
@@ -49,8 +48,7 @@
           - type: FieldType.json
       - name: "members"
     ▿ EntityIR
-      ▿ documentation: Optional<String>
-        - some: "An author who writes books.\nAuthors can write multiple books and have fans."
+      - documentation: Optional<String>.none
       ▿ fields: 5 elements
         ▿ FieldIR
           - defaultValue: Optional<String>.none
@@ -84,8 +82,7 @@
           - type: FieldType.number
       - name: "authors"
     ▿ EntityIR
-      ▿ documentation: Optional<String>
-        - some: "A book in the library catalog.\n## ISBN Format\nWe support both ISBN-10 and ISBN-13 formats.\nStore without hyphens for consistency."
+      - documentation: Optional<String>.none
       ▿ fields: 8 elements
         ▿ FieldIR
           - defaultValue: Optional<String>.none
@@ -137,8 +134,7 @@
           - type: FieldType.json
       - name: "books"
     ▿ EntityIR
-      ▿ documentation: Optional<String>
-        - some: "A book genre/category."
+      - documentation: Optional<String>.none
       ▿ fields: 4 elements
         ▿ FieldIR
           - defaultValue: Optional<String>.none
@@ -166,8 +162,7 @@
           - type: FieldType.number
       - name: "genres"
     ▿ EntityIR
-      ▿ documentation: Optional<String>
-        - some: "A record of a book being borrowed."
+      - documentation: Optional<String>.none
       ▿ fields: 4 elements
         ▿ FieldIR
           - defaultValue: Optional<String>.none
@@ -196,8 +191,7 @@
       - name: "borrowRecords"
   ▿ links: 7 elements
     ▿ LinkIR
-      ▿ documentation: Optional<String>
-        - some: "Author → Books relationship.\nAn author writes many books.\nA book is written by exactly one author."
+      - documentation: Optional<String>.none
       ▿ forward: LinkSide
         - cardinality: Cardinality.many
         - entityName: "authors"
@@ -208,8 +202,7 @@
         - entityName: "books"
         - label: "author"
     ▿ LinkIR
-      ▿ documentation: Optional<String>
-        - some: "Book ↔ Genre relationship (many-to-many).\nA book can belong to multiple genres.\nA genre contains many books."
+      - documentation: Optional<String>.none
       ▿ forward: LinkSide
         - cardinality: Cardinality.many
         - entityName: "books"
@@ -220,8 +213,7 @@
         - entityName: "genres"
         - label: "books"
     ▿ LinkIR
-      ▿ documentation: Optional<String>
-        - some: "Book → Current Borrower relationship.\nA book can be borrowed by at most one member at a time.\nA member can borrow multiple books."
+      - documentation: Optional<String>.none
       ▿ forward: LinkSide
         - cardinality: Cardinality.one
         - entityName: "books"
@@ -232,8 +224,7 @@
         - entityName: "members"
         - label: "borrowedBooks"
     ▿ LinkIR
-      ▿ documentation: Optional<String>
-        - some: "Member → Favorite Author relationship."
+      - documentation: Optional<String>.none
       ▿ forward: LinkSide
         - cardinality: Cardinality.one
         - entityName: "members"
@@ -244,8 +235,7 @@
         - entityName: "authors"
         - label: "fans"
     ▿ LinkIR
-      ▿ documentation: Optional<String>
-        - some: "Member ↔ Genre Interests (many-to-many)."
+      - documentation: Optional<String>.none
       ▿ forward: LinkSide
         - cardinality: Cardinality.many
         - entityName: "members"
@@ -256,8 +246,7 @@
         - entityName: "genres"
         - label: "interestedMembers"
     ▿ LinkIR
-      ▿ documentation: Optional<String>
-        - some: "Borrow Record → Book relationship."
+      - documentation: Optional<String>.none
       ▿ forward: LinkSide
         - cardinality: Cardinality.one
         - entityName: "borrowRecords"
@@ -268,8 +257,7 @@
         - entityName: "books"
         - label: "borrowHistory"
     ▿ LinkIR
-      ▿ documentation: Optional<String>
-        - some: "Borrow Record → Member relationship."
+      - documentation: Optional<String>.none
       ▿ forward: LinkSide
         - cardinality: Cardinality.one
         - entityName: "borrowRecords"

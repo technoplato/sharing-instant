@@ -2,13 +2,11 @@ import { i } from "@instantdb/core";
 
 const _schema = i.schema({
   entities: {
-    /** A todo item with title and completion status */
     todos: i.entity({
       title: i.string(),
       done: i.boolean(),
       priority: i.number().optional()
     }),
-    /** A user who can own todos */
     users: i.entity({
       name: i.string(),
       email: i.string(),
@@ -16,7 +14,6 @@ const _schema = i.schema({
     })
   },
   links: {
-    /** User owns todos relationship */
     userTodos: {
       forward: { on: "users", has: "many", label: "todos" },
       reverse: { on: "todos", has: "one", label: "owner" }

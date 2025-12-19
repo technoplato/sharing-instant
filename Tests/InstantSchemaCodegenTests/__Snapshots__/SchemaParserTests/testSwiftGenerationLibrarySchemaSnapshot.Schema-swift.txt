@@ -149,44 +149,18 @@ import SharingInstant
 
 public enum Schema {
   /// Member entity - bidirectional sync
-  ///
-  /// A library member who can borrow books.
-  /// Members have a unique email address and can:
-  /// - Borrow multiple books at once
-  /// - Have a favorite author
-  /// - Express interest in multiple genres
-  /// @example
-  /// ```typescript
-  /// const member = {
-  /// id: "mem_123",
-  /// name: "Jane Doe",
-  /// email: "jane@example.com"
-  /// };
-  /// ```
   public static let members = EntityKey<Member>(namespace: "members")
 
   /// Author entity - bidirectional sync
-  ///
-  /// An author who writes books.
-  /// Authors can write multiple books and have fans.
   public static let authors = EntityKey<Author>(namespace: "authors")
 
   /// Book entity - bidirectional sync
-  ///
-  /// A book in the library catalog.
-  /// ## ISBN Format
-  /// We support both ISBN-10 and ISBN-13 formats.
-  /// Store without hyphens for consistency.
   public static let books = EntityKey<Book>(namespace: "books")
 
   /// Genre entity - bidirectional sync
-  ///
-  /// A book genre/category.
   public static let genres = EntityKey<Genre>(namespace: "genres")
 
   /// BorrowRecord entity - bidirectional sync
-  ///
-  /// A record of a book being borrowed.
   public static let borrowRecords = EntityKey<BorrowRecord>(namespace: "borrowRecords")
 
 }

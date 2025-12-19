@@ -94,7 +94,6 @@ struct TodoListContentView: View {
 import Foundation
 import SharingInstant
 
-/// A todo item with title and completion status
 public struct Todo: EntityIdentifiable, Codable, Sendable {
   public static var namespace: String { "todos" }
   
@@ -132,7 +131,6 @@ public struct Todo: EntityIdentifiable, Codable, Sendable {
 }
 
 
-/// A user who can own todos
 public struct User: EntityIdentifiable, Codable, Sendable {
   public static var namespace: String { "users" }
   
