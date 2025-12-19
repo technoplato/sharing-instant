@@ -456,7 +456,14 @@ final class ParserUnitTests: XCTestCase {
     let result = try FieldParser().parse(&input)
     XCTAssertEqual(result.name, "email")
     XCTAssertEqual(result.type, .string)
-    XCTAssertTrue(result.isOptional)
+    XCTAssertTrue(result.isOptional, "Field with .optional() after other modifiers should be optional")
+  }
+  
+  func testFieldParser_optionalInMiddle_parses() throws {
+    var input: Substring = "path: i.string().indexed().optional()"
+    let result = try FieldParser().parse(&input)
+    XCTAssertEqual(result.name, "path")
+    XCTAssertTrue(result.isOptional, "Field with .optional() should be optional")
   }
   
   // MARK: - Entity Parser Tests
