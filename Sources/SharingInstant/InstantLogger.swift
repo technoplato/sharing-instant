@@ -630,7 +630,7 @@ public final class InstantLogger {
     
     // Send to InstantDB if enabled
     if InstantLoggerConfig.syncToInstantDB {
-      $logs.withLock { logs in
+      _ = $logs.withLock { logs in
         logs.insert(entry, at: 0)
       }
     }

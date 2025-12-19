@@ -217,6 +217,17 @@ private struct AuthenticatedView: View {
   @State private var isSigningOut = false
   @State private var error: String?
   
+  /// Cross-platform secondary background color
+  private var secondaryBackgroundColor: Color {
+    #if os(iOS) || os(visionOS)
+    Color(.secondarySystemBackground)
+    #elseif os(macOS)
+    Color(.windowBackgroundColor)
+    #else
+    Color.gray.opacity(0.2)
+    #endif
+  }
+  
   var body: some View {
     VStack(spacing: 24) {
       // Avatar
@@ -267,7 +278,7 @@ private struct AuthenticatedView: View {
       .frame(maxWidth: .infinity, alignment: .leading)
       .background(
         RoundedRectangle(cornerRadius: 8)
-          .fill(Color(.secondarySystemBackground))
+          .fill(secondaryBackgroundColor)
       )
       
       if isGuest {
