@@ -78,7 +78,7 @@ final class ParserComparisonTests: XCTestCase {
   func testCompareStressTestSchema() throws {
     let content = try loadFixture("StressTestSchema.ts")
     
-    let oldParser = TypeScriptSchemaParser()
+    let oldParser = LegacyTypeScriptSchemaParser()
     let oldResult = try oldParser.parse(content: content, sourceFile: "StressTestSchema.ts")
     
     let newParser = SwiftParsingSchemaParser()
@@ -141,11 +141,12 @@ final class ParserComparisonTests: XCTestCase {
   ///
   /// - Parameter fixture: The fixture filename (e.g., "SimpleSchema.ts")
   /// - Throws: If either parser fails or outputs differ
+  @available(*, deprecated, message: "Testing legacy parser")
   private func compareParserOutput(for fixture: String) throws {
     let content = try loadFixture(fixture)
     
-    // Parse with OLD regex parser
-    let oldParser = TypeScriptSchemaParser()
+    // Parse with OLD regex parser (explicitly using legacy)
+    let oldParser = LegacyTypeScriptSchemaParser()
     let oldResult = try oldParser.parse(content: content, sourceFile: fixture)
     
     // Parse with NEW swift-parsing parser

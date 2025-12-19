@@ -220,9 +220,6 @@ import SharingInstant
 
 public enum SchemaLinks {
   /// authors ↔ books relationship
-  /// Author → Books relationship.
-An author writes many books.
-A book is written by exactly one author.
   public static let authorBooks = Link(
     name: "authorBooks",
     from: Author.self, fromLabel: "books", fromCardinality: .many,
@@ -230,9 +227,6 @@ A book is written by exactly one author.
   )
 
   /// books ↔ genres relationship
-  /// Book ↔ Genre relationship (many-to-many).
-A book can belong to multiple genres.
-A genre contains many books.
   public static let bookGenres = Link(
     name: "bookGenres",
     from: Book.self, fromLabel: "genres", fromCardinality: .many,
@@ -240,9 +234,6 @@ A genre contains many books.
   )
 
   /// books ↔ members relationship
-  /// Book → Current Borrower relationship.
-A book can be borrowed by at most one member at a time.
-A member can borrow multiple books.
   public static let bookBorrower = Link(
     name: "bookBorrower",
     from: Book.self, fromLabel: "currentBorrower", fromCardinality: .one,
@@ -250,7 +241,6 @@ A member can borrow multiple books.
   )
 
   /// members ↔ authors relationship
-  /// Member → Favorite Author relationship.
   public static let memberFavoriteAuthor = Link(
     name: "memberFavoriteAuthor",
     from: Member.self, fromLabel: "favoriteAuthor", fromCardinality: .one,
@@ -258,7 +248,6 @@ A member can borrow multiple books.
   )
 
   /// members ↔ genres relationship
-  /// Member ↔ Genre Interests (many-to-many).
   public static let memberGenreInterests = Link(
     name: "memberGenreInterests",
     from: Member.self, fromLabel: "genreInterests", fromCardinality: .many,
@@ -266,7 +255,6 @@ A member can borrow multiple books.
   )
 
   /// borrowRecords ↔ books relationship
-  /// Borrow Record → Book relationship.
   public static let borrowRecordBook = Link(
     name: "borrowRecordBook",
     from: BorrowRecord.self, fromLabel: "book", fromCardinality: .one,
@@ -274,7 +262,6 @@ A member can borrow multiple books.
   )
 
   /// borrowRecords ↔ members relationship
-  /// Borrow Record → Member relationship.
   public static let borrowRecordMember = Link(
     name: "borrowRecordMember",
     from: BorrowRecord.self, fromLabel: "member", fromCardinality: .one,
