@@ -4,12 +4,16 @@
 
 [youtube](https://www.youtube.com/watch?v=wuGd6pt1reA)
 
+## [wip] 
+
+Depends on landing https://github.com/tornikegomareli/instant-ios-sdk/pull/6
+
+## Overview
+
 A Swift Sharing integration for InstantDB, providing local-first reactive state management.
 
 [![Swift 6.0](https://img.shields.io/badge/Swift-6.0-orange.svg)](https://swift.org)
 [![Platforms](https://img.shields.io/badge/Platforms-iOS%20|%20macOS%20|%20tvOS%20|%20watchOS-blue.svg)](https://developer.apple.com)
-
-## Overview
 
 SharingInstant brings InstantDB's real-time, local-first database to Swift using Point-Free's [Sharing](https://github.com/pointfreeco/swift-sharing) library. It provides:
 
