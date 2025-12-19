@@ -42,21 +42,30 @@ wrapper from Point-Free's Sharing library. It provides:
 
 ## Quick example
 
-Copy this into your app to see real-time sync in action. **Run on multiple simulators or devices 
-to watch changes sync instantly!**
+Get started in seconds with the sample command. This generates a sample schema and Swift types 
+you can use immediately:
+
+```bash
+# Generate sample schema and Swift types
+swift run instant-schema sample --to Sources/Generated/
+```
+
+This creates:
+- `instant.schema.ts` – A sample TypeScript schema with a `todos` entity
+- `Sources/Generated/` – Swift types (`Todo`, `Schema.todos`, etc.)
+
+Then copy this into your app. **Run on multiple simulators or devices to watch changes sync instantly!**
 
 ```swift
-import IdentifiedCollections
+// TodoApp.swift
 import SharingInstant
 import SwiftUI
-
-// MARK: - App Entry Point
 
 @main
 struct TodoApp: App {
   init() {
-    // Configure InstantDB with your App ID
-    // Get yours at: https://instantdb.com/dash/new
+    // Get your App ID at: https://instantdb.com/dash/new
+    // Then push the schema: npx instant-cli@latest push schema --app YOUR_APP_ID
     prepareDependencies {
       $0.defaultInstant = InstantClient(appId: "YOUR_APP_ID")
     }
@@ -68,28 +77,17 @@ struct TodoApp: App {
     }
   }
 }
+```
 
-// MARK: - Todo Model (or use generated types from schema codegen)
-
-struct Todo: EntityIdentifiable, Codable, Sendable {
-  static var namespace: String { "todos" }
-  var id: String
-  var title: String
-  var done: Bool
-  var createdAt: Double
-  
-  init(id: String = UUID().uuidString, title: String, done: Bool, createdAt: Double) {
-    self.id = id
-    self.title = title
-    self.done = done
-    self.createdAt = createdAt
-  }
-}
-
-// MARK: - Todo List View
+```swift
+// TodoListView.swift
+import IdentifiedCollections
+import SharingInstant
+import SwiftUI
 
 struct TodoListView: View {
-  @Shared(.instantSync(EntityKey<Todo>(namespace: "todos")))
+  // Uses generated Schema.todos and Todo types
+  @Shared(.instantSync(Schema.todos))
   private var todos: IdentifiedArrayOf<Todo> = []
   
   @State private var newTitle = ""
@@ -547,10 +545,21 @@ The `RoomPresence<T>` type provides:
 `sharing-instant` includes a powerful schema codegen tool that generates type-safe Swift code from 
 your InstantDB TypeScript schema.
 
+### Quick start with sample
+
+The fastest way to get started is the `sample` command:
+
+```bash
+# Generate sample schema and Swift types (no git requirements)
+swift run instant-schema sample --to Sources/Generated/
+```
+
+This creates a sample `instant.schema.ts` and generates Swift types you can use immediately.
+
 ### CLI usage
 
 ```bash
-# Generate Swift types from a schema file
+# Generate Swift types from a schema file (requires clean git workspace)
 swift run instant-schema generate \
   --from path/to/instant.schema.ts \
   --to Sources/Generated
@@ -561,8 +570,8 @@ swift run instant-schema generate \
   --to Sources/Generated
 ```
 
-> **Important:** The generator requires a **clean git workspace**. This ensures generated code 
-> can always be traced back to a specific commit. Commit your changes before running codegen.
+> **Note:** The `generate` command requires a **clean git workspace** for full traceability. 
+> The `sample` command has no git requirements – use it for quick experimentation.
 
 ### Generated code
 

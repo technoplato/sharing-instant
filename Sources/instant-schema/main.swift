@@ -61,6 +61,9 @@ struct InstantSchemaCLI {
       case "migrate":
         try await migrateCommand(Array(arguments.dropFirst()))
         
+      case "sample":
+        try await sampleCommand(Array(arguments.dropFirst()))
+        
       case "help", "--help", "-h":
         printUsage()
         
@@ -170,7 +173,9 @@ struct InstantSchemaCLI {
     print("📝 Generation Info:")
     print("   Date:    \(context.formattedDate)")
     print("   Machine: \(context.machine.formatted)")
-    print("   Commit:  \(String(context.gitState.headCommit.sha.prefix(8))) - \(context.gitState.headCommit.message)")
+    if let gitState = context.gitState {
+      print("   Commit:  \(String(gitState.headCommit.sha.prefix(8))) - \(gitState.headCommit.message)")
+    }
   }
   
   /// Build the generation context with all metadata
@@ -202,13 +207,15 @@ struct InstantSchemaCLI {
       timezone: .current,
       machine: MachineInfo.current(),
       generatorPath: "Sources/instant-schema/main.swift",
-      command: command,
       sourceSchemaPath: relativeInputPath,
       outputDirectory: relativeOutputDir,
-      gitState: GitState(
-        headCommit: headCommit,
-        schemaLastModified: schemaLastModified
-      )
+      mode: .production(ProductionContext(
+        gitState: GitState(
+          headCommit: headCommit,
+          schemaLastModified: schemaLastModified
+        ),
+        command: command
+      ))
     )
   }
   
@@ -627,6 +634,162 @@ struct InstantSchemaCLI {
     }
   }
   
+  // MARK: - Sample Command
+  
+  /// Generate sample schema and Swift types for quick start
+  static func sampleCommand(_ args: [String]) async throws {
+    var outputDir: String = "Sources/Generated"
+    var schemaPath: String? = nil
+    var skipSchema = false
+    
+    var i = 0
+    while i < args.count {
+      switch args[i] {
+      case "--to", "-t":
+        i += 1
+        outputDir = args[i]
+      case "--schema", "-s":
+        i += 1
+        schemaPath = args[i]
+      case "--skip-schema":
+        skipSchema = true
+      default:
+        break
+      }
+      i += 1
+    }
+    
+    print("🎉 Generating sample schema and Swift types...")
+    print("")
+    
+    // Sample TypeScript schema
+    let sampleSchema = """
+      // instant.schema.ts
+      // Sample schema for sharing-instant quick start
+      //
+      // This schema defines:
+      // - A "todos" entity for a todo list app
+      // - A "chat" room for presence features (typing indicators, online status)
+      //
+      // To use this schema:
+      // 1. Create an InstantDB project at https://instantdb.com/dash/new
+      // 2. Push this schema: npx instant-cli@latest push schema --app YOUR_APP_ID
+      // 3. Generate Swift types: swift run instant-schema generate --from instant.schema.ts
+      
+      import { i } from "@instantdb/core";
+      
+      const _schema = i.schema({
+        entities: {
+          todos: i.entity({
+            title: i.string(),
+            done: i.boolean(),
+            createdAt: i.number().indexed(),
+          }),
+        },
+        rooms: {
+          chat: {
+            presence: i.entity({
+              name: i.string(),
+              color: i.string(),
+              isTyping: i.boolean(),
+            }),
+          },
+        },
+      });
+      
+      type _AppSchema = typeof _schema;
+      interface AppSchema extends _AppSchema {}
+      const schema: AppSchema = _schema;
+      
+      export type { AppSchema };
+      export default schema;
+      """
+    
+    // Write schema file if not skipping
+    if !skipSchema {
+      let resolvedSchemaPath = schemaPath ?? "instant.schema.ts"
+      
+      // Check if file exists
+      if FileManager.default.fileExists(atPath: resolvedSchemaPath) {
+        print("⚠️  Schema file already exists: \(resolvedSchemaPath)")
+        print("   Use --skip-schema to skip schema generation")
+        print("   Or specify a different path with --schema <path>")
+        exit(1)
+      }
+      
+      try sampleSchema.write(toFile: resolvedSchemaPath, atomically: true, encoding: .utf8)
+      print("✅ Created sample schema: \(resolvedSchemaPath)")
+    }
+    
+    // Parse the schema
+    let parser = CommentPreservingSchemaParser()
+    let schema = try parser.parse(sampleSchema, sourceFile: "instant.schema.ts")
+    
+    print("📋 Schema contains: \(schema.entities.count) entity, \(schema.rooms.count) room")
+    
+    // Generate Swift types (without git checks for sample command)
+    print("🔨 Generating Swift types...")
+    
+    let generator = SwiftCodeGenerator()
+    
+    // Create a sample context (no git requirements)
+    let context = GenerationContext(
+      generatedAt: Date(),
+      timezone: .current,
+      machine: MachineInfo.current(),
+      generatorPath: "instant-schema sample",
+      sourceSchemaPath: schemaPath ?? "instant.schema.ts",
+      outputDirectory: outputDir,
+      mode: .sample(SampleContext(description: "Sample schema for sharing-instant quick start"))
+    )
+    
+    let files = generator.generate(from: schema, context: context)
+    
+    // Create output directory
+    try FileManager.default.createDirectory(atPath: outputDir, withIntermediateDirectories: true)
+    
+    for file in files {
+      let path = (outputDir as NSString).appendingPathComponent(file.name)
+      try file.content.write(toFile: path, atomically: true, encoding: .utf8)
+      print("  ✓ \(path)")
+    }
+    
+    print("")
+    print("✅ Generated \(files.count) files in \(outputDir)")
+    print("")
+    print("=" .padding(toLength: 60, withPad: "=", startingAt: 0))
+    print("🚀 Quick Start")
+    print("=" .padding(toLength: 60, withPad: "=", startingAt: 0))
+    print("")
+    print("1. Create an InstantDB project:")
+    print("   https://www.instantdb.com/dash/new")
+    print("")
+    print("2. Push the schema to InstantDB:")
+    print("   npx instant-cli@latest push schema --app YOUR_APP_ID")
+    print("")
+    print("3. Configure your app:")
+    print("")
+    print("   import SharingInstant")
+    print("")
+    print("   @main")
+    print("   struct MyApp: App {")
+    print("     init() {")
+    print("       prepareDependencies {")
+    print("         $0.defaultInstant = InstantClient(appId: \"YOUR_APP_ID\")")
+    print("       }")
+    print("     }")
+    print("     // ...")
+    print("   }")
+    print("")
+    print("4. Use in your views:")
+    print("")
+    print("   @Shared(.instantSync(Schema.todos))")
+    print("   private var todos: IdentifiedArrayOf<Todo> = []")
+    print("")
+    print("See README.md for complete examples.")
+    print("")
+  }
+  
   // MARK: - Swift to TypeScript Command
   
   /// Generate TypeScript from Swift schema files
@@ -702,6 +865,7 @@ struct InstantSchemaCLI {
     
     COMMANDS:
       generate    Generate Swift code from TypeScript schema or API
+      sample      Generate sample schema and Swift types for quick start
       swift-to-ts Generate TypeScript from Swift schema files (alias: s2t)
       pull        Fetch deployed schema from InstantDB
       parse       Parse a schema file and display the IR
@@ -717,6 +881,11 @@ struct InstantSchemaCLI {
       --to, -t <dir>         Output directory (default: Sources/Generated/)
       --app-id, -a <id>      App ID (can also use INSTANT_APP_ID env var)
       --admin-token <token>  Admin token (can also use INSTANT_ADMIN_TOKEN env var)
+    
+    SAMPLE OPTIONS:
+      --to, -t <dir>         Output directory for Swift types (default: Sources/Generated/)
+      --schema, -s <file>    Output path for TypeScript schema (default: instant.schema.ts)
+      --skip-schema          Skip generating the TypeScript schema file
     
     PULL OPTIONS:
       --app-id, -a <id>      App ID (required)
@@ -744,6 +913,9 @@ struct InstantSchemaCLI {
       --admin-token <token>  Admin token for API access
     
     EXAMPLES:
+      # Quick start: Generate sample schema and Swift types
+      instant-schema sample --to Sources/Generated/
+    
       # Generate Swift from TypeScript
       instant-schema generate --from instant.schema.ts --to Sources/Generated/
     
