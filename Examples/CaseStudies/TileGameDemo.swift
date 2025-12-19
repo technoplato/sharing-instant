@@ -52,7 +52,7 @@ struct TileGameDemo: SwiftUICaseStudy {
   private let boardSize = 4
   
   /// Persisted board state using data sync.
-  @Shared(.instantSync(configuration: .init(namespace: "boards")))
+  @Shared(.instantSync(Schema.boards))
   private var boards: IdentifiedArrayOf<Board> = []
   
   /// Ephemeral presence for who's playing.
@@ -176,7 +176,7 @@ struct TileGameDemo: SwiftUICaseStudy {
     }
     
     // Set presence
-    $presence.withLock { state in
+    _ = $presence.withLock { state in
       state.user = TileGamePresence(name: userId, color: myColor.hexString)
     }
     
@@ -195,7 +195,7 @@ struct TileGameDemo: SwiftUICaseStudy {
   private func setTileColor(key: String) {
     guard var board = boards.first(where: { $0.id == boardId }) else { return }
     board.state[key] = myColor.hexString
-    $boards.withLock { $0[id: boardId] = board }
+    _ = $boards.withLock { $0[id: boardId] = board }
   }
   
   private func resetBoard() {
@@ -205,20 +205,11 @@ struct TileGameDemo: SwiftUICaseStudy {
         board.state["\(row)-\(col)"] = "#FFFFFF"
       }
     }
-    $boards.withLock { $0[id: boardId] = board }
+    _ = $boards.withLock { $0[id: boardId] = board }
   }
 }
 
-// MARK: - Board Model
-
-struct Board: Codable, Identifiable, Equatable, Sendable {
-  var id: String
-  var state: [String: String] = [:]
-}
-
-extension Board: EntityIdentifiable {
-  static var namespace: String { "boards" }
-}
+// Board is defined in Models/Todo.swift
 
 #Preview {
   TileGameDemo()

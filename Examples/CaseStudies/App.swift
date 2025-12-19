@@ -181,7 +181,9 @@ struct CaseStudiesApp: App {
             }
           }
         }
+        #if os(iOS)
         .listStyle(.insetGrouped)
+        #endif
         .navigationTitle("Case Studies")
       }
     }

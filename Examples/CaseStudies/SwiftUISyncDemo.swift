@@ -40,7 +40,7 @@ private struct TodoListView: View {
   /// - Automatic cleanup on view disappear
   ///
   /// Uses `Schema.todos` for type safety - no string literals needed!
-  @Shared(Schema.todos.orderBy(\Todo.createdAt, .desc))
+  @Shared(.instantSync(Schema.todos.orderBy(\Todo.createdAt, EntityKeyOrderDirection.desc)))
   private var todos: IdentifiedArrayOf<Todo> = []
   
   @State private var newTodoTitle = ""

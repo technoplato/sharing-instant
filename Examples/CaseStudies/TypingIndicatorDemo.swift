@@ -244,6 +244,16 @@ struct PeerAvatar: View {
 struct TypingDots: View {
   @State private var animationPhase = 0
   
+  private var systemBackgroundColor: Color {
+    #if os(iOS) || os(visionOS)
+    Color(.systemBackground)
+    #elseif os(macOS)
+    Color(.windowBackgroundColor)
+    #else
+    Color.white
+    #endif
+  }
+  
   var body: some View {
     HStack(spacing: 2) {
       ForEach(0..<3) { index in
@@ -256,7 +266,7 @@ struct TypingDots: View {
     .padding(4)
     .background(
       Capsule()
-        .fill(Color(.systemBackground))
+        .fill(systemBackgroundColor)
         .shadow(radius: 1)
     )
     .onAppear {

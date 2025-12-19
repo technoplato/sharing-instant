@@ -791,7 +791,7 @@ struct SSLDebugView: View {
 // ⚠️ WARNING: This bypasses SSL security and should ONLY be used for development!
 // Never ship this to production.
 
-private class CertificateInspectorDelegate: NSObject, URLSessionDelegate, URLSessionTaskDelegate {
+private final class CertificateInspectorDelegate: NSObject, URLSessionDelegate, URLSessionTaskDelegate, @unchecked Sendable {
   let bypassEnabled: Bool
   let onTrustReceived: (SecTrust) -> Void
   
@@ -874,7 +874,7 @@ private class CertificateInspectorDelegate: NSObject, URLSessionDelegate, URLSes
 // A minimal delegate that just accepts all certificates.
 // Used for the final HTTP request test when bypass is enabled.
 
-private class ZscalerBypassDelegate: NSObject, URLSessionDelegate, URLSessionTaskDelegate {
+private final class ZscalerBypassDelegate: NSObject, URLSessionDelegate, URLSessionTaskDelegate, @unchecked Sendable {
   func urlSession(
     _ session: URLSession,
     didReceive challenge: URLAuthenticationChallenge,

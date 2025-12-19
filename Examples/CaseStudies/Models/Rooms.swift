@@ -23,14 +23,13 @@ import Foundation
 import SharingInstant
 
 // MARK: - Room Presence Types
+//
+// These types use explicit `nonisolated` conformances for Codable and Equatable
+// to satisfy Swift 6 strict concurrency requirements. Without explicit implementations,
+// Swift 6 infers @MainActor isolation from SwiftUI view context.
 
 /// Presence data for 'avatars' room.
-///
-/// ## Sendable Conformance
-/// This type conforms to `Sendable` (not `@MainActor`) because it's used as a
-/// generic type parameter in `RoomPresence<T>` which requires `T: Sendable`.
-/// The type contains only value types (String) which are inherently thread-safe.
-public struct AvatarsPresence: Codable, Sendable, Equatable {
+public struct AvatarsPresence: Sendable {
   public var name: String
   public var color: String
   
@@ -40,12 +39,32 @@ public struct AvatarsPresence: Codable, Sendable, Equatable {
   }
 }
 
+extension AvatarsPresence: Equatable {
+  nonisolated public static func == (lhs: Self, rhs: Self) -> Bool {
+    lhs.name == rhs.name && lhs.color == rhs.color
+  }
+}
+
+extension AvatarsPresence: Codable {
+  nonisolated public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.name = try container.decode(String.self, forKey: .name)
+    self.color = try container.decode(String.self, forKey: .color)
+  }
+  
+  nonisolated public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(name, forKey: .name)
+    try container.encode(color, forKey: .color)
+  }
+  
+  private enum CodingKeys: String, CodingKey {
+    case name, color
+  }
+}
+
 /// Presence data for 'chat' room.
-///
-/// ## Sendable Conformance
-/// This type conforms to `Sendable` (not `@MainActor`) because it's used as a
-/// generic type parameter in `RoomPresence<T>` which requires `T: Sendable`.
-public struct ChatPresence: Codable, Sendable, Equatable {
+public struct ChatPresence: Sendable {
   public var name: String
   public var color: String
   public var isTyping: Bool
@@ -57,12 +76,34 @@ public struct ChatPresence: Codable, Sendable, Equatable {
   }
 }
 
+extension ChatPresence: Equatable {
+  nonisolated public static func == (lhs: Self, rhs: Self) -> Bool {
+    lhs.name == rhs.name && lhs.color == rhs.color && lhs.isTyping == rhs.isTyping
+  }
+}
+
+extension ChatPresence: Codable {
+  nonisolated public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.name = try container.decode(String.self, forKey: .name)
+    self.color = try container.decode(String.self, forKey: .color)
+    self.isTyping = try container.decode(Bool.self, forKey: .isTyping)
+  }
+  
+  nonisolated public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(name, forKey: .name)
+    try container.encode(color, forKey: .color)
+    try container.encode(isTyping, forKey: .isTyping)
+  }
+  
+  private enum CodingKeys: String, CodingKey {
+    case name, color, isTyping
+  }
+}
+
 /// Presence data for 'cursors' room.
-///
-/// ## Sendable Conformance
-/// This type conforms to `Sendable` (not `@MainActor`) because it's used as a
-/// generic type parameter in `RoomPresence<T>` which requires `T: Sendable`.
-public struct CursorsPresence: Codable, Sendable, Equatable {
+public struct CursorsPresence: Sendable {
   public var name: String
   public var color: String
   public var cursorX: Double
@@ -76,12 +117,36 @@ public struct CursorsPresence: Codable, Sendable, Equatable {
   }
 }
 
+extension CursorsPresence: Equatable {
+  nonisolated public static func == (lhs: Self, rhs: Self) -> Bool {
+    lhs.name == rhs.name && lhs.color == rhs.color && lhs.cursorX == rhs.cursorX && lhs.cursorY == rhs.cursorY
+  }
+}
+
+extension CursorsPresence: Codable {
+  nonisolated public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.name = try container.decode(String.self, forKey: .name)
+    self.color = try container.decode(String.self, forKey: .color)
+    self.cursorX = try container.decode(Double.self, forKey: .cursorX)
+    self.cursorY = try container.decode(Double.self, forKey: .cursorY)
+  }
+  
+  nonisolated public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(name, forKey: .name)
+    try container.encode(color, forKey: .color)
+    try container.encode(cursorX, forKey: .cursorX)
+    try container.encode(cursorY, forKey: .cursorY)
+  }
+  
+  private enum CodingKeys: String, CodingKey {
+    case name, color, cursorX, cursorY
+  }
+}
+
 /// Presence data for 'reactions' room.
-///
-/// ## Sendable Conformance
-/// This type conforms to `Sendable` (not `@MainActor`) because it's used as a
-/// generic type parameter in `RoomPresence<T>` which requires `T: Sendable`.
-public struct ReactionsPresence: Codable, Sendable, Equatable {
+public struct ReactionsPresence: Sendable {
   public var name: String
   
   public init(name: String) {
@@ -89,12 +154,30 @@ public struct ReactionsPresence: Codable, Sendable, Equatable {
   }
 }
 
+extension ReactionsPresence: Equatable {
+  nonisolated public static func == (lhs: Self, rhs: Self) -> Bool {
+    lhs.name == rhs.name
+  }
+}
+
+extension ReactionsPresence: Codable {
+  nonisolated public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.name = try container.decode(String.self, forKey: .name)
+  }
+  
+  nonisolated public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(name, forKey: .name)
+  }
+  
+  private enum CodingKeys: String, CodingKey {
+    case name
+  }
+}
+
 /// Presence data for 'tileGame' room.
-///
-/// ## Sendable Conformance
-/// This type conforms to `Sendable` (not `@MainActor`) because it's used as a
-/// generic type parameter in `RoomPresence<T>` which requires `T: Sendable`.
-public struct TileGamePresence: Codable, Sendable, Equatable {
+public struct TileGamePresence: Sendable {
   public var name: String
   public var color: String
   
@@ -104,14 +187,34 @@ public struct TileGamePresence: Codable, Sendable, Equatable {
   }
 }
 
+extension TileGamePresence: Equatable {
+  nonisolated public static func == (lhs: Self, rhs: Self) -> Bool {
+    lhs.name == rhs.name && lhs.color == rhs.color
+  }
+}
+
+extension TileGamePresence: Codable {
+  nonisolated public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.name = try container.decode(String.self, forKey: .name)
+    self.color = try container.decode(String.self, forKey: .color)
+  }
+  
+  nonisolated public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(name, forKey: .name)
+    try container.encode(color, forKey: .color)
+  }
+  
+  private enum CodingKeys: String, CodingKey {
+    case name, color
+  }
+}
+
 // MARK: - Topic Payload Types
 
 /// Topic payload for 'reactions.emoji' events.
-///
-/// ## Sendable Conformance
-/// This type conforms to `Sendable` (not `@MainActor`) because it's used as a
-/// generic type parameter in `TopicChannel<T>` which requires `T: Sendable`.
-public struct EmojiTopic: Codable, Sendable, Equatable {
+public struct EmojiTopic: Sendable {
   public var name: String
   public var directionAngle: Double
   public var rotationAngle: Double
@@ -122,6 +225,41 @@ public struct EmojiTopic: Codable, Sendable, Equatable {
     self.rotationAngle = rotationAngle
   }
 }
+
+extension EmojiTopic: Equatable {
+  nonisolated public static func == (lhs: Self, rhs: Self) -> Bool {
+    lhs.name == rhs.name && lhs.directionAngle == rhs.directionAngle && lhs.rotationAngle == rhs.rotationAngle
+  }
+}
+
+extension EmojiTopic: Codable {
+  nonisolated public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.name = try container.decode(String.self, forKey: .name)
+    self.directionAngle = try container.decode(Double.self, forKey: .directionAngle)
+    self.rotationAngle = try container.decode(Double.self, forKey: .rotationAngle)
+  }
+  
+  nonisolated public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(name, forKey: .name)
+    try container.encode(directionAngle, forKey: .directionAngle)
+    try container.encode(rotationAngle, forKey: .rotationAngle)
+  }
+  
+  private enum CodingKeys: String, CodingKey {
+    case name, directionAngle, rotationAngle
+  }
+}
+
+// MARK: - Schema Namespace
+//
+// ⚠️ TEMPORARY: Define Schema namespace here until generated schema is available.
+// The generated Schema.swift in Sources/Generated/ is not part of the SharingInstant
+// library - it's meant to be generated per-project. For CaseStudies, we define
+// Schema locally.
+
+public enum Schema {}
 
 // MARK: - Room Keys
 

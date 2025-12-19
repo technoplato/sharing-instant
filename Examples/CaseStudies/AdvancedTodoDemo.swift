@@ -59,7 +59,7 @@ enum TodoFilterOption: String, CaseIterable, Identifiable {
 
 private struct AdvancedTodoView: View {
   // Main data source - we'll reload this with different queries
-  @Shared(Schema.todos.orderBy(\Todo.createdAt, .desc))
+  @Shared(.instantSync(Schema.todos.orderBy(\Todo.createdAt, EntityKeyOrderDirection.desc)))
   private var todos: IdentifiedArrayOf<Todo> = []
   
   @State private var searchText = ""

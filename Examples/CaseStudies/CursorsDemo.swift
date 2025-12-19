@@ -41,6 +41,16 @@ struct CursorsDemo: SwiftUICaseStudy {
   /// Track previous peer count for logging
   @State private var previousPeerCount: Int = 0
   
+  private var systemBackgroundColor: Color {
+    #if os(iOS) || os(visionOS)
+    Color(.systemBackground)
+    #elseif os(macOS)
+    Color(.windowBackgroundColor)
+    #else
+    Color.white
+    #endif
+  }
+  
   var body: some View {
     GeometryReader { geometry in
       ZStack {
@@ -70,7 +80,7 @@ struct CursorsDemo: SwiftUICaseStudy {
           }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(.systemBackground))
+        .background(systemBackgroundColor)
         
         // Render peer cursors
         ForEach(presence.peers) { peer in
