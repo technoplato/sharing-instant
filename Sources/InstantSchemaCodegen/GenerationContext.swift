@@ -5,6 +5,86 @@
 
 import Foundation
 
+// MARK: - Generation Mode
+
+/// The mode under which code generation is running.
+///
+/// Each mode has different requirements and produces different header metadata:
+/// - `.production`: Full traceability with git state, requires clean working directory
+/// - `.sample`: Quick start generation, no git requirements
+/// - `.plugin`: SPM build plugin, automatic regeneration on schema changes
+public enum GenerationMode: Sendable {
+  
+  /// Production generation from the CLI `generate` command.
+  ///
+  /// Requires:
+  /// - Clean git working directory
+  /// - Full git state tracking (HEAD commit, schema last modified)
+  ///
+  /// Use this for:
+  /// - Generating code that will be committed to version control
+  /// - CI/CD pipelines
+  /// - Any situation where traceability is important
+  case production(ProductionContext)
+  
+  /// Sample generation from the CLI `sample` command.
+  ///
+  /// No git requirements - designed for quick start and experimentation.
+  ///
+  /// Use this for:
+  /// - Getting started with sharing-instant
+  /// - Generating example types to explore the API
+  /// - Tutorials and documentation
+  case sample(SampleContext)
+  
+  /// Plugin generation from the SPM build plugin.
+  ///
+  /// Automatic regeneration on every build when schema changes.
+  ///
+  /// Use this for:
+  /// - Development workflow where types auto-update
+  /// - Projects using the InstantSchemaPlugin
+  case plugin(PluginContext)
+}
+
+/// Context for production generation (full traceability).
+public struct ProductionContext: Sendable {
+  /// Git state at the time of generation
+  public let gitState: GitState
+  
+  /// The full command that was issued
+  public let command: String
+  
+  public init(gitState: GitState, command: String) {
+    self.gitState = gitState
+    self.command = command
+  }
+}
+
+/// Context for sample generation (quick start, no git).
+public struct SampleContext: Sendable {
+  /// Description of what sample was generated
+  public let description: String
+  
+  public init(description: String = "Sample schema for sharing-instant quick start") {
+    self.description = description
+  }
+}
+
+/// Context for SPM build plugin generation.
+public struct PluginContext: Sendable {
+  /// The plugin that triggered generation
+  public let pluginName: String
+  
+  /// The target being built
+  public let targetName: String
+  
+  public init(pluginName: String = "InstantSchemaPlugin", targetName: String) {
+    self.pluginName = pluginName
+    self.targetName = targetName
+  }
+}
+
 // MARK: - Generation Context
 
 /// Metadata about the generation environment, captured at code generation time.
@@ -26,11 +106,8 @@ public struct GenerationContext: Sendable {
   /// Information about the machine running the generator
   public let machine: MachineInfo
   
-  /// Path to the generator executable (relative to repo root)
+  /// Path to the generator (relative to repo root or plugin name)
   public let generatorPath: String
-  
-  /// The full command that was issued to generate the code
-  public let command: String
   
   /// Path to the source schema file (relative to repo root)
   public let sourceSchemaPath: String
@@ -38,8 +115,8 @@ public struct GenerationContext: Sendable {
   /// Path to the output directory (relative to repo root)
   public let outputDirectory: String
   
-  /// Git state at the time of generation
-  public let gitState: GitState
+  /// The generation mode with its associated context
+  public let mode: GenerationMode
   
   // MARK: - Initialization
   
@@ -48,19 +125,47 @@ public struct GenerationContext: Sendable {
     timezone: TimeZone = .current,
     machine: MachineInfo,
     generatorPath: String,
-    command: String,
     sourceSchemaPath: String,
     outputDirectory: String,
-    gitState: GitState
+    mode: GenerationMode
   ) {
     self.generatedAt = generatedAt
     self.timezone = timezone
     self.machine = machine
     self.generatorPath = generatorPath
-    self.command = command
     self.sourceSchemaPath = sourceSchemaPath
     self.outputDirectory = outputDirectory
-    self.gitState = gitState
+    self.mode = mode
+  }
+  
+  // MARK: - Convenience Accessors
+  
+  /// The command string (for production mode) or a description of the generation
+  public var commandOrDescription: String {
+    switch mode {
+    case .production(let ctx):
+      return ctx.command
+    case .sample(let ctx):
+      return "swift run instant-schema sample  // \(ctx.description)"
+    case .plugin(let ctx):
+      return "SPM Build Plugin: \(ctx.pluginName) (target: \(ctx.targetName))"
+    }
+  }
+  
+  /// Git state if available (only for production mode)
+  public var gitState: GitState? {
+    switch mode {
+    case .production(let ctx):
+      return ctx.gitState
+    case .sample, .plugin:
+      return nil
+    }
+  }
+  
+  /// Whether this is a production build with full traceability
+  public var isProduction: Bool {
+    if case .production = mode { return true }
+    return false
   }
   
   // MARK: - Formatted Output
@@ -71,6 +176,18 @@ public struct GenerationContext: Sendable {
     formatter.dateFormat = "MMMM d, yyyy 'at' h:mm a zzz"
     formatter.timeZone = timezone
     return formatter.string(from: generatedAt)
+  }
+  
+  /// A short description of the generation mode for headers
+  public var modeDescription: String {
+    switch mode {
+    case .production:
+      return "Production (full traceability)"
+    case .sample:
+      return "Sample (quick start)"
+    case .plugin:
+      return "SPM Build Plugin (auto-regeneration)"
+    }
   }
 }
 

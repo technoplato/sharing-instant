@@ -1165,6 +1165,7 @@ public struct SwiftCodeGenerator {
       /// GENERATION INFO
       /// ─────────────────────────────────────────────────────────────────────────────────
       ///
+      /// Mode:            \(ctx.modeDescription)
       /// Generated:       \(ctx.formattedDate)
       /// Machine:         \(ctx.machine.formatted)
       /// Generator:       \(ctx.generatorPath)
@@ -1172,26 +1173,32 @@ public struct SwiftCodeGenerator {
 
       /* To regenerate this file, run:
 
-      \(formatCommand(ctx.command))
+      \(formatCommand(ctx.commandOrDescription))
       */
 
-      /// ─────────────────────────────────────────────────────────────────────────────────
-      /// GIT STATE AT GENERATION
-      /// ─────────────────────────────────────────────────────────────────────────────────
-      ///
-      /// HEAD Commit:
-      ///   SHA:      \(ctx.gitState.headCommit.sha)
-      ///   Date:     \(ctx.gitState.headCommit.formattedDate(timezone: ctx.timezone))
-      ///   Author:   \(ctx.gitState.headCommit.author)
-      ///   Message:  \(ctx.gitState.headCommit.message)
-      ///
-      /// Schema File Last Modified:
-      ///   SHA:      \(ctx.gitState.schemaLastModified.sha)
-      ///   Date:     \(ctx.gitState.schemaLastModified.formattedDate(timezone: ctx.timezone))
-      ///   Author:   \(ctx.gitState.schemaLastModified.author)
-      ///   Message:  \(ctx.gitState.schemaLastModified.message)
-      ///
       """
+      
+      // Add git state only for production mode
+      if case .production(let prodCtx) = ctx.mode {
+        output += """
+        /// ─────────────────────────────────────────────────────────────────────────────────
+        /// GIT STATE AT GENERATION
+        /// ─────────────────────────────────────────────────────────────────────────────────
+        ///
+        /// HEAD Commit:
+        ///   SHA:      \(prodCtx.gitState.headCommit.sha)
+        ///   Date:     \(prodCtx.gitState.headCommit.formattedDate(timezone: ctx.timezone))
+        ///   Author:   \(prodCtx.gitState.headCommit.author)
+        ///   Message:  \(prodCtx.gitState.headCommit.message)
+        ///
+        /// Schema File Last Modified:
+        ///   SHA:      \(prodCtx.gitState.schemaLastModified.sha)
+        ///   Date:     \(prodCtx.gitState.schemaLastModified.formattedDate(timezone: ctx.timezone))
+        ///   Author:   \(prodCtx.gitState.schemaLastModified.author)
+        ///   Message:  \(prodCtx.gitState.schemaLastModified.message)
+        ///
+        """
+      }
     }
     
     output += """
