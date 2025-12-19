@@ -2,28 +2,55 @@
 // InstantSchemaCodegen
 //
 // Parses InstantDB TypeScript schema files into SchemaIR.
-// Uses regex-based parsing for robustness with real-world TypeScript files.
+//
+// ⚠️  LEGACY PARSER - Consider using SwiftParsingSchemaParser instead.
+//
+// This regex-based parser is being replaced by a new swift-parsing based
+// implementation that provides:
+// - Better error messages with line/column numbers
+// - More correct handling of .optional() after other modifiers
+// - Composable, testable parser components
+// - Future support for bidirectional parsing/printing
+//
+// See: Sources/InstantSchemaCodegen/Parsing/SchemaParser.swift
 
 import Foundation
 
-// MARK: - TypeScript Schema Parser
+// MARK: - TypeScript Schema Parser (Legacy)
 
 /// Parses InstantDB TypeScript schema files into SchemaIR.
 ///
-/// This parser handles real-world TypeScript files with:
-/// - JSDoc comments (/** ... */)
-/// - Single-line comments (// ...)
-/// - All InstantDB field types
-/// - Optional modifiers
-/// - Link definitions
+/// ## Deprecation Notice
 ///
-/// ## Usage
+/// This regex-based parser is deprecated in favor of `SwiftParsingSchemaParser`
+/// which provides better error messages and more correct parsing.
 ///
+/// ## Known Limitations
+///
+/// - Does not detect `.optional()` when it comes after other modifiers like
+///   `.unique()` or `.indexed()`. For example:
+///   ```typescript
+///   email: i.string().unique().indexed().optional()
+///   ```
+///   This parser incorrectly reports `optional: false`.
+///
+/// ## Migration
+///
+/// Replace:
 /// ```swift
 /// let parser = TypeScriptSchemaParser()
-/// let schema = try parser.parse(fileAt: "instant.schema.ts")
+/// let schema = try parser.parse(content: content)
 /// ```
-public struct TypeScriptSchemaParser {
+///
+/// With:
+/// ```swift
+/// let parser = SwiftParsingSchemaParser()
+/// let schema = try parser.parse(content: content)
+/// ```
+///
+/// - SeeAlso: `SwiftParsingSchemaParser` for the recommended parser.
+@available(*, deprecated, message: "Use SwiftParsingSchemaParser instead for better error messages and more correct parsing")
+public struct LegacyTypeScriptSchemaParser {
   
   public init() {}
   
@@ -562,7 +589,7 @@ public struct TypeScriptSchemaPrinter {
 
 /// Combined parser and printer for bidirectional schema conversion
 public struct CommentPreservingSchemaParser {
-  private let parser = TypeScriptSchemaParser()
+  private let parser = SwiftParsingSchemaParser()
   private let printer = TypeScriptSchemaPrinter()
   
   public init() {}
@@ -575,6 +602,18 @@ public struct CommentPreservingSchemaParser {
     printer.print(schema)
   }
 }
+
+// MARK: - Type Alias for Backwards Compatibility
+
+/// Type alias for backwards compatibility.
+///
+/// New code should use `SwiftParsingSchemaParser` directly.
+///
+/// This alias points to the new swift-parsing based parser which:
+/// - Has better error messages with line/column numbers
+/// - Correctly handles `.optional()` after other modifiers
+/// - Is built from composable, testable components
+public typealias TypeScriptSchemaParser = SwiftParsingSchemaParser
 
 // MARK: - Parse Errors
 
