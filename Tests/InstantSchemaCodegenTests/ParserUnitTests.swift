@@ -386,5 +386,187 @@ final class ParserUnitTests: XCTestCase {
     var input: Substring = "value"
     XCTAssertThrowsError(try Colon().parse(&input))
   }
+  
+  // MARK: - Field Type Parser Tests
+  
+  func testFieldTypeParser_string_parses() throws {
+    var input: Substring = "i.string() next"
+    let result = try FieldTypeParser().parse(&input)
+    XCTAssertEqual(result, .string)
+    XCTAssertEqual(input, " next")
+  }
+  
+  func testFieldTypeParser_number_parses() throws {
+    var input: Substring = "i.number()"
+    let result = try FieldTypeParser().parse(&input)
+    XCTAssertEqual(result, .number)
+  }
+  
+  func testFieldTypeParser_boolean_parses() throws {
+    var input: Substring = "i.boolean()"
+    let result = try FieldTypeParser().parse(&input)
+    XCTAssertEqual(result, .boolean)
+  }
+  
+  func testFieldTypeParser_date_parses() throws {
+    var input: Substring = "i.date()"
+    let result = try FieldTypeParser().parse(&input)
+    XCTAssertEqual(result, .date)
+  }
+  
+  func testFieldTypeParser_json_parses() throws {
+    var input: Substring = "i.json()"
+    let result = try FieldTypeParser().parse(&input)
+    XCTAssertEqual(result, .json)
+  }
+  
+  func testFieldTypeParser_unknownType_fails() throws {
+    var input: Substring = "i.unknown()"
+    XCTAssertThrowsError(try FieldTypeParser().parse(&input))
+  }
+  
+  // MARK: - Field Parser Tests
+  
+  func testFieldParser_simple_parses() throws {
+    var input: Substring = "title: i.string() next"
+    let result = try FieldParser().parse(&input)
+    XCTAssertEqual(result.name, "title")
+    XCTAssertEqual(result.type, .string)
+    XCTAssertFalse(result.isOptional)
+  }
+  
+  func testFieldParser_optional_parses() throws {
+    var input: Substring = "bio: i.string().optional()"
+    let result = try FieldParser().parse(&input)
+    XCTAssertEqual(result.name, "bio")
+    XCTAssertEqual(result.type, .string)
+    XCTAssertTrue(result.isOptional)
+  }
+  
+  func testFieldParser_withIndexed_parses() throws {
+    var input: Substring = "email: i.string().indexed()"
+    let result = try FieldParser().parse(&input)
+    XCTAssertEqual(result.name, "email")
+    XCTAssertEqual(result.type, .string)
+    XCTAssertFalse(result.isOptional)
+  }
+  
+  func testFieldParser_withMultipleModifiers_parses() throws {
+    var input: Substring = "email: i.string().unique().indexed().optional()"
+    let result = try FieldParser().parse(&input)
+    XCTAssertEqual(result.name, "email")
+    XCTAssertEqual(result.type, .string)
+    XCTAssertTrue(result.isOptional)
+  }
+  
+  // MARK: - Entity Parser Tests
+  
+  func testEntityParser_simple_parses() throws {
+    var input: Substring = """
+    todos: i.entity({
+      title: i.string(),
+      done: i.boolean(),
+    })
+    """
+    let result = try EntityParser().parse(&input)
+    XCTAssertEqual(result.name, "todos")
+    XCTAssertEqual(result.fields.count, 2)
+    XCTAssertEqual(result.fields[0].name, "title")
+    XCTAssertEqual(result.fields[1].name, "done")
+  }
+  
+  func testEntityParser_systemEntity_parses() throws {
+    var input: Substring = """
+    $users: i.entity({
+      email: i.string(),
+    })
+    """
+    let result = try EntityParser().parse(&input)
+    XCTAssertEqual(result.name, "$users")
+    XCTAssertTrue(result.isSystemEntity)
+  }
+  
+  func testEntityParser_empty_parses() throws {
+    var input: Substring = "empty: i.entity({})"
+    let result = try EntityParser().parse(&input)
+    XCTAssertEqual(result.name, "empty")
+    XCTAssertTrue(result.fields.isEmpty)
+  }
+  
+  // MARK: - Link Parser Tests
+  
+  func testLinkSideParser_simple_parses() throws {
+    var input: Substring = """
+    { on: "users", has: "many", label: "todos" }
+    """
+    let result = try LinkSideParser().parse(&input)
+    XCTAssertEqual(result.entityName, "users")
+    XCTAssertEqual(result.cardinality, .many)
+    XCTAssertEqual(result.label, "todos")
+  }
+  
+  func testLinkSideParser_one_parses() throws {
+    var input: Substring = """
+    { on: "todos", has: "one", label: "owner" }
+    """
+    let result = try LinkSideParser().parse(&input)
+    XCTAssertEqual(result.cardinality, .one)
+  }
+  
+  func testLinkParser_simple_parses() throws {
+    var input: Substring = """
+    userTodos: {
+      forward: { on: "users", has: "many", label: "todos" },
+      reverse: { on: "todos", has: "one", label: "owner" },
+    }
+    """
+    let result = try LinkParser().parse(&input)
+    XCTAssertEqual(result.name, "userTodos")
+    XCTAssertEqual(result.forward.entityName, "users")
+    XCTAssertEqual(result.forward.cardinality, .many)
+    XCTAssertEqual(result.reverse.entityName, "todos")
+    XCTAssertEqual(result.reverse.cardinality, .one)
+  }
+  
+  // MARK: - Room Parser Tests
+  
+  func testRoomParser_withPresence_parses() throws {
+    var input: Substring = """
+    chat: {
+      presence: i.entity({
+        name: i.string(),
+        isTyping: i.boolean(),
+      }),
+    }
+    """
+    let result = try RoomParser().parse(&input)
+    XCTAssertEqual(result.name, "chat")
+    XCTAssertNotNil(result.presence)
+    XCTAssertEqual(result.presence?.fields.count, 2)
+    XCTAssertTrue(result.topics.isEmpty)
+  }
+  
+  func testRoomParser_withTopics_parses() throws {
+    var input: Substring = """
+    reactions: {
+      presence: i.entity({
+        name: i.string(),
+      }),
+      topics: {
+        emoji: i.entity({
+          name: i.string(),
+          angle: i.number(),
+        }),
+      },
+    }
+    """
+    let result = try RoomParser().parse(&input)
+    XCTAssertEqual(result.name, "reactions")
+    XCTAssertNotNil(result.presence)
+    XCTAssertEqual(result.topics.count, 1)
+    XCTAssertEqual(result.topics[0].name, "emoji")
+    XCTAssertEqual(result.topics[0].roomName, "reactions")
+    XCTAssertEqual(result.topics[0].payload.fields.count, 2)
+  }
 }
 
