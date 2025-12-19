@@ -42,6 +42,8 @@ let package = Package(
     .package(url: "https://github.com/pointfreeco/swift-parsing", from: "0.14.1"),
     // Swift Snapshot Testing for verifying generated code
     .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.18.0"),
+    // Swift Argument Parser for CLI
+    .package(url: "https://github.com/apple/swift-argument-parser", from: "1.3.0"),
   ],
   targets: [
     .target(
@@ -65,6 +67,7 @@ let package = Package(
       name: "instant-schema",
       dependencies: [
         "InstantSchemaCodegen",
+        .product(name: "ArgumentParser", package: "swift-argument-parser"),
       ]
     ),
     .executableTarget(
