@@ -33,7 +33,7 @@ enum TodoFilter: String, CaseIterable, Identifiable {
 
 private struct DynamicFilterView: View {
   /// Type-safe sync using EntityKey from generated Schema.
-  @Shared(Schema.todos.orderBy(\Todo.createdAt, .desc))
+  @Shared(.instantSync(Schema.todos.orderBy(\Todo.createdAt, EntityKeyOrderDirection.desc)))
   private var todos: IdentifiedArrayOf<Todo> = []
   
   @State private var searchText = ""

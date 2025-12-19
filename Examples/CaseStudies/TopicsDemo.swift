@@ -45,6 +45,16 @@ struct TopicsDemo: SwiftUICaseStudy {
   
   @State private var animations: [EmojiAnimation] = []
   
+  private var secondaryBackgroundColor: Color {
+    #if os(iOS) || os(visionOS)
+    Color(.secondarySystemBackground)
+    #elseif os(macOS)
+    Color(.windowBackgroundColor)
+    #else
+    Color.gray.opacity(0.2)
+    #endif
+  }
+  
   var body: some View {
     ZStack {
       // Animated emojis
@@ -85,7 +95,7 @@ struct TopicsDemo: SwiftUICaseStudy {
                 .padding(12)
                 .background(
                   RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(.secondarySystemBackground))
+                    .fill(secondaryBackgroundColor)
                     .shadow(color: .black.opacity(0.1), radius: 4, y: 2)
                 )
             }

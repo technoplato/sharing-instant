@@ -110,10 +110,20 @@ struct AvatarView: View {
   
   @State private var isHovered = false
   
+  private var systemBackgroundColor: Color {
+    #if os(iOS) || os(visionOS)
+    Color(.systemBackground)
+    #elseif os(macOS)
+    Color(.windowBackgroundColor)
+    #else
+    Color.white
+    #endif
+  }
+  
   var body: some View {
     ZStack {
       Circle()
-        .fill(Color(.systemBackground))
+        .fill(systemBackgroundColor)
         .frame(width: 48, height: 48)
       
       Circle()
@@ -132,7 +142,7 @@ struct AvatarView: View {
           .frame(width: 12, height: 12)
           .overlay(
             Circle()
-              .strokeBorder(Color(.systemBackground), lineWidth: 2)
+              .strokeBorder(systemBackgroundColor, lineWidth: 2)
           )
           .offset(x: 14, y: 14)
       }
@@ -145,7 +155,7 @@ struct AvatarView: View {
           .padding(.vertical, 4)
           .background(
             Capsule()
-              .fill(Color(.systemBackground))
+              .fill(systemBackgroundColor)
               .shadow(radius: 2)
           )
           .offset(y: -40)
