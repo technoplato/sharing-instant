@@ -9,9 +9,11 @@ import SnapshotTesting
 final class SchemaParserTests: XCTestCase {
   
   // Enable recording mode to update snapshots
+  // To record new snapshots, use withSnapshotTesting(record: .all) in individual tests
   // override func invokeTest() {
-  //   isRecording = true
-  //   super.invokeTest()
+  //   withSnapshotTesting(record: .all) {
+  //     super.invokeTest()
+  //   }
   // }
   
   // MARK: - Parse Tests
@@ -45,6 +47,64 @@ final class SchemaParserTests: XCTestCase {
     XCTAssertEqual(link.forward.cardinality, .many)
     XCTAssertEqual(link.reverse.entityName, "todos")
     XCTAssertEqual(link.reverse.cardinality, .one)
+  }
+  
+  // MARK: - SchemaIR Snapshot Tests
+  //
+  // These tests snapshot the PARSED RESULT (SchemaIR) directly, not the generated code.
+  // This locks in the parser behavior before we rewrite it with swift-parsing.
+  //
+  // The .dump strategy produces a textual representation of the entire struct tree,
+  // making it easy to see exactly what the parser produces and catch any regressions.
+  //
+  // ## Why Snapshot the IR?
+  //
+  // 1. **Regression Detection**: Any change to parsing behavior shows up as a diff
+  // 2. **Documentation**: Snapshots serve as documentation of expected parser output
+  // 3. **Refactoring Safety**: When rewriting with swift-parsing, we can verify
+  //    the new parser produces identical output to the old regex parser
+  //
+  // ## How to Update Snapshots
+  //
+  // If parser behavior changes intentionally:
+  // 1. Uncomment `isRecording = true` in `invokeTest()`
+  // 2. Run tests to record new snapshots
+  // 3. Review the diff carefully
+  // 4. Re-comment `isRecording = true`
+  
+  /// Snapshot test for SimpleSchema.ts parsed result
+  ///
+  /// This captures the complete SchemaIR including:
+  /// - 2 entities (todos, users)
+  /// - 1 link (userTodos)
+  /// - Field types, optionality, documentation
+  func testParseSimpleSchemaIRSnapshot() throws {
+    let schema = try parseFixture("SimpleSchema.ts")
+    
+    // Snapshot the entire parsed SchemaIR
+    // The .dump strategy uses Swift's dump() function for readable output
+    assertSnapshot(of: schema, as: .dump)
+  }
+  
+  /// Snapshot test for LibrarySchema.ts parsed result
+  ///
+  /// This is a more complex schema with:
+  /// - 5 entities (authors, books, borrowRecords, genres, members)
+  /// - 7 links with various cardinalities
+  /// - All field types (string, number, boolean, date, json)
+  /// - Optional fields
+  func testParseLibrarySchemaIRSnapshot() throws {
+    let schema = try parseFixture("LibrarySchema.ts")
+    assertSnapshot(of: schema, as: .dump)
+  }
+  
+  /// Snapshot test for StressTestSchema.ts parsed result
+  ///
+  /// This tests edge cases and larger schemas to ensure
+  /// the parser handles complex real-world scenarios.
+  func testParseStressTestSchemaIRSnapshot() throws {
+    let schema = try parseFixture("StressTestSchema.ts")
+    assertSnapshot(of: schema, as: .dump)
   }
   
   func testParseLibrarySchema() throws {
