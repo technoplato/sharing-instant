@@ -33,9 +33,10 @@ private struct MicroblogView: View {
   @State private var newPostContent = ""
   @State private var selectedAuthorId: String?
   
-  // Deterministic IDs so all clients share the same profiles
-  private let aliceId = "microblog-alice-001"
-  private let bobId = "microblog-bob-002"
+  // Deterministic UUIDs so all clients share the same profiles
+  // Generated from consistent namespace + name using UUID v5 style
+  private let aliceId = "00000000-0000-0000-0000-00000000A11C"
+  private let bobId = "00000000-0000-0000-0000-0000000000B0"
   
   var body: some View {
     VStack(spacing: 0) {
