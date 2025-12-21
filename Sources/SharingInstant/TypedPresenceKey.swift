@@ -43,7 +43,7 @@ extension SharedKey {
   ///   - roomId: The unique room identifier.
   ///   - initialPresence: Your initial presence data.
   /// - Returns: A key that can be passed to `@Shared`.
-  public static func instantPresence<T: Codable & Sendable & Equatable>(
+  public static func instantPresence<T: PresenceData>(
     _ roomKey: RoomKey<T>,
     roomId: String,
     initialPresence: T
@@ -76,7 +76,7 @@ extension SharedKey {
   ///   - appID: The app ID to use.
   /// - Returns: A key that can be passed to `@Shared`.
   @available(*, deprecated, message: "Multi-app support is untested. Remove appID parameter to use the default app ID configured via prepareDependencies.")
-  public static func instantPresence<T: Codable & Sendable & Equatable>(
+  public static func instantPresence<T: PresenceData>(
     _ roomKey: RoomKey<T>,
     roomId: String,
     initialPresence: T,
@@ -105,7 +105,7 @@ extension SharedKey {
   /// ))
   /// var presence: RoomPresence<ChatPresence>
   /// ```
-  public static func instantPresence<T: Codable & Sendable & Equatable>(
+  public static func instantPresence<T: PresenceData>(
     roomType: String,
     roomId: String,
     initialPresence: T
@@ -133,7 +133,7 @@ extension SharedKey {
   ///
   /// Use this when you don't have a schema-generated room key.
   @available(*, deprecated, message: "Multi-app support is untested. Remove appID parameter to use the default app ID configured via prepareDependencies.")
-  public static func instantPresence<T: Codable & Sendable & Equatable>(
+  public static func instantPresence<T: PresenceData>(
     roomType: String,
     roomId: String,
     initialPresence: T,
@@ -157,7 +157,7 @@ extension SharedKey {
 ///
 /// This key provides bidirectional sync: subscribing to presence updates from
 /// peers, and publishing your presence updates when modified via `withLock`.
-public struct TypedPresenceKey<T: Codable & Sendable & Equatable>: SharedKey, @unchecked Sendable {
+public struct TypedPresenceKey<T: PresenceData>: SharedKey, @unchecked Sendable {
   public typealias Value = RoomPresence<T>
   
   let roomType: String

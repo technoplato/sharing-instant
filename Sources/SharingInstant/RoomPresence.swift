@@ -5,6 +5,7 @@
 
 import Foundation
 import IdentifiedCollections
+import InstantDB
 
 // MARK: - RoomPresence
 
@@ -35,7 +36,7 @@ import IdentifiedCollections
 /// // Update your presence
 /// $presence.withLock { $0.user.isTyping = true }
 /// ```
-public struct RoomPresence<T: Codable & Sendable & Equatable>: Sendable, Equatable {
+public struct RoomPresence<T: PresenceData>: Sendable, Equatable {
   /// Your own presence data.
   ///
   /// Modify this via `$presence.withLock { $0.user.property = value }`.
@@ -101,7 +102,7 @@ public struct RoomPresence<T: Codable & Sendable & Equatable>: Sendable, Equatab
 ///
 /// Each peer has a unique session ID and their current presence data.
 /// The data type matches the room's presence type.
-public struct Peer<T: Codable & Sendable & Equatable>: Identifiable, Sendable, Equatable {
+public struct Peer<T: PresenceData>: Identifiable, Sendable, Equatable {
   /// The peer's unique session ID.
   ///
   /// This is assigned by InstantDB and is unique per connection.
@@ -120,4 +121,7 @@ public struct Peer<T: Codable & Sendable & Equatable>: Identifiable, Sendable, E
     self.data = data
   }
 }
+
+
+
 

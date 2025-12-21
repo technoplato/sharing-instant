@@ -179,11 +179,12 @@ swift run instant-schema generate \
 
 import Foundation
 import SharingInstant
+import InstantDB
 
 // MARK: - Room Presence Types
 
 /// Presence data for 'avatars' room.
-public struct AvatarsPresence: Codable, Sendable, Equatable {
+public struct AvatarsPresence: PresenceData {
   public var name: String
   public var color: String
 
@@ -197,7 +198,7 @@ public struct AvatarsPresence: Codable, Sendable, Equatable {
 }
 
 /// Presence data for 'chat' room.
-public struct ChatPresence: Codable, Sendable, Equatable {
+public struct ChatPresence: PresenceData {
   public var name: String
   public var color: String
   public var isTyping: Bool
@@ -214,7 +215,7 @@ public struct ChatPresence: Codable, Sendable, Equatable {
 }
 
 /// Presence data for 'cursors' room.
-public struct CursorsPresence: Codable, Sendable, Equatable {
+public struct CursorsPresence: PresenceData {
   public var name: String
   public var color: String
   public var cursorX: Double
@@ -234,7 +235,7 @@ public struct CursorsPresence: Codable, Sendable, Equatable {
 }
 
 /// Presence data for 'reactions' room.
-public struct ReactionsPresence: Codable, Sendable, Equatable {
+public struct ReactionsPresence: PresenceData {
   public var name: String
 
   public init(
@@ -245,7 +246,7 @@ public struct ReactionsPresence: Codable, Sendable, Equatable {
 }
 
 /// Presence data for 'tileGame' room.
-public struct TileGamePresence: Codable, Sendable, Equatable {
+public struct TileGamePresence: PresenceData {
   public var name: String
   public var color: String
 

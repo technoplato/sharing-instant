@@ -4,6 +4,7 @@
 // Type-safe room key for schema-driven presence subscriptions.
 
 import Foundation
+import InstantDB
 
 // MARK: - RoomKey
 
@@ -30,7 +31,7 @@ import Foundation
 /// ))
 /// var presence: RoomPresence<ChatPresence>
 /// ```
-public struct RoomKey<Presence: Codable & Sendable & Equatable>: Sendable, Hashable {
+public struct RoomKey<Presence: PresenceData>: Sendable, Hashable {
   /// The room type identifier (e.g., "chat", "cursors").
   public let type: String
   
@@ -83,4 +84,7 @@ public struct TopicKey<Payload: Codable & Sendable & Equatable>: Sendable, Hasha
     self.topic = topic
   }
 }
+
+
+
 
