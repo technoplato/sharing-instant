@@ -35,8 +35,9 @@ private struct MicroblogView: View {
   
   // Deterministic UUIDs so all clients share the same profiles
   // Generated from consistent namespace + name using UUID v5 style
-  private let aliceId = "00000000-0000-0000-0000-00000000A11C"
-  private let bobId = "00000000-0000-0000-0000-0000000000B0"
+  // Note: UUIDs are lowercased to match server response format
+  private let aliceId = "00000000-0000-0000-0000-00000000a11c"
+  private let bobId = "00000000-0000-0000-0000-0000000000b0"
   
   var body: some View {
     VStack(spacing: 0) {
@@ -50,11 +51,19 @@ private struct MicroblogView: View {
       
       Divider()
       
-      // Feed
-      feedList
+      // Feed with scroll-to-top support
+      ScrollViewReader { scrollProxy in
+        feedList(scrollProxy: scrollProxy)
+      }
     }
     .task {
       await ensureProfilesExist()
+    }
+    .onChange(of: profiles.first?.id) { _, firstProfileId in
+      // Auto-select the first author once profiles are loaded
+      if selectedAuthorId == nil, let firstProfileId {
+        selectedAuthorId = firstProfileId
+      }
     }
   }
   
@@ -126,7 +135,7 @@ private struct MicroblogView: View {
   
   // MARK: - Feed List
   
-  private var feedList: some View {
+  private func feedList(scrollProxy: ScrollViewProxy) -> some View {
     List {
       if posts.isEmpty {
         ContentUnavailableView {
@@ -137,11 +146,20 @@ private struct MicroblogView: View {
       } else {
         ForEach(posts) { post in
           PostRow(post: post)
+            .id(post.id)
         }
         .onDelete(perform: deletePosts)
       }
     }
     .listStyle(.plain)
+    .onChange(of: posts.first?.id) { _, newFirstId in
+      // Scroll to top when a new post appears at the top
+      if let newFirstId {
+        withAnimation {
+          scrollProxy.scrollTo(newFirstId, anchor: .top)
+        }
+      }
+    }
   }
   
   // MARK: - Actions
