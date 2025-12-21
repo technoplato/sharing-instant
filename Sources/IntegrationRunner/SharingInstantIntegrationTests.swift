@@ -26,7 +26,7 @@ enum SharingInstantTestConfig {
 // MARK: - Test Presence Types
 
 /// Simple presence type for testing.
-struct TestUserPresence: Codable, Sendable, Equatable {
+struct TestUserPresence: PresenceData {
   var name: String
   var color: String
   var status: String

@@ -147,8 +147,14 @@ private struct MicroblogView: View {
   // MARK: - Actions
   
   private func ensureProfilesExist() async {
+    print("[MicroblogDemo] 🔄 ensureProfilesExist() called")
+    print("[MicroblogDemo]   Current profiles count: \(profiles.count)")
+    print("[MicroblogDemo]   Alice exists: \(profiles[id: aliceId] != nil)")
+    print("[MicroblogDemo]   Bob exists: \(profiles[id: bobId] != nil)")
+    
     // Create Alice if she doesn't exist
     if profiles[id: aliceId] == nil {
+      print("[MicroblogDemo] 👤 Creating Alice profile with id: \(aliceId)")
       let alice = Profile(
         id: aliceId,
         displayName: "Alice",
@@ -157,10 +163,12 @@ private struct MicroblogView: View {
         createdAt: Date().timeIntervalSince1970
       )
       _ = $profiles.withLock { $0.append(alice) }
+      print("[MicroblogDemo] ✅ Alice profile created")
     }
     
     // Create Bob if he doesn't exist
     if profiles[id: bobId] == nil {
+      print("[MicroblogDemo] 👤 Creating Bob profile with id: \(bobId)")
       let bob = Profile(
         id: bobId,
         displayName: "Bob",
@@ -169,20 +177,37 @@ private struct MicroblogView: View {
         createdAt: Date().timeIntervalSince1970 + 1
       )
       _ = $profiles.withLock { $0.append(bob) }
+      print("[MicroblogDemo] ✅ Bob profile created")
     }
     
     // Select Alice by default
     if selectedAuthorId == nil {
       selectedAuthorId = aliceId
+      print("[MicroblogDemo] 📌 Selected Alice as default author")
     }
+    
+    print("[MicroblogDemo] 🔄 ensureProfilesExist() completed, profiles count: \(profiles.count)")
   }
   
   private func createPost() {
+    print("[MicroblogDemo] 📝 createPost() called")
+    print("[MicroblogDemo]   Selected author ID: \(selectedAuthorId ?? "nil")")
+    
     guard let authorId = selectedAuthorId,
-          let author = profiles[id: authorId] else { return }
+          let author = profiles[id: authorId] else {
+      print("[MicroblogDemo] ⚠️ createPost() - No author selected or author not found")
+      return
+    }
+    
+    print("[MicroblogDemo]   Author: \(author.displayName) (@\(author.handle))")
     
     let content = newPostContent.trimmingCharacters(in: .whitespaces)
-    guard !content.isEmpty else { return }
+    guard !content.isEmpty else {
+      print("[MicroblogDemo] ⚠️ createPost() - Content is empty")
+      return
+    }
+    
+    print("[MicroblogDemo]   Content: \"\(content)\"")
     
     // Create post with linked author
     let post = Post(
@@ -193,13 +218,27 @@ private struct MicroblogView: View {
       author: author
     )
     
+    print("[MicroblogDemo] 📤 Creating post with ID: \(post.id)")
+    print("[MicroblogDemo]   Post author link -> Profile ID: \(author.id)")
+    
     _ = $posts.withLock { $0.insert(post, at: 0) }
     newPostContent = ""
+    
+    print("[MicroblogDemo] ✅ Post created and added to local state")
+    print("[MicroblogDemo]   Total posts count: \(posts.count)")
   }
   
   private func createFakePost() {
+    print("[MicroblogDemo] 🎲 createFakePost() called")
+    print("[MicroblogDemo]   Selected author ID: \(selectedAuthorId ?? "nil")")
+    
     guard let authorId = selectedAuthorId,
-          let author = profiles[id: authorId] else { return }
+          let author = profiles[id: authorId] else {
+      print("[MicroblogDemo] ⚠️ createFakePost() - No author selected or author not found")
+      return
+    }
+    
+    print("[MicroblogDemo]   Author: \(author.displayName) (@\(author.handle))")
     
     let fakePosts = [
       "Just shipped a new feature! 🚀",
@@ -215,6 +254,7 @@ private struct MicroblogView: View {
     ]
     
     let randomContent = fakePosts.randomElement() ?? "Hello world!"
+    print("[MicroblogDemo]   Random content: \"\(randomContent)\"")
     
     let post = Post(
       content: randomContent,
@@ -223,13 +263,27 @@ private struct MicroblogView: View {
       author: author
     )
     
+    print("[MicroblogDemo] 📤 Creating fake post with ID: \(post.id)")
+    print("[MicroblogDemo]   Post author link -> Profile ID: \(author.id)")
+    
     _ = $posts.withLock { $0.insert(post, at: 0) }
+    
+    print("[MicroblogDemo] ✅ Fake post created and added to local state")
+    print("[MicroblogDemo]   Total posts count: \(posts.count)")
   }
   
   private func deletePosts(at offsets: IndexSet) {
+    print("[MicroblogDemo] 🗑️ deletePosts() called for offsets: \(offsets)")
+    let postsToDelete = offsets.map { posts[$0] }
+    for post in postsToDelete {
+      print("[MicroblogDemo]   Deleting post ID: \(post.id), content: \"\(post.content.prefix(30))...\"")
+    }
+    
     _ = $posts.withLock { posts in
       posts.remove(atOffsets: offsets)
     }
+    
+    print("[MicroblogDemo] ✅ Posts deleted, remaining count: \(posts.count)")
   }
   
   private func colorForHandle(_ handle: String) -> Color {

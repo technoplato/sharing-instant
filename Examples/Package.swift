@@ -17,20 +17,25 @@ let package = Package(
     ),
   ],
   dependencies: [
-    // SharingInstant (parent directory)
+    // SharingInstant (parent directory) - includes InstantDB transitively
     .package(path: ".."),
-    // InstantDB SDK (needed for transitive dependency resolution)
-    .package(path: "../../instant-ios-sdk"),
   ],
   targets: [
     .executableTarget(
       name: "CaseStudies",
       dependencies: [
         .product(name: "SharingInstant", package: "sharing-instant"),
-        .product(name: "InstantDB", package: "instant-ios-sdk"),
       ],
       path: "CaseStudies",
-      exclude: ["Info.plist", "instant.schema.ts", "instant.perms.ts"]
+      exclude: [
+        "Info.plist",
+        "instant.schema.ts",
+        "instant.perms.ts",
+        // Node modules are used for instant-cli schema push, not needed in app bundle
+        "node_modules",
+        "package.json",
+        "package-lock.json",
+      ]
     ),
   ]
 )

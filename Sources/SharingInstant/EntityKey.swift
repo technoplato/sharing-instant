@@ -194,29 +194,92 @@ public struct EntityKey<Entity: EntityIdentifiable & Sendable>: Hashable, Sendab
   
   // MARK: - Link Inclusion
   
-  /// Include a related entity in the query results.
+  /// Include a related entity in the query results (type-safe, has-one).
+  ///
+  /// This is the preferred way to include links as it provides compile-time
+  /// validation that the link field exists on the entity type.
   ///
   /// ```swift
-  /// // Include owner in todo results
-  /// Schema.todos.with(\.owner)
+  /// // Type-safe: compiler validates that Post has an 'author' property
+  /// Schema.posts.with(\.author)
   ///
-  /// // Include multiple relations
-  /// Schema.todos.with(\.owner).with(\.tags)
+  /// // Chain multiple links
+  /// Schema.posts.with(\.author).with(\.comments)
   /// ```
   ///
-  /// - Parameter keyPath: KeyPath to the link field
+  /// - Parameter keyPath: KeyPath to the link field (must be an optional property)
   /// - Returns: A new EntityKey with the link inclusion
-  public func with<V>(_ keyPath: KeyPath<Entity, V>) -> EntityKey<Entity> {
+  public func with<V>(_ keyPath: KeyPath<Entity, V?>) -> EntityKey<Entity> {
     var copy = self
     let fieldName = extractFieldName(from: keyPath)
     copy.includedLinks.insert(fieldName)
     return copy
   }
   
+  /// Include a related entity array in the query results (type-safe, has-many).
+  ///
+  /// Use this for has-many relationships where the link field is an optional array.
+  ///
+  /// ```swift
+  /// // Type-safe: compiler validates that Profile has a 'posts' property
+  /// Schema.profiles.with(\.posts)
+  /// ```
+  ///
+  /// - Parameter keyPath: KeyPath to the link array field
+  /// - Returns: A new EntityKey with the link inclusion
+  public func with<V>(_ keyPath: KeyPath<Entity, [V]?>) -> EntityKey<Entity> {
+    var copy = self
+    let fieldName = extractFieldName(from: keyPath)
+    copy.includedLinks.insert(fieldName)
+    return copy
+  }
+  
+  /// Include multiple linked entities (type-safe, 2 links).
+  ///
+  /// ```swift
+  /// Schema.posts.with(\.author, \.comments)
+  /// ```
+  ///
+  /// - Parameters:
+  ///   - keyPath1: First link field
+  ///   - keyPath2: Second link field
+  /// - Returns: A new EntityKey with both link inclusions
+  public func with<V1, V2>(
+    _ keyPath1: KeyPath<Entity, V1?>,
+    _ keyPath2: KeyPath<Entity, V2?>
+  ) -> EntityKey<Entity> {
+    self.with(keyPath1).with(keyPath2)
+  }
+  
+  /// Include multiple linked entities (type-safe, 3 links).
+  ///
+  /// ```swift
+  /// Schema.posts.with(\.author, \.comments, \.likes)
+  /// ```
+  public func with<V1, V2, V3>(
+    _ keyPath1: KeyPath<Entity, V1?>,
+    _ keyPath2: KeyPath<Entity, V2?>,
+    _ keyPath3: KeyPath<Entity, V3?>
+  ) -> EntityKey<Entity> {
+    self.with(keyPath1).with(keyPath2).with(keyPath3)
+  }
+  
+  /// Include multiple linked entities (type-safe, 4 links).
+  public func with<V1, V2, V3, V4>(
+    _ keyPath1: KeyPath<Entity, V1?>,
+    _ keyPath2: KeyPath<Entity, V2?>,
+    _ keyPath3: KeyPath<Entity, V3?>,
+    _ keyPath4: KeyPath<Entity, V4?>
+  ) -> EntityKey<Entity> {
+    self.with(keyPath1).with(keyPath2).with(keyPath3).with(keyPath4)
+  }
+  
   /// Include a related entity by field name.
   ///
   /// - Parameter linkName: The name of the link field to include
   /// - Returns: A new EntityKey with the link inclusion
+  ///
+  /// - Note: Prefer the type-safe `.with(\.linkName)` overload when possible.
   public func with(_ linkName: String) -> EntityKey<Entity> {
     var copy = self
     copy.includedLinks.insert(linkName)
@@ -481,7 +544,8 @@ struct EntityKeyRequest<E: EntityIdentifiable & Sendable>: SharingInstantSync.Ke
     return SharingInstantSync.CollectionConfiguration(
       namespace: key.namespace,
       orderBy: orderBy,
-      whereClause: whereClause
+      whereClause: whereClause,
+      includedLinks: key.includedLinks
     )
   }
 }

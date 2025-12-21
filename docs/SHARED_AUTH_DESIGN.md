@@ -451,3 +451,6 @@ extension Shared where Value == AuthSession {
 
 4. **Should we track which operation is pending?** e.g., `pendingOperation: AuthOperation?` where `AuthOperation` is an enum of all possible operations.
 
+
+
+

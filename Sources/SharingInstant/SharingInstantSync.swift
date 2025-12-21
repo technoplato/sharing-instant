@@ -37,6 +37,10 @@ public enum SharingInstantSync {
     /// Dictionary format: `["field": value]` or `["field": ["$operator": value]]`
     public let whereClause: [String: Any]?
     
+    /// Links to include in query results (InstaQL-style nested queries).
+    /// When set, the query will fetch related entities and nest them in the results.
+    public let includedLinks: Set<String>
+    
     /// Optional animation to use when updating the UI.
     #if canImport(SwiftUI)
     public let animation: Animation?
@@ -55,18 +59,21 @@ public enum SharingInstantSync {
     ///   - namespace: The InstantDB namespace (entity type) to sync.
     ///   - orderBy: Optional ordering for the results.
     ///   - whereClause: Optional where clause for filtering (e.g., `["done": false]`).
+    ///   - includedLinks: Optional set of link field names to include in results.
     ///   - animation: Optional animation to use when updating the UI.
     ///   - testingValue: Optional value to use during testing.
     public init(
       namespace: String,
       orderBy: OrderBy? = nil,
       whereClause: [String: Any]? = nil,
+      includedLinks: Set<String> = [],
       animation: Animation? = nil,
       testingValue: [Value]? = nil
     ) {
       self.namespace = namespace
       self.orderBy = orderBy
       self.whereClause = whereClause
+      self.includedLinks = includedLinks
       self._whereClauseHash = whereClause.map { Self.hashWhereClause($0) }
       self.animation = animation
       self.testingValue = testingValue
@@ -78,16 +85,19 @@ public enum SharingInstantSync {
     ///   - namespace: The InstantDB namespace (entity type) to sync.
     ///   - orderBy: Optional ordering for the results.
     ///   - whereClause: Optional where clause for filtering (e.g., `["done": false]`).
+    ///   - includedLinks: Optional set of link field names to include in results.
     ///   - testingValue: Optional value to use during testing.
     public init(
       namespace: String,
       orderBy: OrderBy? = nil,
       whereClause: [String: Any]? = nil,
+      includedLinks: Set<String> = [],
       testingValue: [Value]? = nil
     ) {
       self.namespace = namespace
       self.orderBy = orderBy
       self.whereClause = whereClause
+      self.includedLinks = includedLinks
       self._whereClauseHash = whereClause.map { Self.hashWhereClause($0) }
       self.testingValue = testingValue
     }

@@ -355,6 +355,11 @@ where Value.Element: EntityIdentifiable & Sendable {
         if let whereClause = configuration.whereClause {
           query = query.where(whereClause)
         }
+        // Include linked entities if specified
+        if !configuration.includedLinks.isEmpty {
+          query = query.including(configuration.includedLinks)
+          logDebug("Load: including links: \(configuration.includedLinks)")
+        }
         
         logDebug("Load[\(loadId)]: subscribing to query for \(Element.namespace)")
         
@@ -507,6 +512,11 @@ where Value.Element: EntityIdentifiable & Sendable {
           if let whereClause = configuration.whereClause {
             query = query.where(whereClause)
             logDebug("Subscribe: query with where clause: \(whereClause)")
+          }
+          // Include linked entities if specified
+          if !configuration.includedLinks.isEmpty {
+            query = query.including(configuration.includedLinks)
+            logDebug("Subscribe: including links: \(configuration.includedLinks)")
           }
           
           // Subscribe to the query

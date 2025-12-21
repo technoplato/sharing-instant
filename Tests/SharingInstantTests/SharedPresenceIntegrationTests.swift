@@ -450,7 +450,7 @@ final class SharedPresenceIntegrationTests: XCTestCase {
   // MARK: - Presence Types (matching CaseStudies)
   
   /// Simple presence type for testing.
-  struct TestPresence: Codable, Sendable, Equatable {
+  struct TestPresence: PresenceData {
     var name: String
     var color: String
     var isActive: Bool
