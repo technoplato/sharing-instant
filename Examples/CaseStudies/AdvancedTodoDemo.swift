@@ -1,4 +1,5 @@
 import SharingInstant
+import Sharing
 import SwiftUI
 
 struct AdvancedTodoDemo: SwiftUICaseStudy {
@@ -58,8 +59,9 @@ enum TodoFilterOption: String, CaseIterable, Identifiable {
 // MARK: - Main View
 
 private struct AdvancedTodoView: View {
-  // Main data source - we'll reload this with different queries
-  @Shared(.instantSync(Schema.todos.orderBy(\Todo.createdAt, EntityKeyOrderDirection.desc)))
+  // Use @State.Shared to persist the key across view recreations
+  // This is critical for dynamic queries - see swift-sharing DynamicKeys.md
+  @State.Shared(.instantSync(Schema.todos.orderBy(\Todo.createdAt, EntityKeyOrderDirection.desc)))
   private var todos: IdentifiedArrayOf<Todo> = []
   
   @State private var searchText = ""
