@@ -9,6 +9,7 @@
 // to satisfy Swift 6 strict concurrency requirements.
 
 import Foundation
+import InstantDB
 @preconcurrency import SharingInstant
 
 // MARK: - Todo Entity
@@ -16,6 +17,7 @@ import Foundation
 /// A todo item that can be synced with InstantDB.
 ///
 /// Uses `createdAt: Double` (Unix timestamp) to match InstantDB's storage format.
+/// The decoder handles InstantDB's number/bool encoding quirks for the `done` field.
 public struct Todo: Sendable, Identifiable, Codable, Equatable {
   public var id: String
   public var createdAt: Double
@@ -39,12 +41,14 @@ public struct Todo: Sendable, Identifiable, Codable, Equatable {
     lhs.id == rhs.id && lhs.createdAt == rhs.createdAt && lhs.done == rhs.done && lhs.title == rhs.title
   }
   
-  // Explicit nonisolated Codable
+  // Explicit nonisolated Codable with flexible bool decoding
   nonisolated public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
     self.id = try container.decode(String.self, forKey: .id)
     self.createdAt = try container.decode(Double.self, forKey: .createdAt)
-    self.done = try container.decode(Bool.self, forKey: .done)
+    // Use FlexibleBool to handle both Bool and Int from InstantDB
+    let flexibleDone = try container.decode(FlexibleBool.self, forKey: .done)
+    self.done = flexibleDone.wrappedValue
     self.title = try container.decode(String.self, forKey: .title)
   }
   
@@ -213,6 +217,7 @@ nonisolated extension Profile: EntityIdentifiable {
 // MARK: - Post Entity (for MicroblogDemo)
 
 /// A post/tweet for the microblog demo.
+/// The decoder handles InstantDB's number/bool encoding quirks for `likesCount`.
 public struct Post: Sendable, Identifiable, Codable, Equatable {
   public var id: String
   public var content: String
@@ -249,7 +254,9 @@ public struct Post: Sendable, Identifiable, Codable, Equatable {
     self.content = try container.decode(String.self, forKey: .content)
     self.imageUrl = try container.decodeIfPresent(String.self, forKey: .imageUrl)
     self.createdAt = try container.decode(Double.self, forKey: .createdAt)
-    self.likesCount = try container.decode(Double.self, forKey: .likesCount)
+    // Use FlexibleDouble to handle both Double and Bool from InstantDB
+    let flexibleLikesCount = try container.decode(FlexibleDouble.self, forKey: .likesCount)
+    self.likesCount = flexibleLikesCount.wrappedValue
     self.author = try container.decodeIfPresent(Profile.self, forKey: .author)
   }
   

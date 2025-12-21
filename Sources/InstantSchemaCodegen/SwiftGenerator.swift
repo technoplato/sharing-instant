@@ -215,6 +215,7 @@ public struct SwiftCodeGenerator {
     
     output += """
     import Foundation
+    import InstantDB
     import SharingInstant
     
     
@@ -385,6 +386,105 @@ public struct SwiftCodeGenerator {
     
     for param in params {
       output += "    self.\(param.name) = \(param.name)\n"
+    }
+    
+    output += "  }\n"
+    
+    // Generate custom Codable implementation if entity has Bool or Double fields
+    // InstantDB sometimes returns numbers as bools and vice versa
+    let hasBoolField = entity.fields.contains { $0.type == .boolean }
+    let hasNumberField = entity.fields.contains { $0.type == .number }
+    
+    if hasBoolField || hasNumberField {
+      output += generateCustomCodable(entity, schema: schema, forwardLinks: forwardLinks, reverseLinks: reverseLinks)
+    }
+    
+    return output
+  }
+  
+  /// Generates custom Codable implementation to handle InstantDB's type quirks.
+  ///
+  /// InstantDB's server sometimes returns:
+  /// - Numbers (0/1) for boolean fields instead of true/false
+  /// - Booleans (false) for numeric fields instead of 0
+  ///
+  /// This generates a custom decoder that uses FlexibleBool and FlexibleDouble
+  /// to handle these cases transparently.
+  private func generateCustomCodable(_ entity: EntityIR, schema: SchemaIR, forwardLinks: [LinkIR], reverseLinks: [LinkIR]) -> String {
+    let access = configuration.accessLevel.rawValue
+    var output = "\n  // MARK: - Custom Codable (handles InstantDB type quirks)\n\n"
+    
+    // CodingKeys enum
+    output += "  private enum CodingKeys: String, CodingKey {\n"
+    output += "    case id"
+    for field in entity.fields {
+      output += ", \(field.name)"
+    }
+    for link in forwardLinks {
+      output += ", \(link.forward.label)"
+    }
+    for link in reverseLinks {
+      output += ", \(link.reverse.label)"
+    }
+    output += "\n  }\n\n"
+    
+    // Custom init(from decoder:)
+    output += "  \(access) init(from decoder: Decoder) throws {\n"
+    output += "    let container = try decoder.container(keyedBy: CodingKeys.self)\n"
+    output += "    self.id = try container.decode(String.self, forKey: .id)\n"
+    
+    for field in entity.fields {
+      let fieldName = field.name
+      if field.isOptional {
+        switch field.type {
+        case .boolean:
+          output += "    if let flexValue = try container.decodeIfPresent(FlexibleBool.self, forKey: .\(fieldName)) {\n"
+          output += "      self.\(fieldName) = flexValue.wrappedValue\n"
+          output += "    } else {\n"
+          output += "      self.\(fieldName) = nil\n"
+          output += "    }\n"
+        case .number:
+          output += "    if let flexValue = try container.decodeIfPresent(FlexibleDouble.self, forKey: .\(fieldName)) {\n"
+          output += "      self.\(fieldName) = flexValue.wrappedValue\n"
+          output += "    } else {\n"
+          output += "      self.\(fieldName) = nil\n"
+          output += "    }\n"
+        default:
+          output += "    self.\(fieldName) = try container.decodeIfPresent(\(field.type.swiftType).self, forKey: .\(fieldName))\n"
+        }
+      } else {
+        switch field.type {
+        case .boolean:
+          output += "    self.\(fieldName) = try container.decode(FlexibleBool.self, forKey: .\(fieldName)).wrappedValue\n"
+        case .number:
+          output += "    self.\(fieldName) = try container.decode(FlexibleDouble.self, forKey: .\(fieldName)).wrappedValue\n"
+        default:
+          output += "    self.\(fieldName) = try container.decode(\(field.type.swiftType).self, forKey: .\(fieldName))\n"
+        }
+      }
+    }
+    
+    // Decode links
+    for link in forwardLinks {
+      if let target = schema.entity(named: link.reverse.entityName) {
+        let label = link.forward.label
+        if link.forward.cardinality == .one {
+          output += "    self.\(label) = try container.decodeIfPresent(\(target.swiftTypeName).self, forKey: .\(label))\n"
+        } else {
+          output += "    self.\(label) = try container.decodeIfPresent([\(target.swiftTypeName)].self, forKey: .\(label))\n"
+        }
+      }
+    }
+    
+    for link in reverseLinks {
+      if let target = schema.entity(named: link.forward.entityName) {
+        let label = link.reverse.label
+        if link.reverse.cardinality == .one {
+          output += "    self.\(label) = try container.decodeIfPresent(\(target.swiftTypeName).self, forKey: .\(label))\n"
+        } else {
+          output += "    self.\(label) = try container.decodeIfPresent([\(target.swiftTypeName)].self, forKey: .\(label))\n"
+        }
+      }
     }
     
     output += "  }\n"
