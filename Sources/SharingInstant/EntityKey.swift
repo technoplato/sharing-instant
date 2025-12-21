@@ -50,6 +50,18 @@ import Sharing
 ///
 /// Typically, `EntityKey` instances are generated from your `instant.schema.ts`
 /// file using the `instant-schema` CLI tool or SPM build plugin.
+/// Internal node for recursive query structure (using indirect enum to allow nesting)
+public indirect enum EntityQueryNode: Hashable, Sendable {
+  case link(
+    name: String,
+    limit: Int? = nil,
+    orderBy: String? = nil,
+    orderDirection: EntityKeyOrderDirection? = nil,
+    whereClauses: [String: EntityKeyPredicate] = [:],
+    children: [EntityQueryNode] = []
+  )
+}
+
 public struct EntityKey<Entity: EntityIdentifiable & Sendable>: Hashable, Sendable {
   /// The InstantDB namespace (entity type name)
   public let namespace: String
@@ -66,8 +78,11 @@ public struct EntityKey<Entity: EntityIdentifiable & Sendable>: Hashable, Sendab
   /// Where clause predicates (stored as field -> predicate dictionary)
   public var whereClauses: [String: EntityKeyPredicate]
   
-  /// Links to include in query results (InstaQL-style nested queries)
+  /// Links to include in query results (Legacy flat set)
   public var includedLinks: Set<String>
+  
+  /// Recursive tree of included links (Supported way)
+  public var linkTree: [EntityQueryNode]
   
   /// Creates an EntityKey for the specified namespace.
   ///
@@ -78,13 +93,15 @@ public struct EntityKey<Entity: EntityIdentifiable & Sendable>: Hashable, Sendab
   ///   - limitCount: Optional limit on results
   ///   - whereClauses: Optional where clauses
   ///   - includedLinks: Optional links to include in results
+  ///   - linkTree: Optional recursive link tree
   public init(
     namespace: String,
     orderByField: String? = nil,
     orderDirection: EntityKeyOrderDirection? = nil,
     limitCount: Int? = nil,
     whereClauses: [String: EntityKeyPredicate] = [:],
-    includedLinks: Set<String> = []
+    includedLinks: Set<String> = [],
+    linkTree: [EntityQueryNode] = []
   ) {
     self.namespace = namespace
     self.orderByField = orderByField
@@ -92,6 +109,7 @@ public struct EntityKey<Entity: EntityIdentifiable & Sendable>: Hashable, Sendab
     self.limitCount = limitCount
     self.whereClauses = whereClauses
     self.includedLinks = includedLinks
+    self.linkTree = linkTree
   }
   
   // MARK: - Query Modifiers
@@ -213,6 +231,10 @@ public struct EntityKey<Entity: EntityIdentifiable & Sendable>: Hashable, Sendab
     var copy = self
     let fieldName = extractFieldName(from: keyPath)
     copy.includedLinks.insert(fieldName)
+    
+    // Add leaf node
+    copy.linkTree.append(.link(name: fieldName))
+    
     return copy
   }
   
@@ -231,6 +253,86 @@ public struct EntityKey<Entity: EntityIdentifiable & Sendable>: Hashable, Sendab
     var copy = self
     let fieldName = extractFieldName(from: keyPath)
     copy.includedLinks.insert(fieldName)
+    
+    // Add leaf node
+    copy.linkTree.append(.link(name: fieldName))
+    
+    return copy
+  }
+
+  /// Include a related entity with a nested query builder (Recursive).
+  ///
+  /// This enables deep fetching and nested query modifiers.
+  ///
+  /// ```swift
+  /// Schema.users.with(\.posts) { posts in
+  ///   posts.orderBy(\.createdAt, .desc).limit(5)
+  ///        .with(\.comments)
+  /// }
+  /// ```
+  ///
+  /// - Parameters:
+  ///   - keyPath: KeyPath to the has-one link
+  ///   - builder: A closure that takes a base EntityKey for the linked type and returns a configured one
+  /// - Returns: A new EntityKey with the nested query included
+  public func with<V: EntityIdentifiable & Sendable>(
+    _ keyPath: KeyPath<Entity, V?>,
+    _ builder: (EntityKey<V>) -> EntityKey<V>
+  ) -> EntityKey<Entity> {
+    var copy = self
+    let fieldName = extractFieldName(from: keyPath)
+    copy.includedLinks.insert(fieldName)
+    
+    let base = EntityKey<V>(namespace: fieldName)
+    let configured = builder(base)
+    
+    // Convert the configured sub-key into a recursive node
+    let node = EntityQueryNode.link(
+      name: fieldName,
+      limit: configured.limitCount,
+      orderBy: configured.orderByField,
+      orderDirection: configured.orderDirection,
+      whereClauses: configured.whereClauses,
+      children: configured.linkTree
+    )
+    copy.linkTree.append(node)
+    
+    return copy
+  }
+
+  /// Include a related entity array with a nested query builder (Recursive).
+  ///
+  /// ```swift
+  /// Schema.users.with(\.posts) { posts in
+  ///   posts.with(\.comments)
+  /// }
+  /// ```
+  ///
+  /// - Parameters:
+  ///   - keyPath: KeyPath to the has-many link
+  ///   - builder: A closure that takes a base EntityKey for the linked type and returns a configured one
+  /// - Returns: A new EntityKey with the nested query included
+  public func with<V: EntityIdentifiable & Sendable>(
+    _ keyPath: KeyPath<Entity, [V]?>,
+    _ builder: (EntityKey<V>) -> EntityKey<V>
+  ) -> EntityKey<Entity> {
+    var copy = self
+    let fieldName = extractFieldName(from: keyPath)
+    copy.includedLinks.insert(fieldName)
+    
+    let base = EntityKey<V>(namespace: fieldName)
+    let configured = builder(base)
+    
+    let node = EntityQueryNode.link(
+      name: fieldName,
+      limit: configured.limitCount,
+      orderBy: configured.orderByField,
+      orderDirection: configured.orderDirection,
+      whereClauses: configured.whereClauses,
+      children: configured.linkTree
+    )
+    copy.linkTree.append(node)
+    
     return copy
   }
   
@@ -545,7 +647,8 @@ struct EntityKeyRequest<E: EntityIdentifiable & Sendable>: SharingInstantSync.Ke
       namespace: key.namespace,
       orderBy: orderBy,
       whereClause: whereClause,
-      includedLinks: key.includedLinks
+      includedLinks: key.includedLinks,
+      linkTree: key.linkTree
     )
   }
 }
@@ -575,7 +678,9 @@ struct EntityKeyQueryRequest<E: EntityIdentifiable & Sendable>: SharingInstantQu
       namespace: key.namespace,
       orderBy: orderBy,
       limit: key.limitCount,
-      whereClause: whereClause
+      whereClause: whereClause,
+      includedLinks: key.includedLinks,
+      linkTree: key.linkTree
     )
   }
 }

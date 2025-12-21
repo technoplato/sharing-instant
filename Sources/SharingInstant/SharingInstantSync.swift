@@ -39,7 +39,11 @@ public enum SharingInstantSync {
     
     /// Links to include in query results (InstaQL-style nested queries).
     /// When set, the query will fetch related entities and nest them in the results.
+    /// (Legacy flat set)
     public let includedLinks: Set<String>
+    
+    /// Recursive tree of included links (Supported way)
+    public let linkTree: [EntityQueryNode]
     
     /// Optional animation to use when updating the UI.
     #if canImport(SwiftUI)
@@ -60,6 +64,7 @@ public enum SharingInstantSync {
     ///   - orderBy: Optional ordering for the results.
     ///   - whereClause: Optional where clause for filtering (e.g., `["done": false]`).
     ///   - includedLinks: Optional set of link field names to include in results.
+    ///   - linkTree: Optional recursive link tree.
     ///   - animation: Optional animation to use when updating the UI.
     ///   - testingValue: Optional value to use during testing.
     public init(
@@ -67,6 +72,7 @@ public enum SharingInstantSync {
       orderBy: OrderBy? = nil,
       whereClause: [String: Any]? = nil,
       includedLinks: Set<String> = [],
+      linkTree: [EntityQueryNode] = [],
       animation: Animation? = nil,
       testingValue: [Value]? = nil
     ) {
@@ -74,6 +80,7 @@ public enum SharingInstantSync {
       self.orderBy = orderBy
       self.whereClause = whereClause
       self.includedLinks = includedLinks
+      self.linkTree = linkTree
       self._whereClauseHash = whereClause.map { Self.hashWhereClause($0) }
       self.animation = animation
       self.testingValue = testingValue
@@ -86,18 +93,21 @@ public enum SharingInstantSync {
     ///   - orderBy: Optional ordering for the results.
     ///   - whereClause: Optional where clause for filtering (e.g., `["done": false]`).
     ///   - includedLinks: Optional set of link field names to include in results.
+    ///   - linkTree: Optional recursive link tree.
     ///   - testingValue: Optional value to use during testing.
     public init(
       namespace: String,
       orderBy: OrderBy? = nil,
       whereClause: [String: Any]? = nil,
       includedLinks: Set<String> = [],
+      linkTree: [EntityQueryNode] = [],
       testingValue: [Value]? = nil
     ) {
       self.namespace = namespace
       self.orderBy = orderBy
       self.whereClause = whereClause
       self.includedLinks = includedLinks
+      self.linkTree = linkTree
       self._whereClauseHash = whereClause.map { Self.hashWhereClause($0) }
       self.testingValue = testingValue
     }

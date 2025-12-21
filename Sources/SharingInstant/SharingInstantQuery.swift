@@ -40,6 +40,12 @@ public enum SharingInstantQuery {
     /// Dictionary format: `["field": value]` or `["field": ["$operator": value]]`
     public let whereClause: [String: Any]?
     
+    /// Links to include (legacy)
+    public let includedLinks: Set<String>
+    
+    /// Recursively included links
+    public let linkTree: [EntityQueryNode]
+    
     /// Optional animation to use when updating the UI.
     #if canImport(SwiftUI)
     public let animation: Animation?
@@ -53,19 +59,13 @@ public enum SharingInstantQuery {
     
     #if canImport(SwiftUI)
     /// Creates a new query configuration.
-    ///
-    /// - Parameters:
-    ///   - namespace: The InstantDB namespace (entity type) to query.
-    ///   - orderBy: Optional ordering for the results.
-    ///   - limit: Optional limit on the number of results.
-    ///   - whereClause: Optional where clause for filtering (e.g., `["done": false]`).
-    ///   - animation: Optional animation to use when updating the UI.
-    ///   - testingValue: Optional value to use during testing.
     public init(
       namespace: String,
       orderBy: OrderBy? = nil,
       limit: Int? = nil,
       whereClause: [String: Any]? = nil,
+      includedLinks: Set<String> = [],
+      linkTree: [EntityQueryNode] = [],
       animation: Animation? = nil,
       testingValue: [Value]? = nil
     ) {
@@ -73,30 +73,29 @@ public enum SharingInstantQuery {
       self.orderBy = orderBy
       self.limit = limit
       self.whereClause = whereClause
+      self.includedLinks = includedLinks
+      self.linkTree = linkTree
       self._whereClauseHash = whereClause.map { Self.hashWhereClause($0) }
       self.animation = animation
       self.testingValue = testingValue
     }
     #else
     /// Creates a new query configuration.
-    ///
-    /// - Parameters:
-    ///   - namespace: The InstantDB namespace (entity type) to query.
-    ///   - orderBy: Optional ordering for the results.
-    ///   - limit: Optional limit on the number of results.
-    ///   - whereClause: Optional where clause for filtering (e.g., `["done": false]`).
-    ///   - testingValue: Optional value to use during testing.
     public init(
       namespace: String,
       orderBy: OrderBy? = nil,
       limit: Int? = nil,
       whereClause: [String: Any]? = nil,
+      includedLinks: Set<String> = [],
+      linkTree: [EntityQueryNode] = [],
       testingValue: [Value]? = nil
     ) {
       self.namespace = namespace
       self.orderBy = orderBy
       self.limit = limit
       self.whereClause = whereClause
+      self.includedLinks = includedLinks
+      self.linkTree = linkTree
       self._whereClauseHash = whereClause.map { Self.hashWhereClause($0) }
       self.testingValue = testingValue
     }

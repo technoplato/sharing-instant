@@ -301,127 +301,16 @@ where Value.Element: EntityIdentifiable & Sendable {
     logInfo("Load: fetching data for namespace: \(configuration.namespace)")
     
     let loadId = UUID().uuidString.prefix(8)
-    logDebug("Load[\(loadId)]: starting load task")
+    logDebug("Load[\(loadId)]: starting load task via Reactor")
     
     Task { @MainActor in
-      do {
-        // Create client on main actor
-        let client = InstantClientFactory.makeClient(appID: appID)
-        logDebug("Load[\(loadId)]: created client for app: \(self.appID)")
-        
-        // Connect if not already connected
-        if client.connectionState == .disconnected {
-          logInfo("Load: client disconnected, initiating connection...")
-          client.connect()
-        }
-        
-        // Wait for authentication with timeout
-        // InstantDB uses automatic guest auth - should be fast
-        let timeout: UInt64 = 5_000_000_000 // 5 seconds
-        let startTime = DispatchTime.now()
-        
-        while client.connectionState != .authenticated {
-          let elapsed = DispatchTime.now().uptimeNanoseconds - startTime.uptimeNanoseconds
-          if elapsed > timeout {
-            let error = InstantError.notAuthenticated
-            logError("Load: authentication timeout after 5s, state: \(String(describing: client.connectionState))")
-            reportIssue("InstantDB authentication timeout. State: \(client.connectionState)")
-            self.withResume {
-              continuation.resume(throwing: error)
+        let stream = await Reactor.shared.subscribe(appID: appID, configuration: configuration)
+        for await data in stream {
+            withResume {
+                continuation.resume(returning: Value(data))
             }
-            return
-          }
-          
-          if case .error(let connectionError) = client.connectionState {
-            logError("Load: connection error", error: connectionError)
-            reportIssue(connectionError)
-            self.withResume {
-              continuation.resume(throwing: connectionError)
-            }
-            return
-          }
-          
-          logDebug("Load: waiting for auth, state: \(String(describing: client.connectionState))")
-          try await Task.sleep(nanoseconds: 50_000_000) // 50ms
+            break // One-shot
         }
-        
-        logDebug("Load: client authenticated (guest), executing query...")
-        
-        // Build the typed query with ordering and where clause
-        var query = client.query(Element.self)
-        if let orderBy = configuration.orderBy {
-          query = query.order(by: orderBy.field, orderBy.isDescending ? .desc : .asc)
-        }
-        if let whereClause = configuration.whereClause {
-          query = query.where(whereClause)
-        }
-        // Include linked entities if specified
-        if !configuration.includedLinks.isEmpty {
-          query = query.including(configuration.includedLinks)
-          logDebug("Load: including links: \(configuration.includedLinks)")
-        }
-        
-        logDebug("Load[\(loadId)]: subscribing to query for \(Element.namespace)")
-        
-        // Subscribe to query and get initial results
-        var receivedInitial = false
-        var continuationResumed = false
-        let token = try client.subscribe(query) { result in
-          guard !receivedInitial else {
-            logDebug("Load[\(loadId)]: ignoring subsequent callback (already received initial)")
-            return
-          }
-          
-          if result.isLoading {
-            logDebug("Load[\(loadId)]: query loading...")
-            return
-          }
-          
-          receivedInitial = true
-          
-          if let error = result.error {
-            logError("Load[\(loadId)]: query error", error: error)
-            reportIssue(error)
-            if !continuationResumed {
-              continuationResumed = true
-              self.withResume {
-                continuation.resume(throwing: error)
-              }
-            }
-          } else {
-            logInfo("Load[\(loadId)]: received \(result.data.count) items from \(Element.namespace)")
-            if !continuationResumed {
-              continuationResumed = true
-              self.withResume {
-                continuation.resume(returning: Value(result.data))
-              }
-            }
-          }
-        }
-        
-        // Wait a moment for the initial result, then clean up the subscription
-        // The subscribe() method maintains the long-lived subscription for real-time updates
-        try? await Task.sleep(nanoseconds: 100_000_000) // 100ms
-        
-        // If we still haven't received data, the continuation will leak
-        // This can happen if the task is cancelled before data arrives
-        if !continuationResumed {
-          logError("Load[\(loadId)]: timeout waiting for initial data, resuming with initial value")
-          continuationResumed = true
-          self.withResume {
-            continuation.resumeReturningInitialValue()
-          }
-        }
-        
-        // Clean up the load subscription (subscribe() maintains its own)
-        _ = token
-      } catch {
-        logError("Load[\(loadId)]: failed", error: error)
-        reportIssue(error)
-        withResume {
-          continuation.resume(throwing: error)
-        }
-      }
     }
   }
   
@@ -429,6 +318,23 @@ where Value.Element: EntityIdentifiable & Sendable {
     context: LoadContext<Value>,
     subscriber: SharedSubscriber<Value>
   ) -> SharedSubscription {
+    // #region agent log
+    do {
+      let logPath = URL(fileURLWithPath: "/Users/mlustig/Development/personal/instantdb/.cursor/debug.log")
+      let payload: [String: Any] = ["location": "InstantSyncKey:subscribe:entry", "message": "subscribe() called via Reactor", "timestamp": Date().timeIntervalSince1970 * 1000, "sessionId": "debug-session", "hypothesisId": "D", "data": ["namespace": request.configuration?.namespace ?? "nil", "context": String(describing: context)]]
+      if let jsonData = try? JSONSerialization.data(withJSONObject: payload), let jsonString = String(data: jsonData, encoding: .utf8) {
+        if FileManager.default.fileExists(atPath: logPath.path) {
+          let handle = try FileHandle(forWritingTo: logPath)
+          handle.seekToEndOfFile()
+          handle.write((jsonString + "\n").data(using: .utf8)!)
+          handle.closeFile()
+        } else {
+          try (jsonString + "\n").write(to: logPath, atomically: true, encoding: .utf8)
+        }
+      }
+    } catch {}
+    // #endregion
+    
     guard let configuration = request.configuration else {
       logDebug("Subscribe: no configuration provided, returning empty subscription")
       return SharedSubscription {}
@@ -448,129 +354,52 @@ where Value.Element: EntityIdentifiable & Sendable {
     logInfo("Subscribe: starting subscription for namespace: \(configuration.namespace)")
     
     let subscriptionId = UUID().uuidString.prefix(8)
-    logDebug("Subscribe[\(subscriptionId)]: creating new subscription task")
+    logDebug("Subscribe[\(subscriptionId)]: creating new subscription task via Reactor")
     
     let task = Task { @MainActor in
-      // Create client on main actor
-      let client = InstantClientFactory.makeClient(appID: appID)
-      logDebug("Subscribe[\(subscriptionId)]: created InstantClient for app: \(self.appID)")
-      
-      // Track if we've successfully subscribed at least once
-      var token: SubscriptionToken?
-      var hasLoggedError = false
-      
-      // Main subscription loop - survives connection failures and reconnects
-      // This loop runs until the task is cancelled (when the @Shared goes away)
-      while !Task.isCancelled {
-        do {
-          // Connect if not already connected
-          if client.connectionState == .disconnected {
-            logInfo("Subscribe: client disconnected, initiating connection...")
-            client.connect()
-          }
-          
-          // Wait for authentication (with no timeout - we'll wait for reconnection)
-          // The WebSocketConnection handles automatic reconnection with backoff
-          var lastLoggedState: String = ""
-          
-          while client.connectionState != .authenticated && !Task.isCancelled {
-            // Log connection errors but don't give up - WebSocket will auto-reconnect
-            if case .error(let connectionError) = client.connectionState {
-              if !hasLoggedError {
-                logError("Subscribe: connection error (waiting for reconnect)", error: connectionError)
-                hasLoggedError = true
+        let stream = await Reactor.shared.subscribe(appID: appID, configuration: configuration)
+        for await data in stream {
+            // #region agent log
+            do {
+              let logPath = URL(fileURLWithPath: "/Users/mlustig/Development/personal/instantdb/.cursor/debug.log")
+              let payload: [String: Any] = ["location": "InstantSyncKey:callback", "message": "Reactor yielded data", "timestamp": Date().timeIntervalSince1970 * 1000, "sessionId": "debug-session", "hypothesisId": "C", "data": ["namespace": configuration.namespace, "dataCount": data.count]]
+              if let jsonData = try? JSONSerialization.data(withJSONObject: payload), let jsonString = String(data: jsonData, encoding: .utf8) {
+                if FileManager.default.fileExists(atPath: logPath.path) {
+                  let handle = try FileHandle(forWritingTo: logPath)
+                  handle.seekToEndOfFile()
+                  handle.write((jsonString + "\n").data(using: .utf8)!)
+                  handle.closeFile()
+                } else {
+                  try (jsonString + "\n").write(to: logPath, atomically: true, encoding: .utf8)
+                }
               }
-              // Don't yield error to subscriber - just wait for reconnection
-              // The UI will show stale data or loading state, which is better than an error
-            }
+            } catch {}
+            // #endregion
             
-            // Only log state changes to reduce noise
-            let currentState = String(describing: client.connectionState)
-            if currentState != lastLoggedState {
-              logDebug("Subscribe: waiting for auth, state changed to: \(currentState)")
-              lastLoggedState = currentState
-              
-              // Reset error logging flag when state changes (so we log new errors)
-              if currentState != "error" {
-                hasLoggedError = false
-              }
+            withResume {
+                subscriber.yield(Value(data))
             }
-            
-            try await Task.sleep(nanoseconds: 100_000_000) // 100ms polling
-          }
-          
-          guard !Task.isCancelled else { break }
-          
-          logInfo("Subscribe: client authenticated (guest), subscribing to query for \(Element.namespace)...")
-          
-          // Build the typed query with ordering and where clause
-          var query = client.query(Element.self)
-          if let orderBy = configuration.orderBy {
-            query = query.order(by: orderBy.field, orderBy.isDescending ? .desc : .asc)
-            logDebug("Subscribe: query ordered by \(orderBy.field) \(orderBy.isDescending ? "DESC" : "ASC")")
-          }
-          if let whereClause = configuration.whereClause {
-            query = query.where(whereClause)
-            logDebug("Subscribe: query with where clause: \(whereClause)")
-          }
-          // Include linked entities if specified
-          if !configuration.includedLinks.isEmpty {
-            query = query.including(configuration.includedLinks)
-            logDebug("Subscribe: including links: \(configuration.includedLinks)")
-          }
-          
-          // Subscribe to the query
-          token = try client.subscribe(query) { result in
-            if result.isLoading {
-              logDebug("Subscribe: query loading...")
-              return
-            }
-            
-            if let error = result.error {
-              logError("Subscribe: query error", error: error)
-              reportIssue(error)
-              self.withResume {
-                subscriber.yield(throwing: error)
-              }
-            } else {
-              logInfo("Subscribe: query returned \(result.data.count) items from \(Element.namespace)")
-              self.withResume {
-                subscriber.yield(Value(result.data))
-              }
-            }
-          }
-          
-          logDebug("Subscribe[\(subscriptionId)]: subscription established, keeping alive...")
-          
-          // Keep the subscription alive, monitoring for disconnection
-          // If we disconnect, we'll loop back and wait for reconnection
-          while !Task.isCancelled && client.connectionState == .authenticated {
-            try await Task.sleep(nanoseconds: 500_000_000) // 500ms check interval
-          }
-          
-          // If we get here and aren't cancelled, connection dropped - loop back to reconnect
-          if !Task.isCancelled {
-            logInfo("Subscribe[\(subscriptionId)]: connection lost, waiting for reconnect...")
-            // Token is still held, will be cleaned up when task ends or we get a new one
-          }
-          
-        } catch {
-          if Task.isCancelled {
-            logDebug("Subscribe[\(subscriptionId)]: task was cancelled")
-            break
-          } else {
-            logError("Subscribe[\(subscriptionId)]: error during subscription", error: error)
-            // Wait a bit before retrying
-            try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
-          }
         }
-      }
-      
-      logDebug("Subscribe[\(subscriptionId)]: task ending, cleaning up")
-      _ = token  // Token cleanup happens here when task ends
     }
     
     return SharedSubscription {
+      // #region agent log
+      do {
+        let logPath = URL(fileURLWithPath: "/Users/mlustig/Development/personal/instantdb/.cursor/debug.log")
+        let payload: [String: Any] = ["location": "InstantSyncKey:cancel", "message": "subscription CANCELLED", "timestamp": Date().timeIntervalSince1970 * 1000, "sessionId": "debug-session", "hypothesisId": "A", "data": ["namespace": configuration.namespace, "subscriptionId": String(subscriptionId)]]
+        if let jsonData = try? JSONSerialization.data(withJSONObject: payload), let jsonString = String(data: jsonData, encoding: .utf8) {
+          if FileManager.default.fileExists(atPath: logPath.path) {
+            let handle = try FileHandle(forWritingTo: logPath)
+            handle.seekToEndOfFile()
+            handle.write((jsonString + "\n").data(using: .utf8)!)
+            handle.closeFile()
+          } else {
+            try (jsonString + "\n").write(to: logPath, atomically: true, encoding: .utf8)
+          }
+        }
+      } catch {}
+      // #endregion
+      
       logDebug("Subscribe[\(subscriptionId)]: SharedSubscription cancelled for \(configuration.namespace)")
       task.cancel()
     }
@@ -598,98 +427,153 @@ where Value.Element: EntityIdentifiable & Sendable {
     
     Task { @MainActor in
       do {
-        // Create client on main actor
-        let client = InstantClientFactory.makeClient(appID: appID)
-        logDebug("Save: created client for app: \(self.appID)")
+        // Collect chunks
+        // We'll collect all chunks (ops) from the entire graph here
+        var allChunks: [TransactionChunk] = []
         
-        // Check connection state
-        guard client.connectionState == .authenticated else {
-          logError("Save: client not authenticated, state: \(String(describing: client.connectionState))")
-          reportIssue("Cannot save: InstantDB client not authenticated. State: \(client.connectionState)")
-          withResume {
-            continuation.resume(throwing: InstantError.notAuthenticated)
-          }
-          return
-        }
-        
-        let namespace = configuration.namespace
-        
-        // Build transaction chunks for all items using the proper TransactionChunk API
-        // This ensures attribute UUIDs are resolved correctly by TransactionTransformer
-        var chunks: [TransactionChunk] = []
-        
-        for item in value {
-          // Encode the item to get its properties
-          let encoder = JSONEncoder()
-          // InstantDB stores dates as milliseconds since epoch
-          encoder.dateEncodingStrategy = .millisecondsSince1970
-          let data = try encoder.encode(item)
-          guard var dict = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            logError("Save: failed to serialize item \(item.id) to dictionary")
-            continue
-          }
+        // Helper to traverse and collect operations
+        // Returns the ID of the entity processed
+        func traverse(value: Any, namespace: String) throws -> String? {
+          // Identify the entity ID and properties
+          // We use Mirror to inspect properties
+          let mirror = Mirror(reflecting: value)
           
-          // Remove the id from the data dict (it's used as the entity ID, not a property)
-          dict.removeValue(forKey: "id")
-          
-          // Extract link fields from the data dict
-          // Links are detected as: dict values that are objects with an "id" field,
-          // or arrays of objects with "id" fields
-          var linkFields: [String: Any] = [:]
-          var dataFields: [String: Any] = [:]
-          
-          for (key, value) in dict {
-            if let linkedEntity = value as? [String: Any], linkedEntity["id"] is String {
-              // Single link (has-one relationship)
-              // Extract just the ID for the link operation
-              linkFields[key] = linkedEntity["id"]
-              logDebug("Save: detected link field '\(key)' -> \(linkedEntity["id"] ?? "nil")")
-            } else if let linkedEntities = value as? [[String: Any]] {
-              // Potential many link (has-many relationship)
-              let ids = linkedEntities.compactMap { $0["id"] as? String }
-              if !ids.isEmpty && ids.count == linkedEntities.count {
-                // All items have IDs, treat as link
-                linkFields[key] = ids
-                logDebug("Save: detected link field '\(key)' -> \(ids)")
-              } else {
-                // Not all items have IDs, treat as regular data
-                dataFields[key] = value
-              }
-            } else {
-              // Regular data field
-              dataFields[key] = value
+          // Must identify 'id' property
+          // We can't rely on EntityIdentifiable casting easily for `Any` value without existential opening,
+          // so we look for "id" property via Mirror.
+          var id: String?
+          for child in mirror.children {
+            if child.label == "id", let idVal = child.value as? String {
+              id = idVal
+              break
             }
           }
           
-          // Build operations for this item
-          var ops: [[Any]] = []
-          
-          // 1. Update operation for data fields (if any)
-          if !dataFields.isEmpty {
-            ops.append(["update", namespace, item.id, dataFields])
-          } else {
-            // Even with no data fields, we need to ensure the entity exists
-            // Send an empty update to create/touch the entity
-            ops.append(["update", namespace, item.id, [:] as [String: Any]])
+          guard let entityId = id else {
+            logDebug("Save: could not find 'id' property on value of type \(type(of: value))")
+            return nil
           }
           
-          // 2. Link operations for link fields (if any)
-          if !linkFields.isEmpty {
-            ops.append(["link", namespace, item.id, linkFields])
-            logDebug("Save: adding link operation for \(item.id): \(linkFields)")
-          }
+          var dataFields: [String: Any] = [:]
+          var linkFields: [String: Any] = [:]
           
-          let chunk = TransactionChunk(
-            namespace: namespace,
-            id: item.id,
-            ops: ops
-          )
-          chunks.append(chunk)
+          for child in mirror.children {
+            guard let label = child.label, label != "id" else { continue }
+            
+            let childValue = child.value
+            let childMirror = Mirror(reflecting: childValue)
+            
+            // Unwrap Optional
+            let actualValue: Any
+            let isOptional: Bool
+            if childMirror.displayStyle == .optional {
+              isOptional = true
+              if childMirror.children.isEmpty {
+                // nil value
+                continue 
+              } else {
+                actualValue = childMirror.children.first!.value
+              }
+            } else {
+              isOptional = false
+              actualValue = childValue
+            }
+            
+            // Check if it's an Entity (nested object)
+            // We use getNamespace as the primary check for Entity-ness
+            if let namespace = getNamespace(for: actualValue),
+               let nestedId = try? traverse(value: actualValue, namespace: namespace) {
+              // It's a single link
+              linkFields[label] = nestedId
+            }
+            // Check if it's a Collection of Entities
+            else if let collection = actualValue as? [Any], !collection.isEmpty {
+               // Try to traverse first element to see if it's an entity
+               // If yes, traverse all and link many
+               var ids: [String] = []
+               var isEntityCollection = false
+               
+               // Check first item to determine if this is a collection of entities
+               if let firstItem = collection.first, let _ = getNamespace(for: firstItem) {
+                 isEntityCollection = true
+                 for item in collection {
+                   if let namespace = getNamespace(for: item),
+                      let nestedId = try? traverse(value: item, namespace: namespace) {
+                     ids.append(nestedId)
+                   }
+                 }
+               }
+               
+               if isEntityCollection {
+                 linkFields[label] = ids
+               } else {
+                  // Regular array data
+                  dataFields[label] = actualValue
+               }
+            }
+            else {
+              // Regular property
+              // Check for encodable? For now we trust JSONSerialization will handle or fail
+               dataFields[label] = actualValue
+            }
+          }
+           
+           // Create ops for this entity
+           var ops: [[Any]] = []
+           
+           // 1. Update (create/update)
+           if !dataFields.isEmpty {
+             let safeData = sanitizeData(dataFields)
+             ops.append(["update", namespace, entityId, safeData])
+           } else {
+             ops.append(["update", namespace, entityId, [:] as [String: Any]])
+           }
+           
+           // 2. Links
+           if !linkFields.isEmpty {
+             ops.append(["link", namespace, entityId, linkFields])
+           }
+           
+           let chunk = TransactionChunk(namespace: namespace, id: entityId, ops: ops)
+           allChunks.append(chunk)
+           
+           return entityId
         }
         
-        if !chunks.isEmpty {
-          logDebug("Save: sending \(chunks.count) update transactions")
-          try client.transact(chunks)
+        // Helper to get namespace
+        func getNamespace(for value: Any) -> String? {
+           if let entity = value as? any EntityIdentifiable {
+             return type(of: entity).namespace
+           }
+           return nil
+        }
+        
+        func sanitizeData(_ dict: [String: Any]) -> [String: Any] {
+          var res = dict
+          for (k, v) in dict {
+            if let date = v as? Date {
+               res[k] = date.timeIntervalSince1970 * 1000 // ms
+            } else if let subDict = v as? [String: Any] {
+               res[k] = sanitizeData(subDict)
+            }
+          }
+          return res
+        }
+
+        // --- Execution ---
+        
+        let namespace = configuration.namespace
+        
+        for item in value {
+           _ = try traverse(value: item, namespace: namespace)
+        }
+        
+        if !allChunks.isEmpty {
+          logDebug("Save: sending \(allChunks.count) transactions (recursive) via Reactor")
+          
+          // Delegate to Reactor
+          try await Reactor.shared.transact(appID: appID, chunks: allChunks)
+          
           logInfo("Save: transaction sent successfully")
         } else {
           logDebug("Save: no transactions to send")

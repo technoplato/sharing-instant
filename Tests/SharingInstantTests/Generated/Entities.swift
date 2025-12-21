@@ -229,7 +229,7 @@ public struct InstantUser: EntityIdentifiable, Codable, Sendable {
 
   /// Link to $users via '$usersLinkedPrimaryUser'
   /// - Note: Only populated when queried with `.with(\.linkedPrimaryUser)`
-  public var linkedPrimaryUser: InstantUser?
+  public var linkedPrimaryUser: Box<InstantUser>?
 
   /// Link to $users via '$usersLinkedPrimaryUser'
   /// - Note: Only populated when queried with `.with(\.linkedGuestUsers)`
@@ -243,7 +243,7 @@ public struct InstantUser: EntityIdentifiable, Codable, Sendable {
     email: String? = nil,
     imageURL: String? = nil,
     type: String? = nil,
-    linkedPrimaryUser: InstantUser? = nil,
+    linkedPrimaryUser: Box<InstantUser>? = nil,
     linkedGuestUsers: [InstantUser]? = nil
   ) {
     self.id = id

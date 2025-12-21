@@ -18,16 +18,16 @@ const _schema = i.schema({
       imageURL: i.string().optional(),
       type: i.string().optional(),
     }),
-    
+
     // ─────────────────────────────────────────────────────────────────────────
     // Basic Demo Entities
     // ─────────────────────────────────────────────────────────────────────────
-    
+
     facts: i.entity({
       count: i.number(),
       text: i.string(),
     }),
-    
+
     // Remote logging entity for debugging iOS apps
     logs: i.entity({
       level: i.string().indexed(),
@@ -39,18 +39,18 @@ const _schema = i.schema({
       formattedDate: i.string(),
       timezone: i.string(),
     }),
-    
+
     todos: i.entity({
       createdAt: i.number().indexed(),
       done: i.boolean(),
       title: i.string(),
     }),
-    
+
     // ─────────────────────────────────────────────────────────────────────────
     // Microblog Demo Entities
     // Demonstrates rich relationships between entities
     // ─────────────────────────────────────────────────────────────────────────
-    
+
     // User profiles with display name and handle
     profiles: i.entity({
       displayName: i.string(),
@@ -59,7 +59,7 @@ const _schema = i.schema({
       avatarUrl: i.string().optional(),
       createdAt: i.number().indexed(),
     }),
-    
+
     // Posts/tweets with content and metadata
     posts: i.entity({
       content: i.string(),
@@ -67,19 +67,23 @@ const _schema = i.schema({
       createdAt: i.number().indexed(),
       likesCount: i.number(),
     }),
-    
+
     // Comments on posts
     comments: i.entity({
       text: i.string(),
       createdAt: i.number().indexed(),
     }),
-    
+
     // Likes junction entity (for many-to-many between profiles and posts)
     likes: i.entity({
       createdAt: i.number().indexed(),
     }),
+
+    boards: i.entity({
+      state: i.json(),
+    }),
   },
-  
+
   links: {
     // $users self-referential link (for guest accounts)
     $usersLinkedPrimaryUser: {
@@ -95,11 +99,11 @@ const _schema = i.schema({
         label: "linkedGuestUsers",
       },
     },
-    
+
     // ─────────────────────────────────────────────────────────────────────────
     // Microblog Links
     // ─────────────────────────────────────────────────────────────────────────
-    
+
     // Profile → Posts (one-to-many: a profile has many posts)
     profilePosts: {
       forward: {
@@ -114,7 +118,7 @@ const _schema = i.schema({
         onDelete: "cascade",
       },
     },
-    
+
     // Profile → Comments (one-to-many: a profile has many comments)
     profileComments: {
       forward: {
@@ -129,7 +133,7 @@ const _schema = i.schema({
         onDelete: "cascade",
       },
     },
-    
+
     // Post → Comments (one-to-many: a post has many comments)
     postComments: {
       forward: {
@@ -144,7 +148,7 @@ const _schema = i.schema({
         onDelete: "cascade",
       },
     },
-    
+
     // Profile → Likes (one-to-many: a profile has many likes)
     profileLikes: {
       forward: {
@@ -159,7 +163,7 @@ const _schema = i.schema({
         onDelete: "cascade",
       },
     },
-    
+
     // Post → Likes (one-to-many: a post has many likes)
     postLikes: {
       forward: {
@@ -175,7 +179,7 @@ const _schema = i.schema({
       },
     },
   },
-  
+
   rooms: {
     // Avatar stack demo - shows who's online
     avatars: {
@@ -226,7 +230,7 @@ const _schema = i.schema({
 
 // This helps Typescript display nicer intellisense
 type _AppSchema = typeof _schema;
-interface AppSchema extends _AppSchema {}
+interface AppSchema extends _AppSchema { }
 const schema: AppSchema = _schema;
 
 export type { AppSchema };

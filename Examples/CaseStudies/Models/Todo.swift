@@ -214,6 +214,63 @@ nonisolated extension Profile: EntityIdentifiable {
   public static var namespace: String { "profiles" }
 }
 
+// MARK: - Comment Entity (for Recursive and MicroblogDemo)
+
+public struct Comment: Sendable, Identifiable, Codable, Equatable {
+  public var id: String
+  public var text: String
+  public var createdAt: Double
+  
+  // Link: author (populated when queried with .with(\.author))
+  public var author: Profile?
+  // Link: post (populated when queried with .with(\.post))
+  public var post: Post?
+  
+  public init(
+    id: String = UUID().uuidString,
+    text: String,
+    createdAt: Double = Date().timeIntervalSince1970,
+    author: Profile? = nil,
+    post: Post? = nil
+  ) {
+    self.id = id
+    self.text = text
+    self.createdAt = createdAt
+    self.author = author
+    self.post = post
+  }
+  
+  nonisolated public static func == (lhs: Self, rhs: Self) -> Bool {
+    lhs.id == rhs.id && lhs.text == rhs.text && lhs.createdAt == rhs.createdAt
+  }
+  
+  nonisolated public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.id = try container.decode(String.self, forKey: .id)
+    self.text = try container.decode(String.self, forKey: .text)
+    self.createdAt = try container.decode(Double.self, forKey: .createdAt)
+    self.author = try container.decodeIfPresent(Profile.self, forKey: .author)
+    self.post = try container.decodeIfPresent(Post.self, forKey: .post)
+  }
+  
+  nonisolated public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(id, forKey: .id)
+    try container.encode(text, forKey: .text)
+    try container.encode(createdAt, forKey: .createdAt)
+    try container.encodeIfPresent(author, forKey: .author)
+    try container.encodeIfPresent(post, forKey: .post)
+  }
+  
+  private enum CodingKeys: String, CodingKey {
+    case id, text, createdAt, author, post
+  }
+}
+
+nonisolated extension Comment: EntityIdentifiable {
+  public static var namespace: String { "comments" }
+}
+
 // MARK: - Post Entity (for MicroblogDemo)
 
 /// A post/tweet for the microblog demo.
@@ -227,6 +284,12 @@ public struct Post: Sendable, Identifiable, Codable, Equatable {
   
   // Link: author (populated when queried with .with(\.author))
   public var author: Profile?
+  // Link: replies (populated when queried with .with(\.replies))
+  public var replies: [Comment]?
+  
+  // Explicitly add replies to init, equality, codable would be lengthy here.
+  // Instead, let's just make `replies` var mutable and optional.
+  // Wait, I need to update init/Codable to support it or the demo won't work (data conversion).
   
   public init(
     id: String = UUID().uuidString,
@@ -234,7 +297,8 @@ public struct Post: Sendable, Identifiable, Codable, Equatable {
     imageUrl: String? = nil,
     createdAt: Double = Date().timeIntervalSince1970,
     likesCount: Double = 0,
-    author: Profile? = nil
+    author: Profile? = nil,
+    replies: [Comment]? = nil
   ) {
     self.id = id
     self.content = content
@@ -242,10 +306,11 @@ public struct Post: Sendable, Identifiable, Codable, Equatable {
     self.createdAt = createdAt
     self.likesCount = likesCount
     self.author = author
+    self.replies = replies
   }
   
   nonisolated public static func == (lhs: Self, rhs: Self) -> Bool {
-    lhs.id == rhs.id && lhs.content == rhs.content && lhs.createdAt == rhs.createdAt
+    lhs.id == rhs.id && lhs.content == rhs.content && lhs.createdAt == rhs.createdAt && lhs.replies == rhs.replies
   }
   
   nonisolated public init(from decoder: any Decoder) throws {
@@ -258,6 +323,7 @@ public struct Post: Sendable, Identifiable, Codable, Equatable {
     let flexibleLikesCount = try container.decode(FlexibleDouble.self, forKey: .likesCount)
     self.likesCount = flexibleLikesCount.wrappedValue
     self.author = try container.decodeIfPresent(Profile.self, forKey: .author)
+    self.replies = try container.decodeIfPresent([Comment].self, forKey: .replies)
   }
   
   nonisolated public func encode(to encoder: any Encoder) throws {
@@ -268,10 +334,11 @@ public struct Post: Sendable, Identifiable, Codable, Equatable {
     try container.encode(createdAt, forKey: .createdAt)
     try container.encode(likesCount, forKey: .likesCount)
     try container.encodeIfPresent(author, forKey: .author)
+    try container.encodeIfPresent(replies, forKey: .replies)
   }
   
   private enum CodingKeys: String, CodingKey {
-    case id, content, imageUrl, createdAt, likesCount, author
+    case id, content, imageUrl, createdAt, likesCount, author, replies
   }
 }
 
@@ -287,6 +354,7 @@ let _boardKey = EntityKey<Board>(namespace: "boards")
 let _factKey = EntityKey<Fact>(namespace: "facts")
 let _profileKey = EntityKey<Profile>(namespace: "profiles")
 let _postKey = EntityKey<Post>(namespace: "posts")
+let _commentKey = EntityKey<Comment>(namespace: "comments")
 
 public extension Schema {
   /// todos entity - bidirectional sync
@@ -303,4 +371,8 @@ public extension Schema {
   
   /// posts entity - bidirectional sync (for MicroblogDemo)
   static var posts: EntityKey<Post> { _postKey }
+  
+  /// comments entity - bidirectional sync (for RecursiveDemo)
+  /// Note: We invoke .replies on Schema.posts, which links to Schema.comments
+  static var comments: EntityKey<Comment> { _commentKey }
 }
