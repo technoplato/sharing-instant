@@ -83,7 +83,11 @@ private struct MicroblogView: View {
       }
     }
     .padding()
-    .background(Color(.systemGroupedBackground))
+    #if os(iOS) || os(tvOS)
+    .background(Color(uiColor: .systemGroupedBackground))
+    #else
+    .background(Color(nsColor: .windowBackgroundColor))
+    #endif
   }
   
   // MARK: - Post Composer
