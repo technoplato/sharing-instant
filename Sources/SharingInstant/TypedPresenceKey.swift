@@ -216,9 +216,12 @@ public struct TypedPresenceKey<T: Codable & Sendable & Equatable>: SharedKey, @u
         try? await Task.sleep(nanoseconds: 50_000_000)
       }
       
-      // Get initial presence state
-      if let slice = client.presence.getPresence(roomId: combinedRoomId) {
-        let state = buildRoomPresence(from: slice)
+      // Get initial presence state using the SDK's type-safe API
+      if let typedSlice: TypedPresenceSlice<T> = client.presence.getTypedPresence(
+        roomId: combinedRoomId,
+        fallbackUser: initialPresence
+      ) {
+        let state = buildRoomPresence(from: typedSlice)
         continuation.resume(returning: state)
       } else {
         continuation.resume(returning: RoomPresence(user: initialPresence, isLoading: false))
@@ -251,15 +254,13 @@ public struct TypedPresenceKey<T: Codable & Sendable & Equatable>: SharedKey, @u
         try? await Task.sleep(nanoseconds: 50_000_000)
       }
       
-      // Encode initial presence to dictionary
-      let initialDict = encodePresence(initialPresence)
-      
-      // Subscribe to presence
-      let unsub = client.presence.subscribePresence(
+      // Subscribe to typed presence using the SDK's type-safe API
+      // This eliminates manual JSON encode/decode at this layer
+      let unsub = client.presence.subscribeTypedPresence(
         roomId: combinedRoomId,
-        initialPresence: initialDict
-      ) { slice in
-        let state = buildRoomPresence(from: slice)
+        initialPresence: initialPresence
+      ) { (typedSlice: TypedPresenceSlice<T>) in
+        let state = buildRoomPresence(from: typedSlice)
         subscriber.yield(state)
       }
       
@@ -293,9 +294,8 @@ public struct TypedPresenceKey<T: Codable & Sendable & Equatable>: SharedKey, @u
         return
       }
       
-      // Encode and publish the updated presence
-      let presenceDict = encodePresence(value.user)
-      client.presence.publishPresence(roomId: combinedRoomId, data: presenceDict)
+      // Publish the updated presence using the SDK's type-safe API
+      client.presence.publishTypedPresence(roomId: combinedRoomId, data: value.user)
       
       continuation.resume()
     }
@@ -303,51 +303,20 @@ public struct TypedPresenceKey<T: Codable & Sendable & Equatable>: SharedKey, @u
   
   // MARK: - Helpers
   
-  private func encodePresence(_ presence: T) -> [String: Any] {
-    do {
-      let encoder = JSONEncoder()
-      encoder.dateEncodingStrategy = .millisecondsSince1970
-      let data = try encoder.encode(presence)
-      if let dict = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
-        return dict
-      }
-    } catch {
-      logger.error("Failed to encode presence: \(error.localizedDescription)")
-    }
-    return [:]
-  }
-  
-  private func decodePresence(from dict: [String: Any]) -> T? {
-    do {
-      let data = try JSONSerialization.data(withJSONObject: dict)
-      let decoder = JSONDecoder()
-      decoder.dateDecodingStrategy = .millisecondsSince1970
-      return try decoder.decode(T.self, from: data)
-    } catch {
-      logger.error("Failed to decode presence: \(error.localizedDescription)")
-      return nil
-    }
-  }
-  
-  private func buildRoomPresence(from slice: PresenceSlice) -> RoomPresence<T> {
-    // Decode user presence
-    let user = decodePresence(from: slice.user) ?? initialPresence
-    
-    // Decode peer presence
+  private func buildRoomPresence(from typedSlice: TypedPresenceSlice<T>) -> RoomPresence<T> {
+    // Convert TypedPeer<T> to Peer<T>
     var peers: IdentifiedArrayOf<Peer<T>> = []
-    for (peerId, peerData) in slice.peers {
-      if let peerPresence = decodePresence(from: peerData) {
-        peers.append(Peer(id: peerId, data: peerPresence))
-      }
+    for typedPeer in typedSlice.peers {
+      peers.append(Peer(id: typedPeer.id, data: typedPeer.data))
     }
     
     // Build error if present
-    let error: (any Error)? = slice.error.map { PresenceError.roomError($0) }
+    let error: (any Error)? = typedSlice.error.map { PresenceError.roomError($0) }
     
     return RoomPresence(
-      user: user,
+      user: typedSlice.user,
       peers: peers,
-      isLoading: slice.isLoading,
+      isLoading: typedSlice.isLoading,
       error: error
     )
   }
