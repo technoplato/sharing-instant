@@ -71,7 +71,7 @@ struct FactListContentView: View {
 /// AVAILABLE IN THIS FILE
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
-/// $file {
+/// InstantFile {
 ///   id: String
 ///   path: String
 ///   url: String
@@ -79,7 +79,7 @@ struct FactListContentView: View {
 ///
 /// InstantUser {
 ///   id: String
-///   email: String
+///   email: String?
 ///   imageURL: String?
 ///   type: String?
 ///   linkedPrimaryUser: InstantUser?  // Link (has: one)
@@ -155,7 +155,8 @@ struct FactListContentView: View {
 /// GENERATION INFO
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
-/// Generated:       December 19, 2025 at 12:14 PM EST
+/// Mode:            Production (full traceability)
+/// Generated:       December 21, 2025 at 2:59 PM EST
 /// Machine:         mlustig-hy7l9xrd61.local (Apple M4 Pro, macOS 26.1)
 /// Generator:       Sources/instant-schema/main.swift
 /// Source Schema:   Examples/CaseStudies/instant.schema.ts
@@ -164,21 +165,20 @@ struct FactListContentView: View {
 
 swift run instant-schema generate \
   --from Examples/CaseStudies/instant.schema.ts \
-  --to Tests/SharingInstantTests/Generated/
+  --to Tests/SharingInstantTests/Generated
 */
-
 /// ─────────────────────────────────────────────────────────────────────────────────
 /// GIT STATE AT GENERATION
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// HEAD Commit:
-///   SHA:      e8915973bc1b6ca53fb9d5e4c7b89ba1b3b65f0a
-///   Date:     December 19, 2025 at 12:14 PM EST
+///   SHA:      f865cc24ae4b44e2dc8611b27913387caefef028
+///   Date:     December 21, 2025 at 2:59 PM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  docs: add crash reports that led to threading fix
+///   Message:  chore: Sync workspace changes and update dependencies
 ///
 /// Schema File Last Modified:
-///   SHA:      e7a94d20022c53013ecf1bb88f99ae5e4b176a5c
+///   SHA:      438e66f1e5ddb3271fb05bfdb3401058c6d9ae06
 ///   Date:     December 19, 2025 at 6:28 AM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
 ///   Message:  feat(codegen): Add enhanced headers with generation context and git traceability
@@ -186,12 +186,75 @@ swift run instant-schema generate \
 /// ═══════════════════════════════════════════════════════════════════════════════
 
 import Foundation
+import InstantDB
 import SharingInstant
 
-// Note: $file and $user system entities are excluded because:
-// 1. Swift doesn't allow $ prefix in type names
-// 2. $user has self-referential links which don't work with value types
-// These system entities are rarely used directly by app code.
+public struct InstantFile: EntityIdentifiable, Codable, Sendable {
+  public static var namespace: String { "$files" }
+  
+  // MARK: - Fields
+  
+  /// The unique identifier for this entity
+  public var id: String
+  public var path: String
+  public var url: String
+
+  // MARK: - Initializer
+
+  public init(
+    id: String = UUID().uuidString,
+    path: String,
+    url: String
+  ) {
+    self.id = id
+    self.path = path
+    self.url = url
+  }
+}
+
+
+public struct InstantUser: EntityIdentifiable, Codable, Sendable {
+  public static var namespace: String { "$users" }
+  
+  // MARK: - Fields
+  
+  /// The unique identifier for this entity
+  public var id: String
+  public var email: String?
+  public var imageURL: String?
+  public var type: String?
+
+  // MARK: - Links
+  // Populated when queried with .with(...)
+
+  /// Link to $users via '$usersLinkedPrimaryUser'
+  /// - Note: Only populated when queried with `.with(\.linkedPrimaryUser)`
+  public var linkedPrimaryUser: InstantUser?
+
+  /// Link to $users via '$usersLinkedPrimaryUser'
+  /// - Note: Only populated when queried with `.with(\.linkedGuestUsers)`
+  public var linkedGuestUsers: [InstantUser]?
+
+
+  // MARK: - Initializer
+
+  public init(
+    id: String = UUID().uuidString,
+    email: String? = nil,
+    imageURL: String? = nil,
+    type: String? = nil,
+    linkedPrimaryUser: InstantUser? = nil,
+    linkedGuestUsers: [InstantUser]? = nil
+  ) {
+    self.id = id
+    self.email = email
+    self.imageURL = imageURL
+    self.type = type
+    self.linkedPrimaryUser = linkedPrimaryUser
+    self.linkedGuestUsers = linkedGuestUsers
+  }
+}
+
 
 public struct Fact: EntityIdentifiable, Codable, Sendable {
   public static var namespace: String { "facts" }
@@ -213,6 +276,19 @@ public struct Fact: EntityIdentifiable, Codable, Sendable {
     self.id = id
     self.count = count
     self.text = text
+  }
+
+  // MARK: - Custom Codable (handles InstantDB type quirks)
+
+  private enum CodingKeys: String, CodingKey {
+    case id, count, text
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.id = try container.decode(String.self, forKey: .id)
+    self.count = try container.decode(FlexibleDouble.self, forKey: .count).wrappedValue
+    self.text = try container.decode(String.self, forKey: .text)
   }
 }
 
@@ -256,6 +332,25 @@ public struct Log: EntityIdentifiable, Codable, Sendable {
     self.formattedDate = formattedDate
     self.timezone = timezone
   }
+
+  // MARK: - Custom Codable (handles InstantDB type quirks)
+
+  private enum CodingKeys: String, CodingKey {
+    case id, level, message, jsonPayload, file, line, timestamp, formattedDate, timezone
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.id = try container.decode(String.self, forKey: .id)
+    self.level = try container.decode(String.self, forKey: .level)
+    self.message = try container.decode(String.self, forKey: .message)
+    self.jsonPayload = try container.decodeIfPresent(String.self, forKey: .jsonPayload)
+    self.file = try container.decode(String.self, forKey: .file)
+    self.line = try container.decode(FlexibleDouble.self, forKey: .line).wrappedValue
+    self.timestamp = try container.decode(FlexibleDouble.self, forKey: .timestamp).wrappedValue
+    self.formattedDate = try container.decode(String.self, forKey: .formattedDate)
+    self.timezone = try container.decode(String.self, forKey: .timezone)
+  }
 }
 
 
@@ -282,6 +377,20 @@ public struct Todo: EntityIdentifiable, Codable, Sendable {
     self.createdAt = createdAt
     self.done = done
     self.title = title
+  }
+
+  // MARK: - Custom Codable (handles InstantDB type quirks)
+
+  private enum CodingKeys: String, CodingKey {
+    case id, createdAt, done, title
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.id = try container.decode(String.self, forKey: .id)
+    self.createdAt = try container.decode(FlexibleDouble.self, forKey: .createdAt).wrappedValue
+    self.done = try container.decode(FlexibleBool.self, forKey: .done).wrappedValue
+    self.title = try container.decode(String.self, forKey: .title)
   }
 }
 
@@ -338,6 +447,25 @@ public struct Profile: EntityIdentifiable, Codable, Sendable {
     self.comments = comments
     self.likes = likes
   }
+
+  // MARK: - Custom Codable (handles InstantDB type quirks)
+
+  private enum CodingKeys: String, CodingKey {
+    case id, displayName, handle, bio, avatarUrl, createdAt, posts, comments, likes
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.id = try container.decode(String.self, forKey: .id)
+    self.displayName = try container.decode(String.self, forKey: .displayName)
+    self.handle = try container.decode(String.self, forKey: .handle)
+    self.bio = try container.decodeIfPresent(String.self, forKey: .bio)
+    self.avatarUrl = try container.decodeIfPresent(String.self, forKey: .avatarUrl)
+    self.createdAt = try container.decode(FlexibleDouble.self, forKey: .createdAt).wrappedValue
+    self.posts = try container.decodeIfPresent([Post].self, forKey: .posts)
+    self.comments = try container.decodeIfPresent([Comment].self, forKey: .comments)
+    self.likes = try container.decodeIfPresent([Like].self, forKey: .likes)
+  }
 }
 
 
@@ -390,6 +518,24 @@ public struct Post: EntityIdentifiable, Codable, Sendable {
     self.likes = likes
     self.author = author
   }
+
+  // MARK: - Custom Codable (handles InstantDB type quirks)
+
+  private enum CodingKeys: String, CodingKey {
+    case id, content, imageUrl, createdAt, likesCount, comments, likes, author
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.id = try container.decode(String.self, forKey: .id)
+    self.content = try container.decode(String.self, forKey: .content)
+    self.imageUrl = try container.decodeIfPresent(String.self, forKey: .imageUrl)
+    self.createdAt = try container.decode(FlexibleDouble.self, forKey: .createdAt).wrappedValue
+    self.likesCount = try container.decode(FlexibleDouble.self, forKey: .likesCount).wrappedValue
+    self.comments = try container.decodeIfPresent([Comment].self, forKey: .comments)
+    self.likes = try container.decodeIfPresent([Like].self, forKey: .likes)
+    self.author = try container.decodeIfPresent(Profile.self, forKey: .author)
+  }
 }
 
 
@@ -430,6 +576,21 @@ public struct Comment: EntityIdentifiable, Codable, Sendable {
     self.author = author
     self.post = post
   }
+
+  // MARK: - Custom Codable (handles InstantDB type quirks)
+
+  private enum CodingKeys: String, CodingKey {
+    case id, text, createdAt, author, post
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.id = try container.decode(String.self, forKey: .id)
+    self.text = try container.decode(String.self, forKey: .text)
+    self.createdAt = try container.decode(FlexibleDouble.self, forKey: .createdAt).wrappedValue
+    self.author = try container.decodeIfPresent(Profile.self, forKey: .author)
+    self.post = try container.decodeIfPresent(Post.self, forKey: .post)
+  }
 }
 
 
@@ -466,6 +627,20 @@ public struct Like: EntityIdentifiable, Codable, Sendable {
     self.createdAt = createdAt
     self.profile = profile
     self.post = post
+  }
+
+  // MARK: - Custom Codable (handles InstantDB type quirks)
+
+  private enum CodingKeys: String, CodingKey {
+    case id, createdAt, profile, post
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.id = try container.decode(String.self, forKey: .id)
+    self.createdAt = try container.decode(FlexibleDouble.self, forKey: .createdAt).wrappedValue
+    self.profile = try container.decodeIfPresent(Profile.self, forKey: .profile)
+    self.post = try container.decodeIfPresent(Post.self, forKey: .post)
   }
 }
 

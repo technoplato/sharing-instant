@@ -88,17 +88,19 @@ struct FactContentView: View {
 /// AVAILABLE IN THIS FILE
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
-/// Schema.$files → $file {
+/// Schema.instantFiles → InstantFile {
 ///   id: String
 ///   path: String
 ///   url: String
+///   // Note: InstantDB system entity
 /// }
 ///
-/// Schema.$users → $user {
+/// Schema.instantUsers → InstantUser {
 ///   id: String
-///   email: String
+///   email: String?
 ///   imageURL: String?
 ///   type: String?
+///   // Note: InstantDB system entity
 /// }
 ///
 /// Schema.facts → Fact {
@@ -160,7 +162,8 @@ struct FactContentView: View {
 /// GENERATION INFO
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
-/// Generated:       December 19, 2025 at 12:14 PM EST
+/// Mode:            Production (full traceability)
+/// Generated:       December 21, 2025 at 2:59 PM EST
 /// Machine:         mlustig-hy7l9xrd61.local (Apple M4 Pro, macOS 26.1)
 /// Generator:       Sources/instant-schema/main.swift
 /// Source Schema:   Examples/CaseStudies/instant.schema.ts
@@ -169,21 +172,20 @@ struct FactContentView: View {
 
 swift run instant-schema generate \
   --from Examples/CaseStudies/instant.schema.ts \
-  --to Tests/SharingInstantTests/Generated/
+  --to Tests/SharingInstantTests/Generated
 */
-
 /// ─────────────────────────────────────────────────────────────────────────────────
 /// GIT STATE AT GENERATION
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// HEAD Commit:
-///   SHA:      e8915973bc1b6ca53fb9d5e4c7b89ba1b3b65f0a
-///   Date:     December 19, 2025 at 12:14 PM EST
+///   SHA:      f865cc24ae4b44e2dc8611b27913387caefef028
+///   Date:     December 21, 2025 at 2:59 PM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  docs: add crash reports that led to threading fix
+///   Message:  chore: Sync workspace changes and update dependencies
 ///
 /// Schema File Last Modified:
-///   SHA:      e7a94d20022c53013ecf1bb88f99ae5e4b176a5c
+///   SHA:      438e66f1e5ddb3271fb05bfdb3401058c6d9ae06
 ///   Date:     December 19, 2025 at 6:28 AM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
 ///   Message:  feat(codegen): Add enhanced headers with generation context and git traceability
@@ -198,8 +200,13 @@ import SharingInstant
 // MARK: - Schema Namespace
 
 public enum Schema {
-  // Note: $files and $users system entities are excluded because Swift
-  // doesn't allow $ prefix in type names. These are rarely used directly.
+  /// InstantFile entity - bidirectional sync
+  /// - Note: This is an InstantDB system entity.
+  public static let instantFiles = EntityKey<InstantFile>(namespace: "$files")
+
+  /// InstantUser entity - bidirectional sync
+  /// - Note: This is an InstantDB system entity.
+  public static let instantUsers = EntityKey<InstantUser>(namespace: "$users")
 
   /// Fact entity - bidirectional sync
   public static let facts = EntityKey<Fact>(namespace: "facts")
