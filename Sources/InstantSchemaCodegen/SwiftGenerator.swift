@@ -938,6 +938,7 @@ public struct SwiftCodeGenerator {
     output += """
     import Foundation
     import SharingInstant
+    import InstantDB
     
     
     """
@@ -1002,7 +1003,6 @@ public struct SwiftCodeGenerator {
   
   private func generatePresenceType(for room: RoomIR, presence: EntityIR) -> String {
     let access = configuration.accessLevel.rawValue
-    let sendable = configuration.generateSendable ? ", Sendable" : ""
     let typeName = room.presenceTypeName
     
     var output = ""
@@ -1014,7 +1014,8 @@ public struct SwiftCodeGenerator {
       }
     }
     
-    output += "\(access) struct \(typeName): Codable\(sendable), Equatable {\n"
+    // Use PresenceData protocol which includes Codable, Sendable, Equatable
+    output += "\(access) struct \(typeName): PresenceData {\n"
     
     // Fields
     for field in presence.fields {
