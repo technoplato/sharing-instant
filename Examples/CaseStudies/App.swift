@@ -61,6 +61,19 @@ struct CaseStudiesApp: App {
             
             NavigationLink {
               CaseStudyView {
+                MicroblogDemo()
+              }
+            } label: {
+              VStack(alignment: .leading, spacing: 4) {
+                Label("Microblog (Links)", systemImage: "link")
+                Text("Entity relationships with .with()")
+                  .font(.caption)
+                  .foregroundStyle(.secondary)
+              }
+            }
+            
+            NavigationLink {
+              CaseStudyView {
                 AdvancedTodoDemo()
               }
             } label: {
