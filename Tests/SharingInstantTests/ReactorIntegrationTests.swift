@@ -33,15 +33,7 @@ final class ReactorIntegrationTests: XCTestCase {
       // So 'profile' variable provided in previous snippet might be unused or used for assertion?
       // I'll reconstruct it for clarity or just ignore
       
-      // 2. Write data using manual client
-      let client = InstantClient(appID: Self.testAppID)
-      client.connect()
-      
-      // Wait for auth
-      while client.connectionState != .authenticated {
-          try await Task.sleep(nanoseconds: 100_000_000)
-      }
-      
+      // 2. Write data using Reactor.transact
       let chunk = TransactionChunk(
         namespace: "profiles",
         id: id,
@@ -52,7 +44,8 @@ final class ReactorIntegrationTests: XCTestCase {
         ] as [String: Any]]]
       )
       
-      try client.transact(chunk)
+      // Use Reactor to transact
+      try await Reactor.shared.transact(appID: Self.testAppID, chunks: [chunk])
       
       // 3. Setup observation via Reactor (indirectly via @Shared logic? No, manual checking TripleStore)
       // We need to START a subscription to populate the store.
@@ -91,7 +84,7 @@ final class ReactorIntegrationTests: XCTestCase {
       
       // Cleanup
       let deleteChunk = TransactionChunk(namespace: "profiles", id: id, ops: [["delete", "profiles", id]])
-      try client.transact(deleteChunk)
+      try await Reactor.shared.transact(appID: Self.testAppID, chunks: [deleteChunk])
       
       consumerTask.cancel()
   }
