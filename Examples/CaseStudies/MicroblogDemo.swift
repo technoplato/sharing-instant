@@ -110,6 +110,11 @@ private struct MicroblogView: View {
       }
       .buttonStyle(.borderedProminent)
       .disabled(newPostContent.trimmingCharacters(in: .whitespaces).isEmpty || selectedAuthorId == nil)
+      
+      Button(action: createFakePost) {
+        Image(systemName: "wand.and.stars")
+      }
+      .disabled(selectedAuthorId == nil)
     }
     .padding()
   }
@@ -185,6 +190,35 @@ private struct MicroblogView: View {
     
     _ = $posts.withLock { $0.insert(post, at: 0) }
     newPostContent = ""
+  }
+  
+  private func createFakePost() {
+    guard let authorId = selectedAuthorId,
+          let author = profiles[id: authorId] else { return }
+    
+    let fakePosts = [
+      "Just shipped a new feature! 🚀",
+      "SwiftUI is amazing once you get the hang of it",
+      "Real-time sync is the future of apps",
+      "Coffee ☕️ + Code = Happiness",
+      "InstantDB makes building apps so much easier",
+      "Who else loves @Shared property wrappers?",
+      "Finally fixed that bug that's been haunting me",
+      "Working on something cool... stay tuned 👀",
+      "Hot take: declarative UI is better than imperative",
+      "Links in InstantDB are chef's kiss 🤌",
+    ]
+    
+    let randomContent = fakePosts.randomElement() ?? "Hello world!"
+    
+    let post = Post(
+      content: randomContent,
+      createdAt: Date().timeIntervalSince1970,
+      likesCount: 0,
+      author: author
+    )
+    
+    _ = $posts.withLock { $0.insert(post, at: 0) }
   }
   
   private func deletePosts(at offsets: IndexSet) {
