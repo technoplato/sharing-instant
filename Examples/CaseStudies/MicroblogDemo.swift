@@ -92,7 +92,7 @@ private struct MicroblogView: View {
     HStack(spacing: 12) {
       if let authorId = selectedAuthorId,
          let author = profiles[id: authorId] {
-        AvatarView(name: author.displayName, color: colorForHandle(author.handle))
+        MicroblogAvatarView(name: author.displayName, color: colorForHandle(author.handle))
           .frame(width: 36, height: 36)
       } else {
         Circle()
@@ -243,7 +243,7 @@ private struct AuthorButton: View {
   var body: some View {
     Button(action: action) {
       VStack(spacing: 8) {
-        AvatarView(
+        MicroblogAvatarView(
           name: profile.displayName,
           color: profile.handle == "alice" ? .purple : .blue
         )
@@ -283,7 +283,7 @@ private struct PostRow: View {
     HStack(alignment: .top, spacing: 12) {
       // Author avatar (from linked entity!)
       if let author = post.author {
-        AvatarView(
+        MicroblogAvatarView(
           name: author.displayName,
           color: author.handle == "alice" ? .purple : .blue
         )
@@ -324,9 +324,9 @@ private struct PostRow: View {
   }
 }
 
-// MARK: - Avatar View
+// MARK: - Microblog Avatar View
 
-private struct AvatarView: View {
+private struct MicroblogAvatarView: View {
   let name: String
   let color: Color
   

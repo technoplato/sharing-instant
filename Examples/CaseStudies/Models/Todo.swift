@@ -143,12 +143,143 @@ nonisolated extension Fact: EntityIdentifiable {
   public static var namespace: String { "facts" }
 }
 
+// MARK: - Profile Entity (for MicroblogDemo)
+
+/// A user profile for the microblog demo.
+public struct Profile: Sendable, Identifiable, Codable, Equatable {
+  public var id: String
+  public var displayName: String
+  public var handle: String
+  public var bio: String?
+  public var avatarUrl: String?
+  public var createdAt: Double
+  
+  // Link: posts (populated when queried with .with(\.posts))
+  public var posts: [Post]?
+  
+  public init(
+    id: String = UUID().uuidString,
+    displayName: String,
+    handle: String,
+    bio: String? = nil,
+    avatarUrl: String? = nil,
+    createdAt: Double = Date().timeIntervalSince1970,
+    posts: [Post]? = nil
+  ) {
+    self.id = id
+    self.displayName = displayName
+    self.handle = handle
+    self.bio = bio
+    self.avatarUrl = avatarUrl
+    self.createdAt = createdAt
+    self.posts = posts
+  }
+  
+  nonisolated public static func == (lhs: Self, rhs: Self) -> Bool {
+    lhs.id == rhs.id && lhs.displayName == rhs.displayName && lhs.handle == rhs.handle
+  }
+  
+  nonisolated public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.id = try container.decode(String.self, forKey: .id)
+    self.displayName = try container.decode(String.self, forKey: .displayName)
+    self.handle = try container.decode(String.self, forKey: .handle)
+    self.bio = try container.decodeIfPresent(String.self, forKey: .bio)
+    self.avatarUrl = try container.decodeIfPresent(String.self, forKey: .avatarUrl)
+    self.createdAt = try container.decode(Double.self, forKey: .createdAt)
+    self.posts = try container.decodeIfPresent([Post].self, forKey: .posts)
+  }
+  
+  nonisolated public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(id, forKey: .id)
+    try container.encode(displayName, forKey: .displayName)
+    try container.encode(handle, forKey: .handle)
+    try container.encodeIfPresent(bio, forKey: .bio)
+    try container.encodeIfPresent(avatarUrl, forKey: .avatarUrl)
+    try container.encode(createdAt, forKey: .createdAt)
+    try container.encodeIfPresent(posts, forKey: .posts)
+  }
+  
+  private enum CodingKeys: String, CodingKey {
+    case id, displayName, handle, bio, avatarUrl, createdAt, posts
+  }
+}
+
+nonisolated extension Profile: EntityIdentifiable {
+  public static var namespace: String { "profiles" }
+}
+
+// MARK: - Post Entity (for MicroblogDemo)
+
+/// A post/tweet for the microblog demo.
+public struct Post: Sendable, Identifiable, Codable, Equatable {
+  public var id: String
+  public var content: String
+  public var imageUrl: String?
+  public var createdAt: Double
+  public var likesCount: Double
+  
+  // Link: author (populated when queried with .with(\.author))
+  public var author: Profile?
+  
+  public init(
+    id: String = UUID().uuidString,
+    content: String,
+    imageUrl: String? = nil,
+    createdAt: Double = Date().timeIntervalSince1970,
+    likesCount: Double = 0,
+    author: Profile? = nil
+  ) {
+    self.id = id
+    self.content = content
+    self.imageUrl = imageUrl
+    self.createdAt = createdAt
+    self.likesCount = likesCount
+    self.author = author
+  }
+  
+  nonisolated public static func == (lhs: Self, rhs: Self) -> Bool {
+    lhs.id == rhs.id && lhs.content == rhs.content && lhs.createdAt == rhs.createdAt
+  }
+  
+  nonisolated public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.id = try container.decode(String.self, forKey: .id)
+    self.content = try container.decode(String.self, forKey: .content)
+    self.imageUrl = try container.decodeIfPresent(String.self, forKey: .imageUrl)
+    self.createdAt = try container.decode(Double.self, forKey: .createdAt)
+    self.likesCount = try container.decode(Double.self, forKey: .likesCount)
+    self.author = try container.decodeIfPresent(Profile.self, forKey: .author)
+  }
+  
+  nonisolated public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(id, forKey: .id)
+    try container.encode(content, forKey: .content)
+    try container.encodeIfPresent(imageUrl, forKey: .imageUrl)
+    try container.encode(createdAt, forKey: .createdAt)
+    try container.encode(likesCount, forKey: .likesCount)
+    try container.encodeIfPresent(author, forKey: .author)
+  }
+  
+  private enum CodingKeys: String, CodingKey {
+    case id, content, imageUrl, createdAt, likesCount, author
+  }
+}
+
+nonisolated extension Post: EntityIdentifiable {
+  public static var namespace: String { "posts" }
+}
+
 // MARK: - Schema Extension for Entities
 
 // These are defined in a nonisolated context to avoid @MainActor inference
-nonisolated(unsafe) let _todoKey = EntityKey<Todo>(namespace: "todos")
-nonisolated(unsafe) let _boardKey = EntityKey<Board>(namespace: "boards")
-nonisolated(unsafe) let _factKey = EntityKey<Fact>(namespace: "facts")
+let _todoKey = EntityKey<Todo>(namespace: "todos")
+let _boardKey = EntityKey<Board>(namespace: "boards")
+let _factKey = EntityKey<Fact>(namespace: "facts")
+let _profileKey = EntityKey<Profile>(namespace: "profiles")
+let _postKey = EntityKey<Post>(namespace: "posts")
 
 public extension Schema {
   /// todos entity - bidirectional sync
@@ -159,4 +290,10 @@ public extension Schema {
   
   /// facts entity - bidirectional sync
   static var facts: EntityKey<Fact> { _factKey }
+  
+  /// profiles entity - bidirectional sync (for MicroblogDemo)
+  static var profiles: EntityKey<Profile> { _profileKey }
+  
+  /// posts entity - bidirectional sync (for MicroblogDemo)
+  static var posts: EntityKey<Post> { _postKey }
 }
