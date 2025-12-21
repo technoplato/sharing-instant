@@ -298,48 +298,13 @@ where Value.Element: EntityIdentifiable & Sendable {
     }
     
     Task { @MainActor in
-      do {
-        // Create client on main actor
-        let client = InstantClientFactory.makeClient(appID: appID)
-        
-        // Build the typed query with ordering, limit, and where clause
-        var query = client.query(Element.self)
-        if let orderBy = configuration.orderBy {
-          query = query.order(by: orderBy.field, orderBy.isDescending ? .desc : .asc)
-        }
-        if let limit = configuration.limit {
-          query = query.limit(limit)
-        }
-        if let whereClause = configuration.whereClause {
-          query = query.where(whereClause)
-        }
-        
-        // Subscribe to query and get initial results
-        var receivedInitial = false
-        let _ = try client.subscribe(query) { result in
-          guard !receivedInitial else { return }
-          
-          if result.isLoading {
-            return
-          }
-          
-          receivedInitial = true
-          
-          if let error = result.error {
-            self.withResume {
-              continuation.resume(throwing: error)
+        let stream = await Reactor.shared.subscribe(appID: appID, configuration: configuration)
+        for await data in stream {
+            withResume {
+                continuation.resume(returning: Value(data))
             }
-          } else {
-            self.withResume {
-              continuation.resume(returning: Value(result.data))
-            }
-          }
+            break // One-shot
         }
-      } catch {
-        withResume {
-          continuation.resume(throwing: error)
-        }
-      }
     }
   }
   
@@ -367,105 +332,13 @@ where Value.Element: EntityIdentifiable & Sendable {
     logInfo("Query: starting subscription for namespace: \(configuration.namespace)")
     
     let task = Task { @MainActor in
-      do {
-        // Create client on main actor
-        let client = InstantClientFactory.makeClient(appID: appID)
-        logDebug("Query: created InstantClient for app: \(self.appID)")
-        
-        // Connect if not already connected
-        if client.connectionState == .disconnected {
-          logInfo("Query: client disconnected, initiating connection...")
-          client.connect()
-        }
-        
-        // Wait for authentication with timeout
-        // InstantDB uses automatic guest auth - server sends init-ok on connect
-        // This should be very fast (typically < 2s)
-        let timeout: UInt64 = 5_000_000_000 // 5 seconds
-        let startTime = DispatchTime.now()
-        var lastLoggedState: String = ""
-        
-        while client.connectionState != .authenticated {
-          let elapsed = DispatchTime.now().uptimeNanoseconds - startTime.uptimeNanoseconds
-          if elapsed > timeout {
-            let error = InstantError.notAuthenticated
-            logError("Query: authentication timeout after 5s, state: \(String(describing: client.connectionState))")
-            reportIssue("InstantDB authentication timeout during query. State: \(client.connectionState)")
-            self.withResume {
-              subscriber.yield(throwing: error)
+        let stream = await Reactor.shared.subscribe(appID: appID, configuration: configuration)
+        for await data in stream {
+            logInfo("Query: returned \(data.count) items from \(Element.namespace)")
+            withResume {
+              subscriber.yield(Value(data))
             }
-            return
-          }
-          
-          // Check for error state
-          if case .error(let connectionError) = client.connectionState {
-            logError("Query: connection error", error: connectionError)
-            reportIssue(connectionError)
-            self.withResume {
-              subscriber.yield(throwing: connectionError)
-            }
-            return
-          }
-          
-          // Only log state changes to reduce noise
-          let currentState = String(describing: client.connectionState)
-          if currentState != lastLoggedState {
-            logDebug("Query: waiting for auth, state changed to: \(currentState)")
-            lastLoggedState = currentState
-          }
-          
-          try await Task.sleep(nanoseconds: 50_000_000) // 50ms (faster polling)
         }
-        
-        logInfo("Query: client authenticated (guest), subscribing to query for \(Element.namespace)...")
-        
-        // Build the typed query with ordering, limit, and where clause
-        var query = client.query(Element.self)
-        if let orderBy = configuration.orderBy {
-          query = query.order(by: orderBy.field, orderBy.isDescending ? .desc : .asc)
-          logDebug("Query: ordered by \(orderBy.field) \(orderBy.isDescending ? "DESC" : "ASC")")
-        }
-        if let whereClause = configuration.whereClause {
-          query = query.where(whereClause)
-          logDebug("Query: with where clause: \(whereClause)")
-        }
-        if let limit = configuration.limit {
-          query = query.limit(limit)
-          logDebug("Query: limited to \(limit) results")
-        }
-        
-        let token = try client.subscribe(query) { result in
-          if result.isLoading {
-            logDebug("Query: loading...")
-            return
-          }
-          
-          if let error = result.error {
-            logError("Query: error", error: error)
-            reportIssue(error)
-            self.withResume {
-              subscriber.yield(throwing: error)
-            }
-          } else {
-            logInfo("Query: returned \(result.data.count) items from \(Element.namespace)")
-            self.withResume {
-              subscriber.yield(Value(result.data))
-            }
-          }
-        }
-        
-        logDebug("Query: subscription established, keeping alive...")
-        
-        // Keep the subscription alive
-        try? await Task.sleep(nanoseconds: .max)
-        _ = token  // Prevent deallocation
-      } catch {
-        logError("Query: subscribe failed", error: error)
-        reportIssue(error)
-        self.withResume {
-          subscriber.yield(throwing: error)
-        }
-      }
     }
     
     return SharedSubscription {

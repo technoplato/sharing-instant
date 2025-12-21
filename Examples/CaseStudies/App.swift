@@ -110,6 +110,18 @@ struct CaseStudiesApp: App {
                   .foregroundStyle(.secondary)
               }
             }
+            NavigationLink {
+              CaseStudyView {
+                RecursiveLoaderDemo()
+              }
+            } label: {
+              VStack(alignment: .leading, spacing: 4) {
+                Label("Recursive Loader", systemImage: "arrow.triangle.branch")
+                Text("Deeply nested queries (User -> Posts -> Comments)")
+                  .font(.caption)
+                  .foregroundStyle(.secondary)
+              }
+            }
           }
           
           Section("Presence & Real-time") {

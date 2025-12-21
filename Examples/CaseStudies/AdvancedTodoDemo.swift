@@ -2,6 +2,27 @@ import SharingInstant
 import Sharing
 import SwiftUI
 
+// #region agent log
+private func debugLog(_ location: String, _ message: String, _ data: [String: Any] = [:]) {
+  var payload: [String: Any] = [
+    "location": location,
+    "message": message,
+    "timestamp": Date().timeIntervalSince1970 * 1000,
+    "sessionId": "debug-session",
+    "runId": "advanced-todo-debug"
+  ]
+  if !data.isEmpty { payload["data"] = data }
+  guard let jsonData = try? JSONSerialization.data(withJSONObject: payload),
+        let jsonString = String(data: jsonData, encoding: .utf8) else { return }
+  let url = URL(string: "http://127.0.0.1:7243/ingest/b61a72ba-9985-415b-9c60-d4184ed05385")!
+  var request = URLRequest(url: url)
+  request.httpMethod = "POST"
+  request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+  request.httpBody = jsonData
+  URLSession.shared.dataTask(with: request).resume()
+}
+// #endregion
+
 struct AdvancedTodoDemo: SwiftUICaseStudy {
   let readMe = """
     This demo shows advanced querying features with **server-side filtering**:
@@ -159,17 +180,62 @@ private struct AdvancedTodoView: View {
     }
     .searchable(text: $searchText, prompt: "Search todos...")
     .task(id: queryKey) {
-      // Reload with new query when filters change
+      // #region agent log
+      debugLog("AdvancedTodoDemo:task", "task triggered - reassigning shared reference", [
+        "hypothesisId": "A",
+        "queryKey": queryKey,
+        "filterOption": filterOption.rawValue,
+        "sortOption": sortOption.rawValue,
+        "currentTodosCount": todos.count
+      ])
+      // #endregion
+      
+      // Reassign the projected value to create a NEW subscription
+      // Using load() only does a one-shot fetch and doesn't maintain real-time updates
+      // Reassigning $todos creates a new reference with a new subscribe() call
       logQueryChange("task triggered")
-      do {
-        try await $todos.load(.instantSync(currentQuery))
-        print("[AdvancedTodoDemo] Load completed, todos count: \(todos.count)")
-      } catch {
-        print("[AdvancedTodoDemo] Load failed: \(error)")
-      }
+      $todos = Shared(.instantSync(currentQuery))
+      
+      // #region agent log
+      debugLog("AdvancedTodoDemo:task", "shared reference reassigned", [
+        "hypothesisId": "A",
+        "queryKey": queryKey,
+        "todosCount": todos.count
+      ])
+      // #endregion
+      
+      print("[AdvancedTodoDemo] Reference reassigned, todos count: \(todos.count)")
     }
     .onChange(of: todos.count) { oldValue, newValue in
+      // #region agent log
+      debugLog("AdvancedTodoDemo:onChange", "todos.count changed", [
+        "hypothesisId": "B",
+        "oldValue": oldValue,
+        "newValue": newValue,
+        "filterOption": filterOption.rawValue
+      ])
+      // #endregion
+      
       print("[AdvancedTodoDemo] todos.count changed: \(oldValue) -> \(newValue)")
+    }
+    .onChange(of: todos) { oldValue, newValue in
+      // #region agent log
+      debugLog("AdvancedTodoDemo:onChange:todos", "todos array changed", [
+        "hypothesisId": "B",
+        "oldCount": oldValue.count,
+        "newCount": newValue.count,
+        "oldIds": oldValue.map { $0.id }.prefix(5).map { $0 },
+        "newIds": newValue.map { $0.id }.prefix(5).map { $0 }
+      ])
+      // #endregion
+    }
+    .onAppear {
+      // #region agent log
+      debugLog("AdvancedTodoDemo:onAppear", "view appeared", [
+        "hypothesisId": "D",
+        "todosCount": todos.count
+      ])
+      // #endregion
     }
     .animation(.default, value: todos.count)
   }
