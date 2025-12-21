@@ -20,16 +20,16 @@
 // See: Examples/CaseStudies/instant.schema.ts for the source schema
 
 import Foundation
+import InstantDB
 import SharingInstant
 
 // MARK: - Room Presence Types
 //
-// These types use explicit `nonisolated` conformances for Codable and Equatable
-// to satisfy Swift 6 strict concurrency requirements. Without explicit implementations,
-// Swift 6 infers @MainActor isolation from SwiftUI view context.
+// These types conform to PresenceData (which includes Codable, Sendable, Equatable)
+// from the InstantDB SDK.
 
 /// Presence data for 'avatars' room.
-public struct AvatarsPresence: Sendable {
+public struct AvatarsPresence: PresenceData {
   public var name: String
   public var color: String
   
@@ -39,32 +39,8 @@ public struct AvatarsPresence: Sendable {
   }
 }
 
-extension AvatarsPresence: Equatable {
-  nonisolated public static func == (lhs: Self, rhs: Self) -> Bool {
-    lhs.name == rhs.name && lhs.color == rhs.color
-  }
-}
-
-extension AvatarsPresence: Codable {
-  nonisolated public init(from decoder: any Decoder) throws {
-    let container = try decoder.container(keyedBy: CodingKeys.self)
-    self.name = try container.decode(String.self, forKey: .name)
-    self.color = try container.decode(String.self, forKey: .color)
-  }
-  
-  nonisolated public func encode(to encoder: any Encoder) throws {
-    var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(name, forKey: .name)
-    try container.encode(color, forKey: .color)
-  }
-  
-  private enum CodingKeys: String, CodingKey {
-    case name, color
-  }
-}
-
 /// Presence data for 'chat' room.
-public struct ChatPresence: Sendable {
+public struct ChatPresence: PresenceData {
   public var name: String
   public var color: String
   public var isTyping: Bool
@@ -76,34 +52,8 @@ public struct ChatPresence: Sendable {
   }
 }
 
-extension ChatPresence: Equatable {
-  nonisolated public static func == (lhs: Self, rhs: Self) -> Bool {
-    lhs.name == rhs.name && lhs.color == rhs.color && lhs.isTyping == rhs.isTyping
-  }
-}
-
-extension ChatPresence: Codable {
-  nonisolated public init(from decoder: any Decoder) throws {
-    let container = try decoder.container(keyedBy: CodingKeys.self)
-    self.name = try container.decode(String.self, forKey: .name)
-    self.color = try container.decode(String.self, forKey: .color)
-    self.isTyping = try container.decode(Bool.self, forKey: .isTyping)
-  }
-  
-  nonisolated public func encode(to encoder: any Encoder) throws {
-    var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(name, forKey: .name)
-    try container.encode(color, forKey: .color)
-    try container.encode(isTyping, forKey: .isTyping)
-  }
-  
-  private enum CodingKeys: String, CodingKey {
-    case name, color, isTyping
-  }
-}
-
 /// Presence data for 'cursors' room.
-public struct CursorsPresence: Sendable {
+public struct CursorsPresence: PresenceData {
   public var name: String
   public var color: String
   public var cursorX: Double
@@ -117,36 +67,8 @@ public struct CursorsPresence: Sendable {
   }
 }
 
-extension CursorsPresence: Equatable {
-  nonisolated public static func == (lhs: Self, rhs: Self) -> Bool {
-    lhs.name == rhs.name && lhs.color == rhs.color && lhs.cursorX == rhs.cursorX && lhs.cursorY == rhs.cursorY
-  }
-}
-
-extension CursorsPresence: Codable {
-  nonisolated public init(from decoder: any Decoder) throws {
-    let container = try decoder.container(keyedBy: CodingKeys.self)
-    self.name = try container.decode(String.self, forKey: .name)
-    self.color = try container.decode(String.self, forKey: .color)
-    self.cursorX = try container.decode(Double.self, forKey: .cursorX)
-    self.cursorY = try container.decode(Double.self, forKey: .cursorY)
-  }
-  
-  nonisolated public func encode(to encoder: any Encoder) throws {
-    var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(name, forKey: .name)
-    try container.encode(color, forKey: .color)
-    try container.encode(cursorX, forKey: .cursorX)
-    try container.encode(cursorY, forKey: .cursorY)
-  }
-  
-  private enum CodingKeys: String, CodingKey {
-    case name, color, cursorX, cursorY
-  }
-}
-
 /// Presence data for 'reactions' room.
-public struct ReactionsPresence: Sendable {
+public struct ReactionsPresence: PresenceData {
   public var name: String
   
   public init(name: String) {
@@ -154,30 +76,8 @@ public struct ReactionsPresence: Sendable {
   }
 }
 
-extension ReactionsPresence: Equatable {
-  nonisolated public static func == (lhs: Self, rhs: Self) -> Bool {
-    lhs.name == rhs.name
-  }
-}
-
-extension ReactionsPresence: Codable {
-  nonisolated public init(from decoder: any Decoder) throws {
-    let container = try decoder.container(keyedBy: CodingKeys.self)
-    self.name = try container.decode(String.self, forKey: .name)
-  }
-  
-  nonisolated public func encode(to encoder: any Encoder) throws {
-    var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(name, forKey: .name)
-  }
-  
-  private enum CodingKeys: String, CodingKey {
-    case name
-  }
-}
-
 /// Presence data for 'tileGame' room.
-public struct TileGamePresence: Sendable {
+public struct TileGamePresence: PresenceData {
   public var name: String
   public var color: String
   
@@ -187,34 +87,10 @@ public struct TileGamePresence: Sendable {
   }
 }
 
-extension TileGamePresence: Equatable {
-  nonisolated public static func == (lhs: Self, rhs: Self) -> Bool {
-    lhs.name == rhs.name && lhs.color == rhs.color
-  }
-}
-
-extension TileGamePresence: Codable {
-  nonisolated public init(from decoder: any Decoder) throws {
-    let container = try decoder.container(keyedBy: CodingKeys.self)
-    self.name = try container.decode(String.self, forKey: .name)
-    self.color = try container.decode(String.self, forKey: .color)
-  }
-  
-  nonisolated public func encode(to encoder: any Encoder) throws {
-    var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(name, forKey: .name)
-    try container.encode(color, forKey: .color)
-  }
-  
-  private enum CodingKeys: String, CodingKey {
-    case name, color
-  }
-}
-
 // MARK: - Topic Payload Types
 
 /// Topic payload for 'reactions.emoji' events.
-public struct EmojiTopic: Sendable {
+public struct EmojiTopic: PresenceData {
   public var name: String
   public var directionAngle: Double
   public var rotationAngle: Double
@@ -223,32 +99,6 @@ public struct EmojiTopic: Sendable {
     self.name = name
     self.directionAngle = directionAngle
     self.rotationAngle = rotationAngle
-  }
-}
-
-extension EmojiTopic: Equatable {
-  nonisolated public static func == (lhs: Self, rhs: Self) -> Bool {
-    lhs.name == rhs.name && lhs.directionAngle == rhs.directionAngle && lhs.rotationAngle == rhs.rotationAngle
-  }
-}
-
-extension EmojiTopic: Codable {
-  nonisolated public init(from decoder: any Decoder) throws {
-    let container = try decoder.container(keyedBy: CodingKeys.self)
-    self.name = try container.decode(String.self, forKey: .name)
-    self.directionAngle = try container.decode(Double.self, forKey: .directionAngle)
-    self.rotationAngle = try container.decode(Double.self, forKey: .rotationAngle)
-  }
-  
-  nonisolated public func encode(to encoder: any Encoder) throws {
-    var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(name, forKey: .name)
-    try container.encode(directionAngle, forKey: .directionAngle)
-    try container.encode(rotationAngle, forKey: .rotationAngle)
-  }
-  
-  private enum CodingKeys: String, CodingKey {
-    case name, directionAngle, rotationAngle
   }
 }
 
