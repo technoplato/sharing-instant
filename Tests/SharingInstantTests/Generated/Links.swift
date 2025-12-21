@@ -23,9 +23,9 @@
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// Include linked entities in your queries using the `.with()` modifier:
-///   Schema.$users.with(\.linkedPrimaryUser)
+///   Schema.profiles.with(\.posts)
 /// Chain multiple links:
-///   Schema.$users.with(\.linkedPrimaryUser).with(\.otherLink)
+///   Schema.profiles.with(\.posts).with(\.otherLink)
 /// The compiler ensures you only request links that actually exist!
 ///
 /// ─────────────────────────────────────────────────────────────────────────────────
@@ -38,10 +38,10 @@ import SwiftUI
 import SharingInstant
 import IdentifiedCollections
 
-struct $userWithLinksView: View {
-  /// Query $users and include their linked linkedPrimaryUser
-  @Shared(Schema.$users.with(\.linkedPrimaryUser))
-  private var items: IdentifiedArrayOf<$user> = []
+struct ProfileWithLinksView: View {
+  /// Query profiles and include their linked posts
+  @Shared(Schema.profiles.with(\.posts))
+  private var items: IdentifiedArrayOf<Profile> = []
 
   var body: some View {
     List(items) { item in
@@ -51,7 +51,7 @@ struct $userWithLinksView: View {
 
         // Type-safe access to linked entity!
         // This is Optional because the link may not exist
-        if let linked = item.linkedPrimaryUser {
+        if let linked = item.posts {
           HStack {
             Image(systemName: "link")
             Text("Linked: \(linked.id)")
@@ -75,12 +75,12 @@ struct $userWithLinksView: View {
 ///
 /// The link system is fully type-safe. The compiler catches errors at build time:
 ///
-/// ✅ COMPILES - linkedPrimaryUser exists on $user:
-///    Schema.$users.with(\.linkedPrimaryUser)
+/// ✅ COMPILES - posts exists on Profile:
+///    Schema.profiles.with(\.posts)
 ///
-/// ❌ COMPILE ERROR - "nonexistent" is not a link on $user:
-///    Schema.$users.with(\.nonexistent)
-///    // Error: Type '$user' has no member 'nonexistent'
+/// ❌ COMPILE ERROR - "nonexistent" is not a link on Profile:
+///    Schema.profiles.with(\.nonexistent)
+///    // Error: Type 'Profile' has no member 'nonexistent'
 ///
 ///
 
@@ -88,18 +88,18 @@ struct $userWithLinksView: View {
 ///   name: "$usersLinkedPrimaryUser"
 ///
 ///   forward: {
-///     on: $user
+///     on: InstantUser
 ///     label: "linkedPrimaryUser"
 ///     has: one
 ///   }
-///   // Access: $user.linkedPrimaryUser → $user?
+///   // Access: InstantUser.linkedPrimaryUser → InstantUser?
 ///
 ///   reverse: {
-///     on: $user
+///     on: InstantUser
 ///     label: "linkedGuestUsers"
 ///     has: many
 ///   }
-///   // Access: $user.linkedGuestUsers → [$user]?
+///   // Access: InstantUser.linkedGuestUsers → [InstantUser]?
 /// }
 ///
 /// profilePosts {
@@ -197,7 +197,8 @@ struct $userWithLinksView: View {
 /// GENERATION INFO
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
-/// Generated:       December 19, 2025 at 12:14 PM EST
+/// Mode:            Production (full traceability)
+/// Generated:       December 21, 2025 at 2:59 PM EST
 /// Machine:         mlustig-hy7l9xrd61.local (Apple M4 Pro, macOS 26.1)
 /// Generator:       Sources/instant-schema/main.swift
 /// Source Schema:   Examples/CaseStudies/instant.schema.ts
@@ -206,21 +207,20 @@ struct $userWithLinksView: View {
 
 swift run instant-schema generate \
   --from Examples/CaseStudies/instant.schema.ts \
-  --to Tests/SharingInstantTests/Generated/
+  --to Tests/SharingInstantTests/Generated
 */
-
 /// ─────────────────────────────────────────────────────────────────────────────────
 /// GIT STATE AT GENERATION
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// HEAD Commit:
-///   SHA:      e8915973bc1b6ca53fb9d5e4c7b89ba1b3b65f0a
-///   Date:     December 19, 2025 at 12:14 PM EST
+///   SHA:      f865cc24ae4b44e2dc8611b27913387caefef028
+///   Date:     December 21, 2025 at 2:59 PM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  docs: add crash reports that led to threading fix
+///   Message:  chore: Sync workspace changes and update dependencies
 ///
 /// Schema File Last Modified:
-///   SHA:      e7a94d20022c53013ecf1bb88f99ae5e4b176a5c
+///   SHA:      438e66f1e5ddb3271fb05bfdb3401058c6d9ae06
 ///   Date:     December 19, 2025 at 6:28 AM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
 ///   Message:  feat(codegen): Add enhanced headers with generation context and git traceability
@@ -233,8 +233,13 @@ import SharingInstant
 // MARK: - Link Definitions
 
 public enum SchemaLinks {
-  // Note: $usersLinkedPrimaryUser link is excluded because Swift
-  // doesn't allow $ prefix in type names.
+  /// $users ↔ $users relationship
+  /// - Note: Involves InstantDB system entity.
+  public static let instantUsersLinkedPrimaryUser = Link(
+    name: "$usersLinkedPrimaryUser",
+    from: InstantUser.self, fromLabel: "linkedPrimaryUser", fromCardinality: .one,
+    to: InstantUser.self, toLabel: "linkedGuestUsers", toCardinality: .many
+  )
 
   /// profiles ↔ posts relationship
   public static let profilePosts = Link(
