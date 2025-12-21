@@ -1,0 +1,318 @@
+import SharingInstant
+import SwiftUI
+
+struct MicroblogDemo: SwiftUICaseStudy {
+  let readMe = """
+    This demo shows **entity links** (relationships) in InstantDB:
+    
+    • **Profiles** have many **Posts** (one-to-many)
+    • **Posts** have one **Author** (many-to-one, the reverse link)
+    • Use `.with(\\.author)` to include linked entities in queries
+    
+    Two authors post to a shared feed. Each post shows its author's name, \
+    demonstrating how links connect entities across the graph.
+    """
+  let caseStudyTitle = "Microblog (Links)"
+  
+  var body: some View {
+    MicroblogView()
+  }
+}
+
+// MARK: - Main View
+
+private struct MicroblogView: View {
+  // Query posts with their linked author
+  @Shared(.instantSync(Schema.posts.with(\.author).orderBy(\.createdAt, .desc)))
+  private var posts: IdentifiedArrayOf<Post> = []
+  
+  // Query all profiles
+  @Shared(.instantSync(Schema.profiles.orderBy(\.createdAt, .asc)))
+  private var profiles: IdentifiedArrayOf<Profile> = []
+  
+  @State private var newPostContent = ""
+  @State private var selectedAuthorId: String?
+  
+  // Deterministic IDs so all clients share the same profiles
+  private let aliceId = "microblog-alice-001"
+  private let bobId = "microblog-bob-002"
+  
+  var body: some View {
+    VStack(spacing: 0) {
+      // Author selector at top
+      authorSelector
+      
+      Divider()
+      
+      // Post composer
+      postComposer
+      
+      Divider()
+      
+      // Feed
+      feedList
+    }
+    .task {
+      await ensureProfilesExist()
+    }
+  }
+  
+  // MARK: - Author Selector
+  
+  private var authorSelector: some View {
+    VStack(spacing: 12) {
+      Text("Select Author")
+        .font(.caption)
+        .foregroundStyle(.secondary)
+      
+      HStack(spacing: 16) {
+        ForEach(profiles) { profile in
+          AuthorButton(
+            profile: profile,
+            isSelected: selectedAuthorId == profile.id,
+            postCount: posts.filter { $0.author?.id == profile.id }.count
+          ) {
+            selectedAuthorId = profile.id
+          }
+        }
+        
+        if profiles.isEmpty {
+          Text("Loading profiles...")
+            .foregroundStyle(.secondary)
+        }
+      }
+    }
+    .padding()
+    .background(Color(.systemGroupedBackground))
+  }
+  
+  // MARK: - Post Composer
+  
+  private var postComposer: some View {
+    HStack(spacing: 12) {
+      if let authorId = selectedAuthorId,
+         let author = profiles[id: authorId] {
+        AvatarView(name: author.displayName, color: colorForHandle(author.handle))
+          .frame(width: 36, height: 36)
+      } else {
+        Circle()
+          .fill(Color.gray.opacity(0.3))
+          .frame(width: 36, height: 36)
+      }
+      
+      TextField("What's happening?", text: $newPostContent, axis: .vertical)
+        .textFieldStyle(.plain)
+        .lineLimit(3)
+      
+      Button(action: createPost) {
+        Text("Post")
+          .fontWeight(.semibold)
+      }
+      .buttonStyle(.borderedProminent)
+      .disabled(newPostContent.trimmingCharacters(in: .whitespaces).isEmpty || selectedAuthorId == nil)
+    }
+    .padding()
+  }
+  
+  // MARK: - Feed List
+  
+  private var feedList: some View {
+    List {
+      if posts.isEmpty {
+        ContentUnavailableView {
+          Label("No Posts Yet", systemImage: "text.bubble")
+        } description: {
+          Text("Select an author and write the first post!")
+        }
+      } else {
+        ForEach(posts) { post in
+          PostRow(post: post)
+        }
+        .onDelete(perform: deletePosts)
+      }
+    }
+    .listStyle(.plain)
+  }
+  
+  // MARK: - Actions
+  
+  private func ensureProfilesExist() async {
+    // Create Alice if she doesn't exist
+    if profiles[id: aliceId] == nil {
+      let alice = Profile(
+        id: aliceId,
+        displayName: "Alice",
+        handle: "alice",
+        bio: "Swift enthusiast",
+        createdAt: Date().timeIntervalSince1970
+      )
+      _ = $profiles.withLock { $0.append(alice) }
+    }
+    
+    // Create Bob if he doesn't exist
+    if profiles[id: bobId] == nil {
+      let bob = Profile(
+        id: bobId,
+        displayName: "Bob",
+        handle: "bob",
+        bio: "InstantDB fan",
+        createdAt: Date().timeIntervalSince1970 + 1
+      )
+      _ = $profiles.withLock { $0.append(bob) }
+    }
+    
+    // Select Alice by default
+    if selectedAuthorId == nil {
+      selectedAuthorId = aliceId
+    }
+  }
+  
+  private func createPost() {
+    guard let authorId = selectedAuthorId,
+          let author = profiles[id: authorId] else { return }
+    
+    let content = newPostContent.trimmingCharacters(in: .whitespaces)
+    guard !content.isEmpty else { return }
+    
+    // Create post with linked author
+    let post = Post(
+      content: content,
+      createdAt: Date().timeIntervalSince1970,
+      likesCount: 0,
+      // The author link - this connects the post to its profile
+      author: author
+    )
+    
+    _ = $posts.withLock { $0.insert(post, at: 0) }
+    newPostContent = ""
+  }
+  
+  private func deletePosts(at offsets: IndexSet) {
+    _ = $posts.withLock { posts in
+      posts.remove(atOffsets: offsets)
+    }
+  }
+  
+  private func colorForHandle(_ handle: String) -> Color {
+    handle == "alice" ? .purple : .blue
+  }
+}
+
+// MARK: - Author Button
+
+private struct AuthorButton: View {
+  let profile: Profile
+  let isSelected: Bool
+  let postCount: Int
+  let action: () -> Void
+  
+  var body: some View {
+    Button(action: action) {
+      VStack(spacing: 8) {
+        AvatarView(
+          name: profile.displayName,
+          color: profile.handle == "alice" ? .purple : .blue
+        )
+        .frame(width: 50, height: 50)
+        .overlay {
+          if isSelected {
+            Circle()
+              .strokeBorder(Color.accentColor, lineWidth: 3)
+          }
+        }
+        
+        VStack(spacing: 2) {
+          Text(profile.displayName)
+            .font(.caption)
+            .fontWeight(isSelected ? .semibold : .regular)
+          
+          Text("@\(profile.handle)")
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+          
+          Text("\(postCount) posts")
+            .font(.caption2)
+            .foregroundStyle(.tertiary)
+        }
+      }
+    }
+    .buttonStyle(.plain)
+  }
+}
+
+// MARK: - Post Row
+
+private struct PostRow: View {
+  let post: Post
+  
+  var body: some View {
+    HStack(alignment: .top, spacing: 12) {
+      // Author avatar (from linked entity!)
+      if let author = post.author {
+        AvatarView(
+          name: author.displayName,
+          color: author.handle == "alice" ? .purple : .blue
+        )
+        .frame(width: 40, height: 40)
+      } else {
+        Circle()
+          .fill(Color.gray.opacity(0.3))
+          .frame(width: 40, height: 40)
+      }
+      
+      VStack(alignment: .leading, spacing: 4) {
+        // Author info (from linked entity!)
+        HStack(spacing: 4) {
+          if let author = post.author {
+            Text(author.displayName)
+              .fontWeight(.semibold)
+            Text("@\(author.handle)")
+              .foregroundStyle(.secondary)
+          } else {
+            Text("Unknown Author")
+              .foregroundStyle(.secondary)
+          }
+          
+          Text("·")
+            .foregroundStyle(.secondary)
+          
+          Text(Date(timeIntervalSince1970: post.createdAt), style: .relative)
+            .foregroundStyle(.secondary)
+        }
+        .font(.subheadline)
+        
+        // Post content
+        Text(post.content)
+          .font(.body)
+      }
+    }
+    .padding(.vertical, 8)
+  }
+}
+
+// MARK: - Avatar View
+
+private struct AvatarView: View {
+  let name: String
+  let color: Color
+  
+  var body: some View {
+    Circle()
+      .fill(color.gradient)
+      .overlay {
+        Text(String(name.prefix(1)))
+          .font(.headline)
+          .fontWeight(.bold)
+          .foregroundStyle(.white)
+      }
+  }
+}
+
+#Preview {
+  NavigationStack {
+    CaseStudyView {
+      MicroblogDemo()
+    }
+  }
+}
+
