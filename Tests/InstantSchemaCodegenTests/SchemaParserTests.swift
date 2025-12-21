@@ -277,23 +277,25 @@ final class SchemaParserTests: XCTestCase {
         osVersion: "macOS 14.0"
       ),
       generatorPath: "Sources/instant-schema/main.swift",
-      command: "swift run instant-schema generate --from test.schema.ts --to Sources/Generated/",
       sourceSchemaPath: "Tests/Fixtures/SimpleSchema.ts",
       outputDirectory: "Sources/Generated/",
-      gitState: GitState(
-        headCommit: GitCommit(
-          sha: "abc123def456789012345678901234567890abcd",
-          date: Date(timeIntervalSince1970: 1734567800),
-          author: "Test Author <test@example.com>",
-          message: "test: Add test commit for snapshot testing"
+      mode: .production(ProductionContext(
+        gitState: GitState(
+          headCommit: GitCommit(
+            sha: "abc123def456789012345678901234567890abcd",
+            date: Date(timeIntervalSince1970: 1734567800),
+            author: "Test Author <test@example.com>",
+            message: "test: Add test commit for snapshot testing"
+          ),
+          schemaLastModified: GitCommit(
+            sha: "def456abc789012345678901234567890abcdef",
+            date: Date(timeIntervalSince1970: 1734567700),
+            author: "Schema Author <schema@example.com>",
+            message: "feat: Update schema with new entities"
+          )
         ),
-        schemaLastModified: GitCommit(
-          sha: "def456abc789012345678901234567890abcdef",
-          date: Date(timeIntervalSince1970: 1734567700),
-          author: "Schema Author <schema@example.com>",
-          message: "feat: Update schema with new entities"
-        )
-      )
+        command: "swift run instant-schema generate --from test.schema.ts --to Sources/Generated/"
+      ))
     )
     
     let files = generator.generate(from: schema, context: mockContext)
@@ -319,13 +321,15 @@ final class SchemaParserTests: XCTestCase {
       timezone: .current,
       machine: MachineInfo(hostname: "test", chip: "M1", osVersion: "macOS 14"),
       generatorPath: "test",
-      command: "test command",
       sourceSchemaPath: "test.ts",
       outputDirectory: "output/",
-      gitState: GitState(
-        headCommit: GitCommit(sha: "abc123", date: Date(), author: "Test", message: "Test"),
-        schemaLastModified: GitCommit(sha: "def456", date: Date(), author: "Test", message: "Test")
-      )
+      mode: .production(ProductionContext(
+        gitState: GitState(
+          headCommit: GitCommit(sha: "abc123", date: Date(), author: "Test", message: "Test"),
+          schemaLastModified: GitCommit(sha: "def456", date: Date(), author: "Test", message: "Test")
+        ),
+        command: "test command"
+      ))
     )
     
     let files = generator.generate(from: schema, context: mockContext)

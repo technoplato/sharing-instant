@@ -173,7 +173,7 @@ final class PresenceIntegrationTests: XCTestCase {
 // MARK: - Test Models
 
 /// Test presence type for unit tests
-struct TestPresence: Codable, Sendable, Equatable {
+struct TestPresence: PresenceData {
   var name: String
   var color: String
   
@@ -182,4 +182,7 @@ struct TestPresence: Codable, Sendable, Equatable {
     self.color = color
   }
 }
+
+
+
 
