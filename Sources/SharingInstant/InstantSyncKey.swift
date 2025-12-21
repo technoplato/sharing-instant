@@ -622,12 +622,57 @@ where Value.Element: EntityIdentifiable & Sendable {
           // Remove the id from the data dict (it's used as the entity ID, not a property)
           dict.removeValue(forKey: "id")
           
-          // Create an update transaction chunk for this item
-          // Format: ["update", entityType, entityId, dataDict]
+          // Extract link fields from the data dict
+          // Links are detected as: dict values that are objects with an "id" field,
+          // or arrays of objects with "id" fields
+          var linkFields: [String: Any] = [:]
+          var dataFields: [String: Any] = [:]
+          
+          for (key, value) in dict {
+            if let linkedEntity = value as? [String: Any], linkedEntity["id"] is String {
+              // Single link (has-one relationship)
+              // Extract just the ID for the link operation
+              linkFields[key] = linkedEntity["id"]
+              logDebug("Save: detected link field '\(key)' -> \(linkedEntity["id"] ?? "nil")")
+            } else if let linkedEntities = value as? [[String: Any]] {
+              // Potential many link (has-many relationship)
+              let ids = linkedEntities.compactMap { $0["id"] as? String }
+              if !ids.isEmpty && ids.count == linkedEntities.count {
+                // All items have IDs, treat as link
+                linkFields[key] = ids
+                logDebug("Save: detected link field '\(key)' -> \(ids)")
+              } else {
+                // Not all items have IDs, treat as regular data
+                dataFields[key] = value
+              }
+            } else {
+              // Regular data field
+              dataFields[key] = value
+            }
+          }
+          
+          // Build operations for this item
+          var ops: [[Any]] = []
+          
+          // 1. Update operation for data fields (if any)
+          if !dataFields.isEmpty {
+            ops.append(["update", namespace, item.id, dataFields])
+          } else {
+            // Even with no data fields, we need to ensure the entity exists
+            // Send an empty update to create/touch the entity
+            ops.append(["update", namespace, item.id, [:] as [String: Any]])
+          }
+          
+          // 2. Link operations for link fields (if any)
+          if !linkFields.isEmpty {
+            ops.append(["link", namespace, item.id, linkFields])
+            logDebug("Save: adding link operation for \(item.id): \(linkFields)")
+          }
+          
           let chunk = TransactionChunk(
             namespace: namespace,
             id: item.id,
-            ops: [["update", namespace, item.id, dict]]
+            ops: ops
           )
           chunks.append(chunk)
         }
