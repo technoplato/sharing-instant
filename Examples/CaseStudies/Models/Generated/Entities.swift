@@ -149,9 +149,20 @@ struct FactListContentView: View {
 ///   post: Post?  // Link (has: one)
 /// }
 ///
+/// Tile {
+///   id: String
+///   x: Double
+///   y: Double
+///   color: String
+///   createdAt: Double
+///   board: Board?  // Link (has: one)
+/// }
+///
 /// Board {
 ///   id: String
-///   state: AnyCodable
+///   title: String
+///   createdAt: Double
+///   tiles: [Tile]?  // Link (has: many)
 /// }
 ///
 
@@ -161,7 +172,7 @@ struct FactListContentView: View {
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// Mode:            Production (full traceability)
-/// Generated:       December 21, 2025 at 4:29 PM EST
+/// Generated:       December 22, 2025 at 6:41 AM EST
 /// Machine:         mlustig-hy7l9xrd61.local (Apple M4 Pro, macOS 26.1)
 /// Generator:       Sources/instant-schema/main.swift
 /// Source Schema:   Examples/CaseStudies/instant.schema.ts
@@ -177,16 +188,16 @@ swift run instant-schema generate \
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// HEAD Commit:
-///   SHA:      196410d8ff97a5dd17585955fe369981ceb15150
-///   Date:     December 21, 2025 at 4:29 PM EST
+///   SHA:      e9553d2a4b6b70b0949c6aa77236c9cbd56b8580
+///   Date:     December 22, 2025 at 6:41 AM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  refactor: remove manual model definitions
+///   Message:  chore: Ignore .vscode
 ///
 /// Schema File Last Modified:
-///   SHA:      8eec84e489ad60de4f156928297f0e972f6045f8
-///   Date:     December 21, 2025 at 4:22 PM EST
+///   SHA:      0e6cf9e4e26b27f63a04d41219b5fdabedf5e1c8
+///   Date:     December 22, 2025 at 6:41 AM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  refactor: Add boards to schema and extract Board model
+///   Message:  refactor: Update tile game schema to use Entities
 ///
 /// ═══════════════════════════════════════════════════════════════════════════════
 
@@ -234,11 +245,11 @@ public struct InstantUser: EntityIdentifiable, Codable, Sendable {
 
   /// Link to $users via '$usersLinkedPrimaryUser'
   /// - Note: Only populated when queried with `.with(\.linkedPrimaryUser)`
-  // public var linkedPrimaryUser: InstantUser?
+  public var linkedPrimaryUser: InstantUser?
 
   /// Link to $users via '$usersLinkedPrimaryUser'
   /// - Note: Only populated when queried with `.with(\.linkedGuestUsers)`
-  // public var linkedGuestUsers: [InstantUser]?
+  public var linkedGuestUsers: [InstantUser]?
 
 
   // MARK: - Initializer
@@ -247,16 +258,16 @@ public struct InstantUser: EntityIdentifiable, Codable, Sendable {
     id: String = UUID().uuidString,
     email: String? = nil,
     imageURL: String? = nil,
-    type: String? = nil
-    // linkedPrimaryUser: InstantUser? = nil,
-    // linkedGuestUsers: [InstantUser]? = nil
+    type: String? = nil,
+    linkedPrimaryUser: InstantUser? = nil,
+    linkedGuestUsers: [InstantUser]? = nil
   ) {
     self.id = id
     self.email = email
     self.imageURL = imageURL
     self.type = type
-    // self.linkedPrimaryUser = linkedPrimaryUser
-    // self.linkedGuestUsers = linkedGuestUsers
+    self.linkedPrimaryUser = linkedPrimaryUser
+    self.linkedGuestUsers = linkedGuestUsers
   }
 }
 
@@ -359,7 +370,7 @@ public struct Log: EntityIdentifiable, Codable, Sendable {
 }
 
 
-public struct Todo: EntityIdentifiable, Codable, Sendable, Equatable {
+public struct Todo: EntityIdentifiable, Codable, Sendable {
   public static var namespace: String { "todos" }
   
   // MARK: - Fields
@@ -650,6 +661,62 @@ public struct Like: EntityIdentifiable, Codable, Sendable {
 }
 
 
+public struct Tile: EntityIdentifiable, Codable, Sendable {
+  public static var namespace: String { "tiles" }
+  
+  // MARK: - Fields
+  
+  /// The unique identifier for this entity
+  public var id: String
+  public var x: Double
+  public var y: Double
+  public var color: String
+  public var createdAt: Double
+
+  // MARK: - Links
+  // Populated when queried with .with(...)
+
+  /// Link to boards via 'boardTiles'
+  /// - Note: Only populated when queried with `.with(\.board)`
+  public var board: Board?
+
+
+  // MARK: - Initializer
+
+  public init(
+    id: String = UUID().uuidString,
+    x: Double,
+    y: Double,
+    color: String,
+    createdAt: Double,
+    board: Board? = nil
+  ) {
+    self.id = id
+    self.x = x
+    self.y = y
+    self.color = color
+    self.createdAt = createdAt
+    self.board = board
+  }
+
+  // MARK: - Custom Codable (handles InstantDB type quirks)
+
+  private enum CodingKeys: String, CodingKey {
+    case id, x, y, color, createdAt, board
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.id = try container.decode(String.self, forKey: .id)
+    self.x = try container.decode(FlexibleDouble.self, forKey: .x).wrappedValue
+    self.y = try container.decode(FlexibleDouble.self, forKey: .y).wrappedValue
+    self.color = try container.decode(String.self, forKey: .color)
+    self.createdAt = try container.decode(FlexibleDouble.self, forKey: .createdAt).wrappedValue
+    self.board = try container.decodeIfPresent(Board.self, forKey: .board)
+  }
+}
+
+
 public struct Board: EntityIdentifiable, Codable, Sendable {
   public static var namespace: String { "boards" }
   
@@ -657,16 +724,43 @@ public struct Board: EntityIdentifiable, Codable, Sendable {
   
   /// The unique identifier for this entity
   public var id: String
-  public var state: AnyCodable
+  public var title: String
+  public var createdAt: Double
+
+  // MARK: - Links
+  // Populated when queried with .with(...)
+
+  /// Link to tiles via 'boardTiles'
+  /// - Note: Only populated when queried with `.with(\.tiles)`
+  public var tiles: [Tile]?
+
 
   // MARK: - Initializer
 
   public init(
     id: String = UUID().uuidString,
-    state: AnyCodable
+    title: String,
+    createdAt: Double,
+    tiles: [Tile]? = nil
   ) {
     self.id = id
-    self.state = state
+    self.title = title
+    self.createdAt = createdAt
+    self.tiles = tiles
+  }
+
+  // MARK: - Custom Codable (handles InstantDB type quirks)
+
+  private enum CodingKeys: String, CodingKey {
+    case id, title, createdAt, tiles
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.id = try container.decode(String.self, forKey: .id)
+    self.title = try container.decode(String.self, forKey: .title)
+    self.createdAt = try container.decode(FlexibleDouble.self, forKey: .createdAt).wrappedValue
+    self.tiles = try container.decodeIfPresent([Tile].self, forKey: .tiles)
   }
 }
 
