@@ -159,7 +159,8 @@ struct TileGameDemo: SwiftUICaseStudy {
   
   private func tileColor(for key: String) -> Color {
     guard let board = boards.first(where: { $0.id == boardId }),
-          let colorHex = board.state[key] else {
+          let stateDict = board.state.value as? [String: String],
+          let colorHex = stateDict[key] else {
       return .white
     }
     return Color(hex: colorHex) ?? .white
@@ -182,29 +183,34 @@ struct TileGameDemo: SwiftUICaseStudy {
     
     // Initialize board if it doesn't exist
     if boards.first(where: { $0.id == boardId }) == nil {
-      var newBoard = Board(id: boardId)
+      var stateDict: [String: String] = [:]
       for row in 0..<boardSize {
         for col in 0..<boardSize {
-          newBoard.state["\(row)-\(col)"] = "#FFFFFF"
+          stateDict["\(row)-\(col)"] = "#FFFFFF"
         }
       }
+      let newBoard = Board(id: boardId, state: AnyCodable(stateDict))
       _ = $boards.withLock { $0.append(newBoard) }
     }
   }
   
   private func setTileColor(key: String) {
     guard var board = boards.first(where: { $0.id == boardId }) else { return }
-    board.state[key] = myColor.hexString
+    var stateDict = (board.state.value as? [String: String]) ?? [:]
+    stateDict[key] = myColor.hexString
+    board.state = AnyCodable(stateDict)
     _ = $boards.withLock { $0[id: boardId] = board }
   }
   
   private func resetBoard() {
     guard var board = boards.first(where: { $0.id == boardId }) else { return }
+    var stateDict: [String: String] = [:]
     for row in 0..<boardSize {
       for col in 0..<boardSize {
-        board.state["\(row)-\(col)"] = "#FFFFFF"
+        stateDict["\(row)-\(col)"] = "#FFFFFF"
       }
     }
+    board.state = AnyCodable(stateDict)
     _ = $boards.withLock { $0[id: boardId] = board }
   }
 }

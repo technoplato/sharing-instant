@@ -116,9 +116,39 @@ public actor Reactor {
         throw InstantError.notAuthenticated // Or timeout error
     }
     
+    // Optimistic Update
+    // We apply the changes to TripleStore immediately.
+    // Note: This is best-effort. If the transaction fails, we might need to rollback (not implemented yet).
+    await applyOptimisticUpdate(chunks: chunks)
+
     try await MainActor.run {
         try client.transact(chunks)
     }
+  }
+
+  private func applyOptimisticUpdate(chunks: [TransactionChunk]) async {
+      for chunk in chunks {
+          for op in chunk.ops {
+              // Op format: ["action", "namespace", "id", payload?]
+              guard let action = op[0] as? String,
+                    let id = op[2] as? String else { continue }
+              
+              if action == "update", op.count > 3, let payload = op[3] as? [String: Any] {
+                  // Wrap payload to avoid Sendable warning
+                  let wrapped = UncheckedPayload(value: payload)
+                  await TripleStore.shared.mergeUnsafe(id: id, data: wrapped.value)
+              } else if action == "delete" {
+                 // Implement delete logic in TripleStore if needed
+                 // For now, focusing on update test case.
+                 // To properly support delete, TripleStore needs 'delete(id:)'.
+                 await TripleStore.shared.delete(id: id)
+              }
+          }
+      }
+  }
+  
+  private struct UncheckedPayload: @unchecked Sendable {
+      let value: [String: Any]
   }
   
   // Helper to pass non-Sendable data to MainActor

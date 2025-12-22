@@ -79,8 +79,16 @@ const _schema = i.schema({
       createdAt: i.number().indexed(),
     }),
 
+    tiles: i.entity({
+      x: i.number().indexed(),
+      y: i.number().indexed(),
+      color: i.string(),
+      createdAt: i.number(),
+    }),
+
     boards: i.entity({
-      state: i.json(),
+      title: i.string(),
+      createdAt: i.number(),
     }),
   },
 
@@ -98,6 +106,24 @@ const _schema = i.schema({
         has: "many",
         label: "linkedGuestUsers",
       },
+    },
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Tile Game Links
+    // ─────────────────────────────────────────────────────────────────────────
+
+    boardTiles: {
+      forward: {
+        on: "boards",
+        has: "many",
+        label: "tiles",
+      },
+      reverse: {
+        on: "tiles",
+        has: "one",
+        label: "board",
+        onDelete: "cascade",
+      }
     },
 
     // ─────────────────────────────────────────────────────────────────────────

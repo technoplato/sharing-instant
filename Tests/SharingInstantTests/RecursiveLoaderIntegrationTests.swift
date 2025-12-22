@@ -53,7 +53,7 @@ final class RecursiveLoaderIntegrationTests: XCTestCase {
         limit: nil,
         orderBy: nil,
         orderDirection: nil,
-        whereClauses: [],
+        whereClauses: [:],
         children: []
     )
     
@@ -62,7 +62,7 @@ final class RecursiveLoaderIntegrationTests: XCTestCase {
         limit: 5,
         orderBy: nil,
         orderDirection: nil,
-        whereClauses: [],
+        whereClauses: [:],
         children: [commentsNode]
     )
     
@@ -72,7 +72,7 @@ final class RecursiveLoaderIntegrationTests: XCTestCase {
         linkTree: [postsNode]
     )
     
-    let stream = await Reactor.shared.subscribe(appID: Self.testAppID, configuration: config)
+    let stream: AsyncStream<[Profile]> = await Reactor.shared.subscribe(appID: Self.testAppID, configuration: config)
     
     // 4. Verify
     var matched = false
