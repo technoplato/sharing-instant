@@ -8,56 +8,37 @@ import XCTest
 @testable import SharingInstant
 
 // MARK: - Integration Test Model Definitions
-// We duplicate Board here because it seems missing from the Test target's generated code,
-// but we use the existing TileGamePresence from the generated code in the Test target to avoid conflicts.
-
-private struct Board: EntityIdentifiable, Codable, Sendable {
-  static var namespace: String { "boards" }
-  
-  var id: String
-  var state: AnyCodable
-  
-  init(id: String = UUID().uuidString, state: AnyCodable) {
-    self.id = id
-    self.state = state
-  }
-}
-
-private extension Schema {
-  static var boards: EntityKey<Board> {
-    EntityKey(namespace: "boards")
-  }
-  
-  // We use the existing Schema.Rooms.tileGame from Generated/Rooms.swift
-}
+// We use generated models from Tests/SharingInstantTests/Generated.
 
 // MARK: - Tile Game Model Wrapper
-// Encapsulates the logic from TileGameDemo to be tested
 
 @MainActor
-private class TileGameModel: ObservableObject {
+private class TileGameModelRefactored: ObservableObject {
   let userId = String(UUID().uuidString.prefix(4))
-  var myColor: String = "#FF0000" // Fixed color for test
-  let boardId: String // Passed in or generated
+  var myColor: String = "#FF0000"
+  let boardId: String
   let boardSize = 4
   
   @Shared var boards: IdentifiedArrayOf<Board>
+  // We need access to tiles collection to add/update them.
+  // We use .instantSync explicitly.
+  @Shared(.instantSync(Schema.tiles)) var allTiles: IdentifiedArrayOf<Tile> = []
   @Shared var presence: RoomPresence<TileGamePresence>
   
   init(boardId: String, appID: String) {
     self.boardId = boardId
     
     // Initialize @Shared properties manually for the test model
-    // Use .instantSync with configuration to specific board for efficiency/test isolation
+    // 1. Fetch specific board with tile links using type-safe EntityKey
     _boards = Shared(
       .instantSync(
-        configuration: .init(
-          namespace: "boards",
-          whereClause: ["id": boardId]
-        )
+        Schema.boards
+          .where(\.id, .equals(boardId))
+          .with(\.tiles)
       )
     )
     
+    // 2. Presence
     _presence = Shared(
       .instantPresence(
         Schema.Rooms.tileGame,
@@ -67,128 +48,125 @@ private class TileGameModel: ObservableObject {
     )
   }
   
-  func tileColor(for key: String) -> String {
-    guard let board = boards.first(where: { $0.id == boardId }),
-          let stateDict = board.state.value as? [String: String],
-          let colorHex = stateDict[key] else {
-      return "#FFFFFF"
-    }
-    return colorHex
+  var board: Board? {
+    boards.first
+  }
+  
+  func tileColor(x: Int, y: Int) -> String {
+    guard let board = board, let tiles = board.tiles else { return "#FFFFFF" }
+    guard let tile = tiles.first(where: { Int($0.x) == x && Int($0.y) == y }) else { return "#FFFFFF" }
+    return tile.color
   }
   
   func initializeGame() {
-    // Set presence
     $presence.withLock { state in
       state.user = TileGamePresence(name: userId, color: myColor)
     }
     
-    // Initialize board if it doesn't exist
-    if boards.first(where: { $0.id == boardId }) == nil {
-      var stateDict: [String: String] = [:]
+    if board == nil {
+      let newBoard = Board(id: boardId, title: "Test Board", createdAt: Date().timeIntervalSince1970)
+      $boards.withLock { $0.append(newBoard) }
+      
+      var newTiles: [Tile] = []
       for row in 0..<boardSize {
         for col in 0..<boardSize {
-          stateDict["\(row)-\(col)"] = "#FFFFFF"
+          newTiles.append(
+            Tile(
+              x: Double(row),
+              y: Double(col),
+              color: "#FFFFFF",
+              createdAt: Date().timeIntervalSince1970
+            )
+          )
         }
       }
-      let newBoard = Board(id: boardId, state: AnyCodable(stateDict))
-      $boards.withLock { $0.append(newBoard) }
+      
+      // Update by setting tiles on the board, which should trigger link creation if handled by save
+      // Or we might need to save tiles first.
+      // In InstantDB (via Reactor), we usually save deep graphs.
+      var boardWithTiles = newBoard
+      boardWithTiles.tiles = newTiles
+      
+      $boards.withLock { $0[id: boardId] = boardWithTiles }
     }
   }
   
-  func setTileColor(key: String) {
-    guard var board = boards.first(where: { $0.id == boardId }) else { return }
-    var stateDict = (board.state.value as? [String: String]) ?? [:]
-    stateDict[key] = myColor
-    board.state = AnyCodable(stateDict)
-    $boards.withLock { $0[id: boardId] = board }
+  func setTileColor(x: Int, y: Int) {
+    guard let board = board, var tiles = board.tiles else { return }
+    guard let tileIndex = tiles.firstIndex(where: { Int($0.x) == x && Int($0.y) == y }) else { return }
+    
+    var tile = tiles[tileIndex]
+    tile.color = myColor
+    
+    // Update the tile in the board's tiles list
+    tiles[tileIndex] = tile
+    
+    // Propagate change
+    var newBoard = board
+    newBoard.tiles = tiles
+    
+    $boards.withLock { $0[id: boardId] = newBoard }
   }
   
   func resetBoard() {
-    guard var board = boards.first(where: { $0.id == boardId }) else { return }
-    var stateDict: [String: String] = [:]
-    for row in 0..<boardSize {
-      for col in 0..<boardSize {
-        stateDict["\(row)-\(col)"] = "#FFFFFF"
-      }
+    guard let board = board, var tiles = board.tiles else { return }
+    
+    for i in 0..<tiles.count {
+      tiles[i].color = "#FFFFFF"
     }
-    board.state = AnyCodable(stateDict)
-    $boards.withLock { $0[id: boardId] = board }
+    
+    var newBoard = board
+    newBoard.tiles = tiles
+    
+    $boards.withLock { $0[id: boardId] = newBoard }
   }
 }
 
-// MARK: - Integration Tests
 
 final class TileGameIntegrationTests: XCTestCase {
   
-  /// The test InstantDB app ID
   static let testAppID = "b9319949-2f2d-410b-8f8a-6990177c1d44"
   static let connectionTimeout: TimeInterval = 10.0
   
   @MainActor
   func testTileGameFlow() async throws {
-    // 1. Setup Dependencies
     try await withDependencies {
       $0.instantAppID = Self.testAppID
     } operation: {
-      
-      // 2. Ensure Client Connection
       let client = InstantClientFactory.makeClient(appID: Self.testAppID)
-      
       if client.connectionState != .authenticated {
         client.connect()
-        
-        let deadline = Date().addingTimeInterval(Self.connectionTimeout)
-        while client.connectionState != .authenticated && Date() < deadline {
-          try await Task.sleep(nanoseconds: 100_000_000)
-        }
-        XCTAssertEqual(client.connectionState, .authenticated, "Client failed to authenticate")
+        try await Task.sleep(nanoseconds: 2_000_000_000) // 2s wait
       }
       
-      // 3. Initialize Model
       let boardId = UUID().uuidString
-      let model = TileGameModel(boardId: boardId, appID: Self.testAppID)
+      let model = TileGameModelRefactored(boardId: boardId, appID: Self.testAppID)
       
-      // 4. Test Game Initialization
+      // Init
       model.initializeGame()
+      try await Task.sleep(nanoseconds: 500_000_000)
       
-      // Wait for sync/local update
-      // Since it's local-first, the shared array should update immediately.
-      // But we might want to wait a tiny bit for the runloop/actors?
+      XCTAssertEqual(model.boards.count, 1)
+      XCTAssertEqual(model.board?.tiles?.count, 16)
+      XCTAssertEqual(model.tileColor(x: 0, y: 0), "#FFFFFF")
+      
+      // Set Color
+      model.setTileColor(x: 0, y: 0)
       try await Task.sleep(nanoseconds: 100_000_000)
+      XCTAssertEqual(model.tileColor(x: 0, y: 0), "#FF0000")
       
-      XCTAssertEqual(model.boards.count, 1, "Should have 1 board after init")
-      XCTAssertEqual(model.boards.first?.id, boardId)
-      
-      // Check initial state
-      let initialColor = model.tileColor(for: "0-0")
-      XCTAssertEqual(initialColor, "#FFFFFF", "Initial tile color should be white")
-      
-      // 5. Test Color Update
-      model.setTileColor(key: "0-0")
-      
-      // Wait for update
-      try await Task.sleep(nanoseconds: 10_000_000)
-      
-      let updatedColor = model.tileColor(for: "0-0")
-      XCTAssertEqual(updatedColor, "#FF0000", "Tile color should update to user color")
-      
-      // 6. Test Reset
+      // Reset
       model.resetBoard()
+      try await Task.sleep(nanoseconds: 100_000_000)
+      XCTAssertEqual(model.tileColor(x: 0, y: 0), "#FFFFFF")
       
-      // Wait for update
-      try await Task.sleep(nanoseconds: 10_000_000)
-      
-      let resetColor = model.tileColor(for: "0-0")
-      XCTAssertEqual(resetColor, "#FFFFFF", "Tile color should reset to white")
-      
-      // 7. Cleanup
+      // Cleanup
       let deleteChunk = TransactionChunk(
         namespace: "boards",
         id: boardId,
         ops: [["delete", "boards", boardId]]
       )
       try client.transact(deleteChunk)
-      
       try await Task.sleep(nanoseconds: 500_000_000)
     }
   }
