@@ -52,7 +52,11 @@ struct TileGameDemo: SwiftUICaseStudy {
   private let boardSize = 4
   
   /// Persisted board state using data sync.
-  @Shared(.instantSync(Schema.boards))
+  @Shared(.instantSync(
+    Schema.boards
+      .where(\.id, .equals("a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"))
+      .with(\.tiles)
+  ))
   private var boards: IdentifiedArrayOf<Board> = []
   
   /// Ephemeral presence for who's playing.
@@ -113,22 +117,22 @@ struct TileGameDemo: SwiftUICaseStudy {
         ForEach(0..<boardSize, id: \.self) { row in
           HStack(spacing: 2) {
             ForEach(0..<boardSize, id: \.self) { col in
-              let key = "\(row)-\(col)"
-              let color = tileColor(for: key)
+              let tileKey = "\(row)-\(col)"
+              let color = tileColor(row: row, col: col)
               
               Rectangle()
-                .fill(hoveredTile == key ? myColor : color)
+                .fill(hoveredTile == tileKey ? myColor : color)
                 .frame(width: 60, height: 60)
                 .overlay(
                   Rectangle()
                     .strokeBorder(Color.primary.opacity(0.2), lineWidth: 1)
                 )
                 .onTapGesture {
-                  setTileColor(key: key)
+                  setTileColor(row: row, col: col)
                 }
                 #if !os(watchOS) && !os(tvOS)
                 .onHover { isHovered in
-                  hoveredTile = isHovered ? key : nil
+                  hoveredTile = isHovered ? tileKey : nil
                 }
                 #endif
             }
@@ -157,13 +161,13 @@ struct TileGameDemo: SwiftUICaseStudy {
     }
   }
   
-  private func tileColor(for key: String) -> Color {
-    guard let board = boards.first(where: { $0.id == boardId }),
-          let stateDict = board.state.value as? [String: String],
-          let colorHex = stateDict[key] else {
+  private func tileColor(row: Int, col: Int) -> Color {
+    guard let board = boards.first,
+          let tiles = board.tiles,
+          let tile = tiles.first(where: { Int($0.x) == row && Int($0.y) == col }) else {
       return .white
     }
-    return Color(hex: colorHex) ?? .white
+    return Color(hex: tile.color) ?? .white
   }
   
   private func initializeGame() {
@@ -182,36 +186,55 @@ struct TileGameDemo: SwiftUICaseStudy {
     }
     
     // Initialize board if it doesn't exist
-    if boards.first(where: { $0.id == boardId }) == nil {
-      var stateDict: [String: String] = [:]
+    if boards.first == nil {
+      let newBoard = Board(id: boardId, title: "Collaborative Game", createdAt: Date().timeIntervalSince1970)
+      
+      var newTiles: [Tile] = []
       for row in 0..<boardSize {
         for col in 0..<boardSize {
-          stateDict["\(row)-\(col)"] = "#FFFFFF"
+          newTiles.append(
+            Tile(
+              x: Double(row),
+              y: Double(col),
+              color: "#FFFFFF",
+              createdAt: Date().timeIntervalSince1970
+            )
+          )
         }
       }
-      let newBoard = Board(id: boardId, state: AnyCodable(stateDict))
-      _ = $boards.withLock { $0.append(newBoard) }
+      
+      var boardWithTiles = newBoard
+      boardWithTiles.tiles = newTiles
+      
+      _ = $boards.withLock { $0.append(boardWithTiles) }
     }
   }
   
-  private func setTileColor(key: String) {
-    guard var board = boards.first(where: { $0.id == boardId }) else { return }
-    var stateDict = (board.state.value as? [String: String]) ?? [:]
-    stateDict[key] = myColor.hexString
-    board.state = AnyCodable(stateDict)
-    _ = $boards.withLock { $0[id: boardId] = board }
+  private func setTileColor(row: Int, col: Int) {
+    guard let board = boards.first, var tiles = board.tiles else { return }
+    guard let index = tiles.firstIndex(where: { Int($0.x) == row && Int($0.y) == col }) else { return }
+    
+    var tile = tiles[index]
+    tile.color = myColor.hexString
+    tiles[index] = tile
+    
+    var newBoard = board
+    newBoard.tiles = tiles
+    
+    _ = $boards.withLock { $0[id: boardId] = newBoard }
   }
   
   private func resetBoard() {
-    guard var board = boards.first(where: { $0.id == boardId }) else { return }
-    var stateDict: [String: String] = [:]
-    for row in 0..<boardSize {
-      for col in 0..<boardSize {
-        stateDict["\(row)-\(col)"] = "#FFFFFF"
-      }
+    guard let board = boards.first, var tiles = board.tiles else { return }
+    
+    for i in 0..<tiles.count {
+      tiles[i].color = "#FFFFFF"
     }
-    board.state = AnyCodable(stateDict)
-    _ = $boards.withLock { $0[id: boardId] = board }
+    
+    var newBoard = board
+    newBoard.tiles = tiles
+    
+    _ = $boards.withLock { $0[id: boardId] = newBoard }
   }
 }
 
