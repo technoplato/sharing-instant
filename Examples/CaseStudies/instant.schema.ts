@@ -94,19 +94,19 @@ const _schema = i.schema({
 
   links: {
     // $users self-referential link (for guest accounts)
-    $usersLinkedPrimaryUser: {
-      forward: {
-        on: "$users",
-        has: "one",
-        label: "linkedPrimaryUser",
-        onDelete: "cascade",
-      },
-      reverse: {
-        on: "$users",
-        has: "many",
-        label: "linkedGuestUsers",
-      },
-    },
+    // $usersLinkedPrimaryUser: {
+    //   forward: {
+    //     on: "$users",
+    //     has: "one",
+    //     label: "linkedPrimaryUser",
+    //     onDelete: "cascade",
+    //   },
+    //   reverse: {
+    //     on: "$users",
+    //     has: "many",
+    //     label: "linkedGuestUsers",
+    //   },
+    // },
 
     // ─────────────────────────────────────────────────────────────────────────
     // Tile Game Links
