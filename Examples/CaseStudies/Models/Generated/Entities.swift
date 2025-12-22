@@ -352,7 +352,7 @@ public struct Log: EntityIdentifiable, Codable, Sendable {
 }
 
 
-public struct Todo: EntityIdentifiable, Codable, Sendable {
+public struct Todo: EntityIdentifiable, Codable, Sendable, Equatable {
   public static var namespace: String { "todos" }
   
   // MARK: - Fields

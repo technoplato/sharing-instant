@@ -241,8 +241,9 @@ public struct SwiftCodeGenerator {
     }
     
     // Struct declaration
+    // Equatable is needed for SwiftUI's .onChange(of:) modifier to work with entity collections
     output += """
-    \(access) struct \(entity.swiftTypeName): EntityIdentifiable, Codable\(sendable) {
+    \(access) struct \(entity.swiftTypeName): EntityIdentifiable, Codable\(sendable), Equatable {
       \(access) static var namespace: String { "\(entity.name)" }
       
       // MARK: - Fields
