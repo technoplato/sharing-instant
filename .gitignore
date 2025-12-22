@@ -19,3 +19,4 @@ package-lock.json
 
 build/
 .vscode/
+Examples/.build/
