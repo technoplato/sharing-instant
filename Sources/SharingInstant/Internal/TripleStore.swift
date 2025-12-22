@@ -63,6 +63,24 @@ actor TripleStore {
     
     notifyObservers(for: changedEntityIDs)
   }
+
+  /// Merges raw dictionary data. Useful for optimistic updates where we don't have the typed object yet.
+  func mergeUnsafe(id: String, data: [String: Any]) {
+      var changedIDs: Set<String> = []
+      mergeEntity(id: id, data: data, changedIDs: &changedIDs)
+      notifyObservers(for: changedIDs)
+  }
+
+  func delete(id: String) {
+      if entities[id] != nil {
+          entities.removeValue(forKey: id)
+           // Should we notify observers? Yes, so they get nil/removed.
+           // However, 'get' currently returns T?.
+           // If we notify, the observer calls 'get' and gets nil.
+           // Works for now.
+           notifyObservers(for: [id])
+      }
+  }
   
   private func mergeEntity(
     id: String,
@@ -138,7 +156,8 @@ actor TripleStore {
     // Add more types...
     return false
   }
-}
+} // End TripleStore
+
 
 // MARK: - Encodable Helper
 extension Encodable {

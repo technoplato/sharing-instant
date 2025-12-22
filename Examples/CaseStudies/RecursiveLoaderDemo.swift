@@ -28,7 +28,7 @@ struct RecursiveLoaderDemo: SwiftUICaseStudy {
       Schema.profiles
         .limit(10)
         .with(\.posts) {
-          $0.limit(5).with(\.replies)
+          $0.limit(5).with(\.comments)
         }
     )
   )
@@ -47,14 +47,14 @@ struct RecursiveLoaderDemo: SwiftUICaseStudy {
               Text(post.content)
                 .font(.body)
               
-              if let replies = post.replies, !replies.isEmpty {
+              if let comments = post.comments, !comments.isEmpty {
                 Divider()
                 Text("Comments")
                   .font(.caption)
                   .fontWeight(.bold)
                   .foregroundStyle(.secondary)
                 
-                ForEach(replies) { comment in
+                ForEach(comments) { comment in
                   HStack(alignment: .top) {
                     Image(systemName: "bubble.left.fill")
                       .font(.caption2)
@@ -107,7 +107,7 @@ struct RecursiveLoaderDemo: SwiftUICaseStudy {
     // Note: We need to set relationships manually if our library doesn't link them automatically on read?
     // Actually, for saving, we construct the graph.
     var fullPost = post
-    fullPost.replies = [comment]
+    fullPost.comments = [comment]
     
     var fullProfile = profile
     fullProfile.posts = [fullPost]
