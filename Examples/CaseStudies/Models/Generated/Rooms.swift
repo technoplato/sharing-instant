@@ -148,7 +148,7 @@ struct EmojiTopicView: View {
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// Mode:            Production (full traceability)
-/// Generated:       December 21, 2025 at 4:29 PM EST
+/// Generated:       December 22, 2025 at 6:41 AM EST
 /// Machine:         mlustig-hy7l9xrd61.local (Apple M4 Pro, macOS 26.1)
 /// Generator:       Sources/instant-schema/main.swift
 /// Source Schema:   Examples/CaseStudies/instant.schema.ts
@@ -164,16 +164,16 @@ swift run instant-schema generate \
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// HEAD Commit:
-///   SHA:      196410d8ff97a5dd17585955fe369981ceb15150
-///   Date:     December 21, 2025 at 4:29 PM EST
+///   SHA:      e9553d2a4b6b70b0949c6aa77236c9cbd56b8580
+///   Date:     December 22, 2025 at 6:41 AM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  refactor: remove manual model definitions
+///   Message:  chore: Ignore .vscode
 ///
 /// Schema File Last Modified:
-///   SHA:      8eec84e489ad60de4f156928297f0e972f6045f8
-///   Date:     December 21, 2025 at 4:22 PM EST
+///   SHA:      0e6cf9e4e26b27f63a04d41219b5fdabedf5e1c8
+///   Date:     December 22, 2025 at 6:41 AM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  refactor: Add boards to schema and extract Board model
+///   Message:  refactor: Update tile game schema to use Entities
 ///
 /// ═══════════════════════════════════════════════════════════════════════════════
 
