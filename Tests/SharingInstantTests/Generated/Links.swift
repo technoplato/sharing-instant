@@ -23,9 +23,9 @@
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// Include linked entities in your queries using the `.with()` modifier:
-///   Schema.profiles.with(\.posts)
+///   Schema.boards.with(\.tiles)
 /// Chain multiple links:
-///   Schema.profiles.with(\.posts).with(\.otherLink)
+///   Schema.boards.with(\.tiles).with(\.otherLink)
 /// The compiler ensures you only request links that actually exist!
 ///
 /// ─────────────────────────────────────────────────────────────────────────────────
@@ -38,10 +38,10 @@ import SwiftUI
 import SharingInstant
 import IdentifiedCollections
 
-struct ProfileWithLinksView: View {
-  /// Query profiles and include their linked posts
-  @Shared(Schema.profiles.with(\.posts))
-  private var items: IdentifiedArrayOf<Profile> = []
+struct BoardWithLinksView: View {
+  /// Query boards and include their linked tiles
+  @Shared(Schema.boards.with(\.tiles))
+  private var items: IdentifiedArrayOf<Board> = []
 
   var body: some View {
     List(items) { item in
@@ -51,7 +51,7 @@ struct ProfileWithLinksView: View {
 
         // Type-safe access to linked entity!
         // This is Optional because the link may not exist
-        if let linked = item.posts {
+        if let linked = item.tiles {
           HStack {
             Image(systemName: "link")
             Text("Linked: \(linked.id)")
@@ -75,12 +75,12 @@ struct ProfileWithLinksView: View {
 ///
 /// The link system is fully type-safe. The compiler catches errors at build time:
 ///
-/// ✅ COMPILES - posts exists on Profile:
-///    Schema.profiles.with(\.posts)
+/// ✅ COMPILES - tiles exists on Board:
+///    Schema.boards.with(\.tiles)
 ///
-/// ❌ COMPILE ERROR - "nonexistent" is not a link on Profile:
-///    Schema.profiles.with(\.nonexistent)
-///    // Error: Type 'Profile' has no member 'nonexistent'
+/// ❌ COMPILE ERROR - "nonexistent" is not a link on Board:
+///    Schema.boards.with(\.nonexistent)
+///    // Error: Type 'Board' has no member 'nonexistent'
 ///
 ///
 
@@ -100,6 +100,24 @@ struct ProfileWithLinksView: View {
 ///     has: many
 ///   }
 ///   // Access: InstantUser.linkedGuestUsers → [InstantUser]?
+/// }
+///
+/// boardTiles {
+///   name: "boardTiles"
+///
+///   forward: {
+///     on: Board
+///     label: "tiles"
+///     has: many
+///   }
+///   // Access: Board.tiles → [Tile]?
+///
+///   reverse: {
+///     on: Tile
+///     label: "board"
+///     has: one
+///   }
+///   // Access: Tile.board → Board?
 /// }
 ///
 /// profilePosts {
@@ -198,7 +216,7 @@ struct ProfileWithLinksView: View {
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// Mode:            Production (full traceability)
-/// Generated:       December 21, 2025 at 2:59 PM EST
+/// Generated:       December 22, 2025 at 6:41 AM EST
 /// Machine:         mlustig-hy7l9xrd61.local (Apple M4 Pro, macOS 26.1)
 /// Generator:       Sources/instant-schema/main.swift
 /// Source Schema:   Examples/CaseStudies/instant.schema.ts
@@ -214,16 +232,16 @@ swift run instant-schema generate \
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// HEAD Commit:
-///   SHA:      f865cc24ae4b44e2dc8611b27913387caefef028
-///   Date:     December 21, 2025 at 2:59 PM EST
+///   SHA:      0e6cf9e4e26b27f63a04d41219b5fdabedf5e1c8
+///   Date:     December 22, 2025 at 6:41 AM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  chore: Sync workspace changes and update dependencies
+///   Message:  refactor: Update tile game schema to use Entities
 ///
 /// Schema File Last Modified:
-///   SHA:      438e66f1e5ddb3271fb05bfdb3401058c6d9ae06
-///   Date:     December 19, 2025 at 6:28 AM EST
+///   SHA:      0e6cf9e4e26b27f63a04d41219b5fdabedf5e1c8
+///   Date:     December 22, 2025 at 6:41 AM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  feat(codegen): Add enhanced headers with generation context and git traceability
+///   Message:  refactor: Update tile game schema to use Entities
 ///
 /// ═══════════════════════════════════════════════════════════════════════════════
 
@@ -239,6 +257,13 @@ public enum SchemaLinks {
     name: "$usersLinkedPrimaryUser",
     from: InstantUser.self, fromLabel: "linkedPrimaryUser", fromCardinality: .one,
     to: InstantUser.self, toLabel: "linkedGuestUsers", toCardinality: .many
+  )
+
+  /// boards ↔ tiles relationship
+  public static let boardTiles = Link(
+    name: "boardTiles",
+    from: Board.self, fromLabel: "tiles", fromCardinality: .many,
+    to: Tile.self, toLabel: "board", toCardinality: .one
   )
 
   /// profiles ↔ posts relationship
