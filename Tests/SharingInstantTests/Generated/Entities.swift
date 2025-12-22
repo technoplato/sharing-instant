@@ -149,6 +149,22 @@ struct FactListContentView: View {
 ///   post: Post?  // Link (has: one)
 /// }
 ///
+/// Tile {
+///   id: String
+///   x: Double
+///   y: Double
+///   color: String
+///   createdAt: Double
+///   board: Board?  // Link (has: one)
+/// }
+///
+/// Board {
+///   id: String
+///   title: String
+///   createdAt: Double
+///   tiles: [Tile]?  // Link (has: many)
+/// }
+///
 
 ///
 /// ─────────────────────────────────────────────────────────────────────────────────
@@ -156,7 +172,7 @@ struct FactListContentView: View {
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// Mode:            Production (full traceability)
-/// Generated:       December 21, 2025 at 2:59 PM EST
+/// Generated:       December 22, 2025 at 6:41 AM EST
 /// Machine:         mlustig-hy7l9xrd61.local (Apple M4 Pro, macOS 26.1)
 /// Generator:       Sources/instant-schema/main.swift
 /// Source Schema:   Examples/CaseStudies/instant.schema.ts
@@ -172,16 +188,16 @@ swift run instant-schema generate \
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// HEAD Commit:
-///   SHA:      f865cc24ae4b44e2dc8611b27913387caefef028
-///   Date:     December 21, 2025 at 2:59 PM EST
+///   SHA:      0e6cf9e4e26b27f63a04d41219b5fdabedf5e1c8
+///   Date:     December 22, 2025 at 6:41 AM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  chore: Sync workspace changes and update dependencies
+///   Message:  refactor: Update tile game schema to use Entities
 ///
 /// Schema File Last Modified:
-///   SHA:      438e66f1e5ddb3271fb05bfdb3401058c6d9ae06
-///   Date:     December 19, 2025 at 6:28 AM EST
+///   SHA:      0e6cf9e4e26b27f63a04d41219b5fdabedf5e1c8
+///   Date:     December 22, 2025 at 6:41 AM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  feat(codegen): Add enhanced headers with generation context and git traceability
+///   Message:  refactor: Update tile game schema to use Entities
 ///
 /// ═══════════════════════════════════════════════════════════════════════════════
 
@@ -229,7 +245,7 @@ public struct InstantUser: EntityIdentifiable, Codable, Sendable {
 
   /// Link to $users via '$usersLinkedPrimaryUser'
   /// - Note: Only populated when queried with `.with(\.linkedPrimaryUser)`
-  public var linkedPrimaryUser: Box<InstantUser>?
+  public var linkedPrimaryUser: InstantUser?
 
   /// Link to $users via '$usersLinkedPrimaryUser'
   /// - Note: Only populated when queried with `.with(\.linkedGuestUsers)`
@@ -243,7 +259,7 @@ public struct InstantUser: EntityIdentifiable, Codable, Sendable {
     email: String? = nil,
     imageURL: String? = nil,
     type: String? = nil,
-    linkedPrimaryUser: Box<InstantUser>? = nil,
+    linkedPrimaryUser: InstantUser? = nil,
     linkedGuestUsers: [InstantUser]? = nil
   ) {
     self.id = id
@@ -641,6 +657,110 @@ public struct Like: EntityIdentifiable, Codable, Sendable {
     self.createdAt = try container.decode(FlexibleDouble.self, forKey: .createdAt).wrappedValue
     self.profile = try container.decodeIfPresent(Profile.self, forKey: .profile)
     self.post = try container.decodeIfPresent(Post.self, forKey: .post)
+  }
+}
+
+
+public struct Tile: EntityIdentifiable, Codable, Sendable {
+  public static var namespace: String { "tiles" }
+  
+  // MARK: - Fields
+  
+  /// The unique identifier for this entity
+  public var id: String
+  public var x: Double
+  public var y: Double
+  public var color: String
+  public var createdAt: Double
+
+  // MARK: - Links
+  // Populated when queried with .with(...)
+
+  /// Link to boards via 'boardTiles'
+  /// - Note: Only populated when queried with `.with(\.board)`
+  public var board: Board?
+
+
+  // MARK: - Initializer
+
+  public init(
+    id: String = UUID().uuidString,
+    x: Double,
+    y: Double,
+    color: String,
+    createdAt: Double,
+    board: Board? = nil
+  ) {
+    self.id = id
+    self.x = x
+    self.y = y
+    self.color = color
+    self.createdAt = createdAt
+    self.board = board
+  }
+
+  // MARK: - Custom Codable (handles InstantDB type quirks)
+
+  private enum CodingKeys: String, CodingKey {
+    case id, x, y, color, createdAt, board
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.id = try container.decode(String.self, forKey: .id)
+    self.x = try container.decode(FlexibleDouble.self, forKey: .x).wrappedValue
+    self.y = try container.decode(FlexibleDouble.self, forKey: .y).wrappedValue
+    self.color = try container.decode(String.self, forKey: .color)
+    self.createdAt = try container.decode(FlexibleDouble.self, forKey: .createdAt).wrappedValue
+    self.board = try container.decodeIfPresent(Board.self, forKey: .board)
+  }
+}
+
+
+public struct Board: EntityIdentifiable, Codable, Sendable {
+  public static var namespace: String { "boards" }
+  
+  // MARK: - Fields
+  
+  /// The unique identifier for this entity
+  public var id: String
+  public var title: String
+  public var createdAt: Double
+
+  // MARK: - Links
+  // Populated when queried with .with(...)
+
+  /// Link to tiles via 'boardTiles'
+  /// - Note: Only populated when queried with `.with(\.tiles)`
+  public var tiles: [Tile]?
+
+
+  // MARK: - Initializer
+
+  public init(
+    id: String = UUID().uuidString,
+    title: String,
+    createdAt: Double,
+    tiles: [Tile]? = nil
+  ) {
+    self.id = id
+    self.title = title
+    self.createdAt = createdAt
+    self.tiles = tiles
+  }
+
+  // MARK: - Custom Codable (handles InstantDB type quirks)
+
+  private enum CodingKeys: String, CodingKey {
+    case id, title, createdAt, tiles
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.id = try container.decode(String.self, forKey: .id)
+    self.title = try container.decode(String.self, forKey: .title)
+    self.createdAt = try container.decode(FlexibleDouble.self, forKey: .createdAt).wrappedValue
+    self.tiles = try container.decodeIfPresent([Tile].self, forKey: .tiles)
   }
 }
 
