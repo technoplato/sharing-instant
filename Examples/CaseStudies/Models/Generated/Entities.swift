@@ -82,8 +82,6 @@ struct FactListContentView: View {
 ///   email: String?
 ///   imageURL: String?
 ///   type: String?
-///   linkedPrimaryUser: InstantUser?  // Link (has: one)
-///   linkedGuestUsers: [InstantUser]?  // Link (has: many)
 /// }
 ///
 /// Fact {
@@ -172,7 +170,7 @@ struct FactListContentView: View {
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// Mode:            Production (full traceability)
-/// Generated:       December 22, 2025 at 6:41 AM EST
+/// Generated:       December 22, 2025 at 6:49 AM EST
 /// Machine:         mlustig-hy7l9xrd61.local (Apple M4 Pro, macOS 26.1)
 /// Generator:       Sources/instant-schema/main.swift
 /// Source Schema:   Examples/CaseStudies/instant.schema.ts
@@ -188,16 +186,16 @@ swift run instant-schema generate \
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// HEAD Commit:
-///   SHA:      e9553d2a4b6b70b0949c6aa77236c9cbd56b8580
-///   Date:     December 22, 2025 at 6:41 AM EST
+///   SHA:      c19cced34e1eb14156ac306ed48447a6557eb6b4
+///   Date:     December 22, 2025 at 6:48 AM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  chore: Ignore .vscode
+///   Message:  fix: Restore imports and use new schema in Demo
 ///
 /// Schema File Last Modified:
-///   SHA:      0e6cf9e4e26b27f63a04d41219b5fdabedf5e1c8
-///   Date:     December 22, 2025 at 6:41 AM EST
+///   SHA:      522ffbf617207b60ecfa647b2d1dc6b9bfa3a7ff
+///   Date:     December 22, 2025 at 6:46 AM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  refactor: Update tile game schema to use Entities
+///   Message:  fix: Remove recursive self-link to fix Swift compilation
 ///
 /// ═══════════════════════════════════════════════════════════════════════════════
 
@@ -240,34 +238,18 @@ public struct InstantUser: EntityIdentifiable, Codable, Sendable {
   public var imageURL: String?
   public var type: String?
 
-  // MARK: - Links
-  // Populated when queried with .with(...)
-
-  /// Link to $users via '$usersLinkedPrimaryUser'
-  /// - Note: Only populated when queried with `.with(\.linkedPrimaryUser)`
-  public var linkedPrimaryUser: InstantUser?
-
-  /// Link to $users via '$usersLinkedPrimaryUser'
-  /// - Note: Only populated when queried with `.with(\.linkedGuestUsers)`
-  public var linkedGuestUsers: [InstantUser]?
-
-
   // MARK: - Initializer
 
   public init(
     id: String = UUID().uuidString,
     email: String? = nil,
     imageURL: String? = nil,
-    type: String? = nil,
-    linkedPrimaryUser: InstantUser? = nil,
-    linkedGuestUsers: [InstantUser]? = nil
+    type: String? = nil
   ) {
     self.id = id
     self.email = email
     self.imageURL = imageURL
     self.type = type
-    self.linkedPrimaryUser = linkedPrimaryUser
-    self.linkedGuestUsers = linkedGuestUsers
   }
 }
 
