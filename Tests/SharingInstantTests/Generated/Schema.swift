@@ -177,7 +177,7 @@ struct FactContentView: View {
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// Mode:            Production (full traceability)
-/// Generated:       December 22, 2025 at 6:41 AM EST
+/// Generated:       December 22, 2025 at 6:49 AM EST
 /// Machine:         mlustig-hy7l9xrd61.local (Apple M4 Pro, macOS 26.1)
 /// Generator:       Sources/instant-schema/main.swift
 /// Source Schema:   Examples/CaseStudies/instant.schema.ts
@@ -193,16 +193,16 @@ swift run instant-schema generate \
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// HEAD Commit:
-///   SHA:      0e6cf9e4e26b27f63a04d41219b5fdabedf5e1c8
-///   Date:     December 22, 2025 at 6:41 AM EST
+///   SHA:      b82e464a80e7ea977720052ab155d6a060cb7fde
+///   Date:     December 22, 2025 at 6:49 AM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  refactor: Update tile game schema to use Entities
+///   Message:  chore: Update generated schema for CaseStudies (no recursion)
 ///
 /// Schema File Last Modified:
-///   SHA:      0e6cf9e4e26b27f63a04d41219b5fdabedf5e1c8
-///   Date:     December 22, 2025 at 6:41 AM EST
+///   SHA:      522ffbf617207b60ecfa647b2d1dc6b9bfa3a7ff
+///   Date:     December 22, 2025 at 6:46 AM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  refactor: Update tile game schema to use Entities
+///   Message:  fix: Remove recursive self-link to fix Swift compilation
 ///
 /// ═══════════════════════════════════════════════════════════════════════════════
 

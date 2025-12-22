@@ -33,7 +33,7 @@ private class TileGameModelRefactored: ObservableObject {
     _boards = Shared(
       .instantSync(
         Schema.boards
-          .where(\.id, .equals(boardId))
+          .where(\.id, .eq(boardId))
           .with(\.tiles)
       )
     )
