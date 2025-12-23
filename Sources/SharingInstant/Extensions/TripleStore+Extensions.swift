@@ -33,7 +33,8 @@ extension InstantDB.TripleStore {
             
             // Determine the key name (label)
             // Forward identity: [id, namespace, label]
-            let label = attr.forwardIdentity.last ?? attrId // fallback
+            // If the schema is incomplete, fall back to using the attribute ID as the label.
+            let label = attr.forwardIdentity.last ?? attrId
             
             if attr.valueType == .ref {
                 guard depth == 0 else {
