@@ -39,7 +39,7 @@ struct TopicsDemo: SwiftUICaseStudy {
   /// Type-safe topic subscription for emoji events.
   @Shared(.instantTopic(
     Schema.Topics.emoji,
-    roomId: "demo-123"
+    roomId: "topics-demo"
   ))
   private var emojiChannel: TopicChannel<EmojiTopic>
   

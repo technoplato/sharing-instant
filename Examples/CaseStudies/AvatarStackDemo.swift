@@ -40,7 +40,7 @@ struct AvatarStackDemo: SwiftUICaseStudy {
   /// - Automatic cleanup on view disappear
   @Shared(.instantPresence(
     Schema.Rooms.avatars,
-    roomId: "demo-123",
+    roomId: "avatar-stack-demo",
     initialPresence: AvatarsPresence(name: "", color: "")
   ))
   private var presence: RoomPresence<AvatarsPresence>

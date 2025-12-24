@@ -33,7 +33,7 @@ struct TypingIndicatorDemo: SwiftUICaseStudy {
   /// Type-safe presence subscription with typing state.
   @Shared(.instantPresence(
     Schema.Rooms.chat,
-    roomId: "demo-123",
+    roomId: "typing-demo",
     initialPresence: ChatPresence(name: "", color: "", isTyping: false)
   ))
   private var presence: RoomPresence<ChatPresence>
@@ -129,7 +129,7 @@ struct TypingIndicatorDemo: SwiftUICaseStudy {
     }
     .onAppear {
       InstantLogger.viewAppeared("TypingIndicatorDemo")
-      InstantLogger.info("Joining chat room", json: ["userId": userId, "roomId": "demo-123"])
+      InstantLogger.info("Joining chat room", json: ["userId": userId, "roomId": "typing-demo"])
       
       // Set initial presence with actual values
       $presence.withLock { state in
