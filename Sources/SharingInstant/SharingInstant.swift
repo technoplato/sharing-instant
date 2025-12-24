@@ -35,6 +35,7 @@
 ///
 /// - ``EntityIdentifiable``
 /// - ``EntityKey``
+/// - ``InstantStorage``
 /// - ``SharingInstantSync``
 /// - ``SharingInstantQuery``
 ///

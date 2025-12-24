@@ -378,6 +378,15 @@ final class EntityKeyPredicateTests: XCTestCase {
     let eqPredicate = EntityKeyPredicate.eq("test")
     let eqValue = eqPredicate.toWhereValue()
     XCTAssertEqual(eqValue as? String, "test")
+
+    // Not-equals should return a dictionary with `$ne`
+    let nePredicate = EntityKeyPredicate.neq("test")
+    let neValue = nePredicate.toWhereValue()
+    if let dict = neValue as? [String: Any] {
+      XCTAssertEqual(dict["$ne"] as? String, "test")
+    } else {
+      XCTFail("Expected dictionary for neq predicate")
+    }
     
     // Other operators should return a dictionary
     let gtPredicate = EntityKeyPredicate.gt(5)

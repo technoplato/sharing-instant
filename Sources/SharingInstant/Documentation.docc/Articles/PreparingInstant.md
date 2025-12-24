@@ -59,7 +59,7 @@ struct TodoService {
   
   func createTodo(title: String) throws {
     try instant.transact([
-      instant.tx.todos[UUID().uuidString].update([
+      instant.tx.todos[UUID().uuidString.lowercased()].update([
         "title": title,
         "done": false,
         "createdAt": Date()
@@ -82,6 +82,17 @@ For SwiftUI previews, configure the client in the preview itself:
   ContentView()
 }
 ```
+
+## Debugging
+
+If you are diagnosing connection, schema, or link-resolution issues, enable verbose logging in the
+underlying InstantDB Swift SDK:
+
+- `INSTANTDB_LOG_LEVEL=info` for high-signal connection events
+- `INSTANTDB_LOG_LEVEL=debug` (or `INSTANTDB_DEBUG=1`) for verbose protocol tracing
+
+SharingInstant also provides <doc:Debugging> for a full breakdown of logging layers and common
+failure modes.
 
 ## Testing
 
@@ -106,8 +117,6 @@ func testTodoList() {
   // In test context, todos will use testingValue
 }
 ```
-
-
 
 
 

@@ -94,7 +94,7 @@ public struct LogEntry: Codable, EntityIdentifiable, Sendable, Equatable {
   public var timezone: String
   
   public init(
-    id: String = UUID().uuidString,
+    id: String = UUID().uuidString.lowercased(),
     level: LogLevel,
     message: String,
     jsonPayload: String? = nil,

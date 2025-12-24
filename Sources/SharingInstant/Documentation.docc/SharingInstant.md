@@ -128,7 +128,7 @@ When you modify a `@Shared` value, changes are applied immediately to the UI (op
 // This shows immediately in the UI
 $todos.withLock { todos in
   todos.append(Todo(
-    id: UUID().uuidString,
+    id: UUID().uuidString.lowercased(),
     title: "Buy groceries",
     done: false,
     createdAt: Date()
@@ -163,7 +163,9 @@ SharingInstant leverages InstantDB's WebSocket connection and triple store to ke
 
 - <doc:Querying>
 - <doc:Syncing>
+- <doc:Storage>
 - <doc:PreparingInstant>
+- <doc:Debugging>
 
 ### Real-Time Collaboration
 
@@ -205,6 +207,3 @@ SharingInstant leverages InstantDB's WebSocket connection and triple store to ke
 ### Protocols
 
 - ``EntityIdentifiable``
-
-
-

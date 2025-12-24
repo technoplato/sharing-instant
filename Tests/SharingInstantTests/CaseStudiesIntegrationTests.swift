@@ -52,9 +52,11 @@ final class CaseStudiesIntegrationTests: XCTestCase {
   @MainActor
   override func setUp() async throws {
     try await super.setUp()
+
+    try IntegrationTestGate.requireEnabled()
     
     // Create client and wait for authentication
-    client = InstantClient(appID: Self.testAppID)
+    client = InstantClient(appID: Self.testAppID, enableLocalPersistence: false)
     client.connect()
     
     // Wait for authentication with timeout
@@ -397,7 +399,7 @@ final class CaseStudiesIntegrationTests: XCTestCase {
     
     XCTAssertTrue(receivedData, "Should receive query result")
     // Don't assert on count - it depends on database state
-    print("Found \(todoCount) todos in database")
+    TestLog.log("Found \(todoCount) todos in database")
   }
   
   // MARK: - CRUD Operations (Todo Demo)
@@ -572,11 +574,10 @@ struct CaseStudyTodo: Codable, InstantEntity, Sendable {
   var done: Bool
   var createdAt: Date
   
-  init(id: String = UUID().uuidString, title: String, done: Bool = false, createdAt: Date = Date()) {
+  init(id: String = UUID().uuidString.lowercased(), title: String, done: Bool = false, createdAt: Date = Date()) {
     self.id = id
     self.title = title
     self.done = done
     self.createdAt = createdAt
   }
 }
-

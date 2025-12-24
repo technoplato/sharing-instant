@@ -216,7 +216,7 @@ public struct InstantFile: EntityIdentifiable, Codable, Sendable {
   // MARK: - Initializer
 
   public init(
-    id: String = UUID().uuidString,
+    id: String = UUID().uuidString.lowercased(),
     path: String,
     url: String
   ) {
@@ -241,7 +241,7 @@ public struct InstantUser: EntityIdentifiable, Codable, Sendable {
   // MARK: - Initializer
 
   public init(
-    id: String = UUID().uuidString,
+    id: String = UUID().uuidString.lowercased(),
     email: String? = nil,
     imageURL: String? = nil,
     type: String? = nil
@@ -267,7 +267,7 @@ public struct Fact: EntityIdentifiable, Codable, Sendable {
   // MARK: - Initializer
 
   public init(
-    id: String = UUID().uuidString,
+    id: String = UUID().uuidString.lowercased(),
     count: Double,
     text: String
   ) {
@@ -310,7 +310,7 @@ public struct Log: EntityIdentifiable, Codable, Sendable {
   // MARK: - Initializer
 
   public init(
-    id: String = UUID().uuidString,
+    id: String = UUID().uuidString.lowercased(),
     level: String,
     message: String,
     jsonPayload: String? = nil,
@@ -366,7 +366,7 @@ public struct Todo: EntityIdentifiable, Codable, Sendable {
   // MARK: - Initializer
 
   public init(
-    id: String = UUID().uuidString,
+    id: String = UUID().uuidString.lowercased(),
     createdAt: Double,
     done: Bool,
     title: String
@@ -425,7 +425,7 @@ public struct Profile: EntityIdentifiable, Codable, Sendable {
   // MARK: - Initializer
 
   public init(
-    id: String = UUID().uuidString,
+    id: String = UUID().uuidString.lowercased(),
     displayName: String,
     handle: String,
     bio: String? = nil,
@@ -498,7 +498,7 @@ public struct Post: EntityIdentifiable, Codable, Sendable {
   // MARK: - Initializer
 
   public init(
-    id: String = UUID().uuidString,
+    id: String = UUID().uuidString.lowercased(),
     content: String,
     imageUrl: String? = nil,
     createdAt: Double,
@@ -562,7 +562,7 @@ public struct Comment: EntityIdentifiable, Codable, Sendable {
   // MARK: - Initializer
 
   public init(
-    id: String = UUID().uuidString,
+    id: String = UUID().uuidString.lowercased(),
     text: String,
     createdAt: Double,
     author: Profile? = nil,
@@ -616,7 +616,7 @@ public struct Like: EntityIdentifiable, Codable, Sendable {
   // MARK: - Initializer
 
   public init(
-    id: String = UUID().uuidString,
+    id: String = UUID().uuidString.lowercased(),
     createdAt: Double,
     profile: Profile? = nil,
     post: Post? = nil
@@ -666,7 +666,7 @@ public struct Tile: EntityIdentifiable, Codable, Sendable {
   // MARK: - Initializer
 
   public init(
-    id: String = UUID().uuidString,
+    id: String = UUID().uuidString.lowercased(),
     x: Double,
     y: Double,
     color: String,
@@ -720,7 +720,7 @@ public struct Board: EntityIdentifiable, Codable, Sendable {
   // MARK: - Initializer
 
   public init(
-    id: String = UUID().uuidString,
+    id: String = UUID().uuidString.lowercased(),
     title: String,
     createdAt: Double,
     tiles: [Tile]? = nil
@@ -745,5 +745,4 @@ public struct Board: EntityIdentifiable, Codable, Sendable {
     self.tiles = try container.decodeIfPresent([Tile].self, forKey: .tiles)
   }
 }
-
 

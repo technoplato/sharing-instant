@@ -56,6 +56,34 @@ private enum InstantAppIDKey: DependencyKey {
   static let testValue: String = "test-app-id"
 }
 
+// MARK: - Client Options
+
+extension DependencyValues {
+  /// Controls whether the underlying Instant iOS SDK enables local persistence.
+  ///
+  /// ## Why This Exists
+  /// InstantDB's local persistence provides a great offline UX, but it can be undesirable in
+  /// certain environments:
+  ///
+  /// - **Tests**: cached emissions can mask server round-trips and make assertions flaky.
+  /// - **Debug sessions**: when diagnosing schema/link issues, it is useful to ensure every
+  ///   query reflects a server refresh rather than a cached snapshot.
+  ///
+  /// SharingInstant defaults this to `true` in live apps, and `false` in tests.
+  ///
+  /// If you change this value at runtime for the same `instantAppID`, call
+  /// ``InstantClientFactory/clearCache()`` to ensure a new client is constructed.
+  public var instantEnableLocalPersistence: Bool {
+    get { self[InstantEnableLocalPersistenceKey.self] }
+    set { self[InstantEnableLocalPersistenceKey.self] = newValue }
+  }
+}
+
+private enum InstantEnableLocalPersistenceKey: DependencyKey {
+  static let liveValue: Bool = true
+  static let testValue: Bool = false
+}
+
 // MARK: - Client Factory
 
 /// Factory for creating and caching InstantDB clients.
@@ -86,10 +114,12 @@ public enum InstantClientFactory {
   /// Must be called from the main actor.
   @MainActor
   public static func makeClient(appID: String) -> InstantClient {
+    @Dependency(\.instantEnableLocalPersistence) var enableLocalPersistence
+
     if let cached = clientCache[appID] {
       return cached
     }
-    let client = InstantClient(appID: appID)
+    let client = InstantClient(appID: appID, enableLocalPersistence: enableLocalPersistence)
     clientCache[appID] = client
     return client
   }

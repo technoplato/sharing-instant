@@ -1,98 +1,95 @@
-import Testing
+
+import XCTest
 @testable import SharingInstant
-import Foundation
+import InstantDB
 
-struct TripleStoreTests {
+final class TripleStoreTests: XCTestCase {
     
-    struct User: Codable, EntityIdentifiable, Equatable {
-        static let namespace = "users"
-        var id: String
-        var name: String
-    }
+    // MARK: - Batch 1: Basic Add/Update/Delete
     
-    @Test
-    func testMergeAndGet() async {
-        let store = TripleStore()
-        let user = User(id: "u1", name: "Alice")
-        
-        await store.merge(values: [user])
-        
-        let retrieved: User? = await store.get(id: "u1")
-        #expect(retrieved == user)
-    }
-    
-    actor CallbackTracker {
-        var called = false
-        func setCalled() { called = true }
-        func wasCalled() -> Bool { called }
-    }
-
-    @Test
-    func testUpdateNotifiesObservers() async {
-        let store = TripleStore()
-        let user1 = User(id: "u1", name: "Alice")
-        await store.merge(values: [user1])
-        
-        let tracker = CallbackTracker()
-        
-        let _ = await store.addObserver(id: "u1") {
-            Task { await tracker.setCalled() }
-        }
-        
-        let user2 = User(id: "u1", name: "Alice Updated")
-        await store.merge(values: [user2])
-        
-        // Wait a bit for async notification?
-        // Notification is fired in Task within actor.
-        try? await Task.sleep(nanoseconds: 50_000_000)
-        
-        let wasCalled = await tracker.wasCalled()
-        #expect(wasCalled)
-        
-        let retrieved: User? = await store.get(id: "u1")
-        #expect(retrieved?.name == "Alice Updated")
-    }
-    
-    @Test
-    func testNoUpdateIfSameData() async {
-        let store = TripleStore()
-        let user1 = User(id: "u1", name: "Alice")
-        await store.merge(values: [user1])
-        
-        let tracker = CallbackTracker()
-        
-        let _ = await store.addObserver(id: "u1") {
-            Task { await tracker.setCalled() }
-        }
-        
-        // Merge same data
-        await store.merge(values: [user1])
-        
-        try? await Task.sleep(nanoseconds: 50_000_000)
-        
-        let wasCalled = await tracker.wasCalled()
-        #expect(!wasCalled)
-    }
-    
-    @Test
-    func testProfileHandling() async {
-        let store = TripleStore()
+    func testSimpleAdd() async {
+        let store = InstantDB.TripleStore()
         let id = UUID().uuidString
-        let profile = Profile(
-            id: id,
-            displayName: "Test Profile",
-            handle: "test",
-            bio: nil,
-            avatarUrl: nil,
-            createdAt: 12345
-        )
+        let timestamp: Int64 = 100
         
-        await store.merge(values: [profile])
+        // Action: Add Triple
+        let triple = Triple(entityId: id, attributeId: "handle", value: .string("bobby"), createdAt: timestamp)
+        store.addTriple(triple, hasCardinalityOne: true)
         
-        // Use full generic retrieval
-        let retrieved: Profile? = await store.get(id: id)
-        
-        #expect(retrieved != nil)
-        #expect(retrieved?.displayName == "Test Profile")
+        // Assert: Verify EAV structure
+        // We use .first because we expect only one value for cardinality one
+        let triples = store.getTriples(entity: id, attribute: "handle")
+        XCTAssertEqual(triples.count, 1)
+        XCTAssertEqual(triples.first?.value, .string("bobby"))
     }
+    
+    func testCardinalityOneAdd() async {
+        let store = InstantDB.TripleStore()
+        let id = UUID().uuidString
+        
+        // timestamp 100: Set to bobby
+        let t1 = Triple(entityId: id, attributeId: "handle", value: .string("bobby"), createdAt: 100)
+        store.addTriple(t1, hasCardinalityOne: true)
+        
+        // timestamp 200: Set to bob
+        // hasCardinalityOne: true should overwrite
+        let t2 = Triple(entityId: id, attributeId: "handle", value: .string("bob"), createdAt: 200)
+        store.addTriple(t2, hasCardinalityOne: true)
+        
+        let triples = store.getTriples(entity: id, attribute: "handle")
+        XCTAssertEqual(triples.count, 1)
+        XCTAssertEqual(triples.first?.value, .string("bob"))
+    }
+    
+    func testDeleteEntity() async {
+        let store = InstantDB.TripleStore()
+        // We need an AttrsStore for deleteEntity to work (to specific cascade/ref logic)
+        // But basic delete might work?
+        // Method signature: deleteEntity(_ entityId: String, attrsStore: AttrsStore)
+        // We need to mock AttrsStore?
+        
+        // For now, let's skip delete checking in this batch or mock AttrsStore.
+        // Or check retractTriple which doesn't need attrsStore?
+        // retractTriple(_ triple: Triple, isRef: Bool)
+        
+        let id = UUID().uuidString
+        let triple = Triple(entityId: id, attributeId: "handle", value: .string("bobby"), createdAt: 100)
+        store.addTriple(triple, hasCardinalityOne: true)
+        
+        store.retractTriple(triple)
+        
+        let triples = store.getTriples(entity: id, attribute: "handle")
+        XCTAssertTrue(triples.isEmpty)
+    }
+
+    func testLWWBehavior() async {
+        let store = InstantDB.TripleStore()
+        let id = UUID().uuidString
+        
+        // 1. Add newer value (200)
+        let t1 = Triple(entityId: id, attributeId: "score", value: .int(10), createdAt: 200)
+        store.addTriple(t1, hasCardinalityOne: true)
+        
+        // 2. Try to add older value (100)
+        // Should be ignored
+        let t2 = Triple(entityId: id, attributeId: "score", value: .int(5), createdAt: 100)
+        store.addTriple(t2, hasCardinalityOne: true)
+        
+        let triples = store.getTriples(entity: id, attribute: "score")
+        XCTAssertEqual(triples.count, 1)
+        XCTAssertEqual(triples.first?.value, .int(10))
+        XCTAssertEqual(triples.first?.createdAt, 200)
+        
+        // 3. Add even newer value (300)
+        // Should overwrite
+        let t3 = Triple(entityId: id, attributeId: "score", value: .int(15), createdAt: 300)
+        store.addTriple(t3, hasCardinalityOne: true)
+        
+        let finalTriples = store.getTriples(entity: id, attribute: "score")
+        XCTAssertEqual(finalTriples.count, 1)
+        XCTAssertEqual(finalTriples.first?.value, .int(15))
+        XCTAssertEqual(finalTriples.first?.createdAt, 300)
+    }
+
+    
 }

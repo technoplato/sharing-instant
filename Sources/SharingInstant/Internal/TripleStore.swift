@@ -1,171 +1,125 @@
 import Foundation
 import InstantDB
 
-/// A shared store that holds normalized entities.
+/// Adapted from: instant-client/src/instant/store.ts
 ///
-/// The TripleStore acts as the single source of truth for all data fetched from InstantDB.
-/// It stores entities in a normalized format: `[EntityID: [Attribute: Value]]`.
-actor TripleStore {
-  /// The normalized data store: [EntityID: [Attribute: Value]]
-  private var entities: [String: [String: Any]] = [:]
-  
-  /// Observers waiting for updates to specific entities
-  /// [EntityID: [Token: Callback]]
-  private var observers: [String: [UUID: () -> Void]] = [:]
-  
-  static let shared = TripleStore()
-  
-  init() {}
-  
-  // MARK: - Data Access
-  
-  /// Retrieves an entity by its ID and decodes it to the specified type.
-  /// - Parameters:
-  ///   - id: The ID of the entity.
-  /// - Returns: The decoded entity, or nil if not found or decoding fails.
-  func get<T: Decodable>(id: String) -> T? {
-    guard let data = entities[id] else { return nil }
+/// A wrapper around InstantDB.TripleStore that adds Observation capabilities.
+public final class SharedTripleStore: @unchecked Sendable {
+    // Backing SDK Store
+    public let inner: InstantDB.TripleStore = InstantDB.TripleStore()
+    public let attrsStore: AttrsStore = AttrsStore()
     
-    // We need to convert [String: Any] back to T.
-    // Since JSONSerialization expects [String: Any] to be JSON-compatible,
-    // and our store might contain standard Swift types (Date, etc),
-    // we might need custom handling.
-    // For now, simple round-trip via JSONSerialization if possible.
+    // Observers [EntityID: [Token: Callback]]
+    private var observers: [String: [UUID: @Sendable () -> Void]] = [:]
+    private let lock = NSRecursiveLock()
+
+    public init() {}
     
-    // Quick and dirty: Serialize to Data then Decode.
-    // Optimization: Use a Decoder that reads directly from Dictionary (like DictionaryDecoder).
-    // For this implementation, we'll try JSON roundtrip but handle Date strategies if needed.
+    // MARK: - Primitives
     
-    do {
-      // Clean data for JSON serialization (handle Dates, etc if raw)
-      // Assuming straightforward types for now.
-      let jsonData = try JSONSerialization.data(withJSONObject: data)
-      let decoder = JSONDecoder()
-      decoder.dateDecodingStrategy = .iso8601 // InstantDB standard?
-      return try decoder.decode(T.self, from: jsonData)
-    } catch {
-      print("TripleStore: Failed to decode \(id) to \(T.self): \(error)")
-      return nil
-    }
-  }
-  
-  /// Merges new data into the store.
-  /// - Parameters:
-  ///   - values: The codable values to merge.
-  func merge<T: Encodable & EntityIdentifiable>(values: [T]) {
-    var changedEntityIDs: Set<String> = []
-    
-    for value in values {
-      // Encode to Dict
-      guard let dict = try? value.asDictionary() else { continue }
-      mergeEntity(id: value.id, data: dict, changedIDs: &changedEntityIDs)
+    public func updateAttributes(_ attributes: [Attribute]) {
+        for attr in attributes {
+            attrsStore.addAttr(attr)
+        }
     }
     
-    notifyObservers(for: changedEntityIDs)
-  }
-
-  /// Merges raw dictionary data. Useful for optimistic updates where we don't have the typed object yet.
-  func mergeUnsafe(id: String, data: [String: Any]) {
-      var changedIDs: Set<String> = []
-      mergeEntity(id: id, data: data, changedIDs: &changedIDs)
-      notifyObservers(for: changedIDs)
-  }
-
-  func delete(id: String) {
-      if entities[id] != nil {
-          entities.removeValue(forKey: id)
-           // Should we notify observers? Yes, so they get nil/removed.
-           // However, 'get' currently returns T?.
-           // If we notify, the observer calls 'get' and gets nil.
-           // Works for now.
-           notifyObservers(for: [id])
-      }
-  }
-  
-  private func mergeEntity(
-    id: String,
-    data: [String: Any],
-    changedIDs: inout Set<String>
-  ) {
-    var currentEntity = entities[id] ?? ["id": id]
-    var hasChanges = false
+    public func addTriple(_ triple: Triple, hasCardinalityOne: Bool, isRef: Bool) {
+        inner.addTriple(triple, hasCardinalityOne: hasCardinalityOne, isRef: isRef)
+        notifyObservers(for: [triple.entityId])
+    }
     
-    for (key, value) in data {
-        // Skip nil values if Encodable produced them (shouldn't typically with asDictionary)
-        // Recursion for nested entities?
-        // If T contains nested Entity objects, they are serialized into 'data'.
-        // To truly normalize, we should detect them and extract them.
-        // For V1, we store the aggregate. If partial updates come, we merge at top level attributes.
+    public func addTriples(_ triples: [Triple]) {
+        var changedIDs: Set<String> = []
+        for triple in triples {
+            let attr = attrsStore.getAttr(triple.attributeId)
+            let hasCardinalityOne = attr?.cardinality == .one
+            let isRef = attr?.valueType == .ref
+            inner.addTriple(triple, hasCardinalityOne: hasCardinalityOne, isRef: isRef)
+            changedIDs.insert(triple.entityId)
+        }
+        notifyObservers(for: changedIDs)
+    }
+    
+    public func retractTriple(_ triple: Triple, isRef: Bool) {
+        inner.retractTriple(triple, isRef: isRef)
+        notifyObservers(for: [triple.entityId])
+    }
+    
+    public func deleteEntity(id: String) {
+        let triples = inner.getTriples(entity: id)
+        var idsChanged: Set<String> = [id]
         
-        // Simple equality check
-        if let oldValue = currentEntity[key] {
-             if !valuesAreEqual(oldValue, value) {
-                 currentEntity[key] = value
-                 hasChanges = true
-             }
-        } else {
-             currentEntity[key] = value
-             hasChanges = true
+        for triple in triples {
+             let attr = attrsStore.getAttr(triple.attributeId)
+             let isRef = attr?.valueType == .ref
+             inner.retractTriple(triple, isRef: isRef)
         }
+        notifyObservers(for: idsChanged)
     }
     
-    if hasChanges {
-      entities[id] = currentEntity
-      changedIDs.insert(id)
+    // MARK: - Legacy / Helper Support
+    
+    /// Merges dictionaries (from Server Tree).
+    /// Used by legacy Reactor calls or if manual merging is needed.
+    func merge(dictionaries: [[String: Any]]) {
+        var changedIDs: Set<String> = []
+        for dict in dictionaries {
+            guard let id = dict["id"] as? String else { continue }
+            changedIDs.insert(id)
+        }
+        notifyObservers(for: changedIDs)
     }
-  }
-  
-  // MARK: - Observation
-  
-  func addObserver(id: String, onChange: @escaping () -> Void) -> UUID {
-    let token = UUID()
-    if observers[id] == nil {
-      observers[id] = [:]
+    
+    // MARK: - Data Access
+    
+    public func get<T: Decodable>(id: String) -> T? {
+        return inner.get(id: id, attrsStore: attrsStore)
     }
-    observers[id]?[token] = onChange
-    return token
-  }
-  
-  func removeObserver(id: String, token: UUID) {
-    observers[id]?.removeValue(forKey: token)
-    if observers[id]?.isEmpty == true {
-      observers[id] = nil
-    }
-  }
-  
-  private func notifyObservers(for ids: Set<String>) {
-    Task {
-        // Notify on main actor? Or just call closures?
-        // Closures usually capture context.
-        for id in ids {
-          if let entityObservers = observers[id] {
-            for callback in entityObservers.values {
-              callback()
+
+    // MARK: - Observation
+
+    @discardableResult
+    func addObserver(id: String, onChange: @escaping @Sendable () -> Void) -> UUID {
+        lock.withLock {
+            let token = UUID()
+            if observers[id] == nil {
+                observers[id] = [:]
             }
-          }
+            observers[id]?[token] = onChange
+            return token
         }
     }
-  }
-  
-  // MARK: - Helpers
-  
-  private func valuesAreEqual(_ v1: Any, _ v2: Any) -> Bool {
-    if let s1 = v1 as? String, let s2 = v2 as? String { return s1 == s2 }
-    if let i1 = v1 as? Int, let i2 = v2 as? Int { return i1 == i2 }
-    if let b1 = v1 as? Bool, let b2 = v2 as? Bool { return b1 == b2 }
-    // Add more types...
-    return false
-  }
-} // End TripleStore
 
-
-// MARK: - Encodable Helper
-extension Encodable {
-  func asDictionary() throws -> [String: Any] {
-    let data = try JSONEncoder().encode(self)
-    guard let dictionary = try JSONSerialization.jsonObject(with: data, options: .allowFragments) as? [String: Any] else {
-      throw NSError(domain: "TripleStore", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to cast to dictionary"])
+    func removeObserver(id: String, token: UUID) {
+        lock.withLock {
+            observers[id]?.removeValue(forKey: token)
+            if observers[id]?.isEmpty == true {
+                observers[id] = nil
+            }
+        }
     }
-    return dictionary
-  }
+
+    private func notifyObservers(for ids: Set<String>) {
+        if ids.isEmpty { return }
+        
+        // Snapshot callbacks synchronously to avoid data races
+        let snapshot: [@Sendable () -> Void] = lock.withLock {
+            var callbacks: [@Sendable () -> Void] = []
+            for id in ids {
+                if let tokens = observers[id] {
+                    callbacks.append(contentsOf: tokens.values)
+                }
+            }
+            return callbacks
+        }
+        
+        if snapshot.isEmpty { return }
+
+        // Execute callbacks asynchronously
+        Task {
+            for callback in snapshot {
+                callback()
+            }
+        }
+    }
 }

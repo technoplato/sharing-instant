@@ -275,6 +275,7 @@ where Value.Element: EntityIdentifiable & Sendable {
   #endif
   
   public func load(context: LoadContext<Value>, continuation: LoadContinuation<Value>) {
+    @Dependency(\.instantReactor) var reactor
     guard case .userInitiated = context, let configuration = request.configuration else {
       logDebug("Load: non-userInitiated context or no configuration, returning initial value")
       withResume {
@@ -304,7 +305,7 @@ where Value.Element: EntityIdentifiable & Sendable {
     logDebug("Load[\(loadId)]: starting load task via Reactor")
     
     Task { @MainActor in
-        let stream = await Reactor.shared.subscribe(appID: appID, configuration: configuration)
+        let stream = await reactor.subscribe(appID: appID, configuration: configuration)
         for await data in stream {
             withResume {
                 continuation.resume(returning: Value(data))
@@ -318,22 +319,7 @@ where Value.Element: EntityIdentifiable & Sendable {
     context: LoadContext<Value>,
     subscriber: SharedSubscriber<Value>
   ) -> SharedSubscription {
-    // #region agent log
-    do {
-      let logPath = URL(fileURLWithPath: "/Users/mlustig/Development/personal/instantdb/.cursor/debug.log")
-      let payload: [String: Any] = ["location": "InstantSyncKey:subscribe:entry", "message": "subscribe() called via Reactor", "timestamp": Date().timeIntervalSince1970 * 1000, "sessionId": "debug-session", "hypothesisId": "D", "data": ["namespace": request.configuration?.namespace ?? "nil", "context": String(describing: context)]]
-      if let jsonData = try? JSONSerialization.data(withJSONObject: payload), let jsonString = String(data: jsonData, encoding: .utf8) {
-        if FileManager.default.fileExists(atPath: logPath.path) {
-          let handle = try FileHandle(forWritingTo: logPath)
-          handle.seekToEndOfFile()
-          handle.write((jsonString + "\n").data(using: .utf8)!)
-          handle.closeFile()
-        } else {
-          try (jsonString + "\n").write(to: logPath, atomically: true, encoding: .utf8)
-        }
-      }
-    } catch {}
-    // #endregion
+    @Dependency(\.instantReactor) var reactor
     
     guard let configuration = request.configuration else {
       logDebug("Subscribe: no configuration provided, returning empty subscription")
@@ -357,25 +343,8 @@ where Value.Element: EntityIdentifiable & Sendable {
     logDebug("Subscribe[\(subscriptionId)]: creating new subscription task via Reactor")
     
     let task = Task { @MainActor in
-        let stream = await Reactor.shared.subscribe(appID: appID, configuration: configuration)
+        let stream = await reactor.subscribe(appID: appID, configuration: configuration)
         for await data in stream {
-            // #region agent log
-            do {
-              let logPath = URL(fileURLWithPath: "/Users/mlustig/Development/personal/instantdb/.cursor/debug.log")
-              let payload: [String: Any] = ["location": "InstantSyncKey:callback", "message": "Reactor yielded data", "timestamp": Date().timeIntervalSince1970 * 1000, "sessionId": "debug-session", "hypothesisId": "C", "data": ["namespace": configuration.namespace, "dataCount": data.count]]
-              if let jsonData = try? JSONSerialization.data(withJSONObject: payload), let jsonString = String(data: jsonData, encoding: .utf8) {
-                if FileManager.default.fileExists(atPath: logPath.path) {
-                  let handle = try FileHandle(forWritingTo: logPath)
-                  handle.seekToEndOfFile()
-                  handle.write((jsonString + "\n").data(using: .utf8)!)
-                  handle.closeFile()
-                } else {
-                  try (jsonString + "\n").write(to: logPath, atomically: true, encoding: .utf8)
-                }
-              }
-            } catch {}
-            // #endregion
-            
             withResume {
                 subscriber.yield(Value(data))
             }
@@ -383,23 +352,6 @@ where Value.Element: EntityIdentifiable & Sendable {
     }
     
     return SharedSubscription {
-      // #region agent log
-      do {
-        let logPath = URL(fileURLWithPath: "/Users/mlustig/Development/personal/instantdb/.cursor/debug.log")
-        let payload: [String: Any] = ["location": "InstantSyncKey:cancel", "message": "subscription CANCELLED", "timestamp": Date().timeIntervalSince1970 * 1000, "sessionId": "debug-session", "hypothesisId": "A", "data": ["namespace": configuration.namespace, "subscriptionId": String(subscriptionId)]]
-        if let jsonData = try? JSONSerialization.data(withJSONObject: payload), let jsonString = String(data: jsonData, encoding: .utf8) {
-          if FileManager.default.fileExists(atPath: logPath.path) {
-            let handle = try FileHandle(forWritingTo: logPath)
-            handle.seekToEndOfFile()
-            handle.write((jsonString + "\n").data(using: .utf8)!)
-            handle.closeFile()
-          } else {
-            try (jsonString + "\n").write(to: logPath, atomically: true, encoding: .utf8)
-          }
-        }
-      } catch {}
-      // #endregion
-      
       logDebug("Subscribe[\(subscriptionId)]: SharedSubscription cancelled for \(configuration.namespace)")
       task.cancel()
     }
@@ -410,6 +362,7 @@ where Value.Element: EntityIdentifiable & Sendable {
     context: SaveContext,
     continuation: SaveContinuation
   ) {
+    @Dependency(\.instantReactor) var reactor
     guard let configuration = request.configuration else {
       logDebug("Save: no configuration, skipping")
       continuation.resume()
@@ -484,7 +437,7 @@ where Value.Element: EntityIdentifiable & Sendable {
             if let namespace = getNamespace(for: actualValue),
                let nestedId = try? traverse(value: actualValue, namespace: namespace) {
               // It's a single link
-              linkFields[label] = nestedId
+              linkFields[label] = ["id": nestedId, "namespace": namespace]
             }
             // Check if it's a Collection of Entities
             else if let collection = actualValue as? [Any], !collection.isEmpty {
@@ -496,16 +449,16 @@ where Value.Element: EntityIdentifiable & Sendable {
                // Check first item to determine if this is a collection of entities
                if let firstItem = collection.first, let _ = getNamespace(for: firstItem) {
                  isEntityCollection = true
+                 var linkDicts: [[String: String]] = []
                  for item in collection {
                    if let namespace = getNamespace(for: item),
                       let nestedId = try? traverse(value: item, namespace: namespace) {
-                     ids.append(nestedId)
+                     linkDicts.append(["id": nestedId, "namespace": namespace])
                    }
                  }
-               }
-               
-               if isEntityCollection {
-                 linkFields[label] = ids
+                 if isEntityCollection {
+                   linkFields[label] = linkDicts
+                 }
                } else {
                   // Regular array data
                   dataFields[label] = actualValue
@@ -572,7 +525,7 @@ where Value.Element: EntityIdentifiable & Sendable {
           logDebug("Save: sending \(allChunks.count) transactions (recursive) via Reactor")
           
           // Delegate to Reactor
-          try await Reactor.shared.transact(appID: appID, chunks: allChunks)
+          try await reactor.transact(appID: appID, chunks: allChunks)
           
           logInfo("Save: transaction sent successfully")
         } else {
@@ -582,6 +535,7 @@ where Value.Element: EntityIdentifiable & Sendable {
         withResume {
           continuation.resume()
         }
+
       } catch {
         logError("Save: failed", error: error)
         reportIssue(error)
@@ -612,4 +566,3 @@ private var isTesting: Bool {
   @Dependency(\.context) var context
   return context == .test
 }
-

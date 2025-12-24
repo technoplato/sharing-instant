@@ -43,7 +43,7 @@ When you modify the shared value, changes appear immediately:
 // Add a new todo - shows immediately in UI
 $todos.withLock { todos in
   todos.append(Todo(
-    id: UUID().uuidString,
+    id: UUID().uuidString.lowercased(),
     title: "New todo",
     done: false,
     createdAt: Date()
@@ -160,13 +160,22 @@ Changes made while offline are:
 3. Sent to the server when connection is restored
 4. Confirmed or rolled back based on server response
 
+## Troubleshooting
+
+### Linked entities resolve to `nil` after a refresh
+
+If a linked entity appears correctly in the optimistic UI but later resolves to `nil` after the
+next server refresh, the most common cause is broken link metadata on the backend (for example,
+missing `reverse-identity` for a `ref` attribute).
+
+This is a schema-level problem: the client cannot reliably join what the server cannot describe.
+See <doc:Debugging> for the recommended debugging workflow and the logging knobs.
+
 ## See Also
 
 - <doc:Querying>
 - ``SharingInstantSync``
 - ``EntityIdentifiable``
-
-
 
 
 

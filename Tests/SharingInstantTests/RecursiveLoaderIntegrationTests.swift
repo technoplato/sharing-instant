@@ -1,100 +1,102 @@
-
-import DependenciesTestSupport
-import IdentifiedCollections
+import XCTest
 import InstantDB
 import Sharing
-import XCTest
 @testable import SharingInstant
 
-@MainActor
+// MARK: - RecursiveLoaderIntegrationTests
+
 final class RecursiveLoaderIntegrationTests: XCTestCase {
   
-  static let testAppID = "f8047978-7507-4402-a0c3-f09eb2995393" // Using a dummy ID or existing shared ID
+  static let testAppID = "b9319949-2f2d-410b-8f8a-6990177c1d44"
   
+  struct Tile: Codable, Identifiable, Equatable, EntityIdentifiable, Sendable {
+    static var namespace: String { "tiles" }
+    let id: String
+    let color: String
+  }
+  
+  struct Board: Codable, Identifiable, Equatable, EntityIdentifiable, Sendable {
+    static var namespace: String { "boards" }
+    let id: String
+    let title: String
+    let linkedTiles: [Tile]?
+  }
+  
+  @MainActor
   func testRecursiveLoading() async throws {
-    // 1. Prepare Data
-    let profileId = UUID().uuidString
-    let postId = UUID().uuidString
-    let commentId = UUID().uuidString
+    try IntegrationTestGate.requireEnabled()
+
+    let store = SharedTripleStore()
+    let reactor = Reactor(store: store)
+    let boardId = UUID().uuidString.lowercased()
+    let tileId = UUID().uuidString.lowercased()
+
+    let nowMs = Date().timeIntervalSince1970 * 1000
     
-    // Create ops manually to ensure structure matches expectation
-    let now = Date().timeIntervalSince1970
+    try await reactor.signInAsGuest(appID: Self.testAppID)
     
-    let profileOps: [[Any]] = [
-        ["update", "profiles", profileId, ["displayName": "Recursive User", "handle": "@recursive", "createdAt": now]]
-    ]
-    let postOps: [[Any]] = [
-        ["update", "posts", postId, ["content": "Deep Post", "likesCount": 5, "createdAt": now]]
-    ]
-    let commentOps: [[Any]] = [
-        ["update", "comments", commentId, ["text": "Deep Reply", "createdAt": now]]
-    ]
-    
-    // Links
-    let linkOps: [[Any]] = [
-        ["link", "profiles", profileId, "posts", postId],
-        ["link", "posts", postId, "comments", commentId]
-    ]
-    
-    let chunk = TransactionChunk(
-        namespace: "profiles",
-        id: profileId,
-        ops: profileOps + postOps + commentOps + linkOps
-    )
-    
-    // 2. Write Data
-    try await Reactor.shared.transact(appID: Self.testAppID, chunks: [chunk])
-    
-    // 3. Subscribe using Reactor with deep query
-    // Schema.profiles.limit(10).with(\.posts) { $0.limit(5).with(\.comments) }
-    
-    let commentsNode = EntityQueryNode.link(
-        name: "comments",
-        limit: nil,
-        orderBy: nil,
-        orderDirection: nil,
-        whereClauses: [:],
-        children: []
-    )
-    
-    let postsNode = EntityQueryNode.link(
-        name: "posts",
-        limit: 5,
-        orderBy: nil,
-        orderDirection: nil,
-        whereClauses: [:],
-        children: [commentsNode]
-    )
-    
-    let config = SharingInstantSync.CollectionConfiguration<Profile>(
-        namespace: "profiles",
-        whereClause: ["id": profileId], // Filter to our test user
-        linkTree: [postsNode]
-    )
-    
-    let stream: AsyncStream<[Profile]> = await Reactor.shared.subscribe(appID: Self.testAppID, configuration: config)
-    
-    // 4. Verify
-    var matched = false
-    for await profiles in stream {
-        if let profile = profiles.first {
-            if let posts = profile.posts, let post = posts.first {
-                if post.content == "Deep Post" {
-                    if let replies = post.comments, let reply = replies.first {
-                        if reply.text == "Deep Reply" {
-                            matched = true
-                            break
-                        }
-                    }
-                }
-            }
-        }
+    defer {
+      Task {
+        try? await reactor.transact(
+          appID: Self.testAppID,
+          chunks: [
+            TransactionChunk(namespace: "boards", id: boardId, ops: [["delete", "boards", boardId]]),
+            TransactionChunk(namespace: "tiles", id: tileId, ops: [["delete", "tiles", tileId]]),
+          ]
+        )
+      }
     }
     
-    XCTAssertTrue(matched, "Failed to load recursive data")
+    let boardOps: [[Any]] = [
+      ["update", "boards", boardId, ["title": "Test", "createdAt": nowMs]],
+    ]
+    let tileOps: [[Any]] = [
+      ["update", "tiles", tileId, ["color": "red", "x": 0, "y": 0, "createdAt": nowMs]],
+    ]
+    let linkOps: [[Any]] = [
+      ["link", "boards", boardId, ["linkedTiles": tileId]],
+    ]
     
-    // Cleanup
-    let deleteChunk = TransactionChunk(namespace: "profiles", id: profileId, ops: [["delete", "profiles", profileId]])
-    try await Reactor.shared.transact(appID: Self.testAppID, chunks: [deleteChunk])
+    try await reactor.transact(
+      appID: Self.testAppID,
+      chunks: [
+        TransactionChunk(namespace: "boards", id: boardId, ops: boardOps),
+        TransactionChunk(namespace: "tiles", id: tileId, ops: tileOps),
+        TransactionChunk(namespace: "boards", id: boardId, ops: linkOps),
+      ]
+    )
+    
+    let tilesNode = EntityQueryNode.link(name: "linkedTiles", limit: nil)
+    let config = SharingInstantSync.CollectionConfiguration<Board>(
+      namespace: "boards",
+      whereClause: ["id": boardId],
+      includedLinks: [],
+      linkTree: [tilesNode]
+    )
+    
+    let stream: AsyncStream<[Board]> = await reactor.subscribe(appID: Self.testAppID, configuration: config)
+    
+    var didMatch = false
+    let expectation = XCTestExpectation(description: "Receives linked tile for board")
+    
+    let consumeTask = Task { @MainActor in
+      for await boards in stream {
+        guard let board = boards.first else { continue }
+        guard let tile = board.linkedTiles?.first else { continue }
+        
+        if tile.id == tileId, tile.color == "red" {
+          didMatch = true
+          expectation.fulfill()
+          break
+        }
+      }
+    }
+    
+    defer {
+      consumeTask.cancel()
+    }
+    
+    await fulfillment(of: [expectation], timeout: 10.0)
+    XCTAssertTrue(didMatch, "Expected subscription to include linked tile data")
   }
 }

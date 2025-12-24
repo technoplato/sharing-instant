@@ -107,6 +107,7 @@ struct UserWithLinksView: View {
 /// GENERATION INFO
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
+/// Mode:            Production (full traceability)
 /// Generated:       December 18, 2024 at 7:24 PM EST
 /// Machine:         test-machine (Apple M1, macOS 14.0)
 /// Generator:       Sources/instant-schema/main.swift
@@ -118,7 +119,6 @@ swift run instant-schema generate \
   --from test.schema.ts \
   --to Sources/Generated/
 */
-
 /// ─────────────────────────────────────────────────────────────────────────────────
 /// GIT STATE AT GENERATION
 /// ─────────────────────────────────────────────────────────────────────────────────

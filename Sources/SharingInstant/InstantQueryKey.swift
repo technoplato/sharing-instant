@@ -275,6 +275,7 @@ where Value.Element: EntityIdentifiable & Sendable {
   #endif
   
   public func load(context: LoadContext<Value>, continuation: LoadContinuation<Value>) {
+    @Dependency(\.instantReactor) var reactor
     guard case .userInitiated = context, let configuration = request.configuration else {
       withResume {
         continuation.resumeReturningInitialValue()
@@ -298,7 +299,7 @@ where Value.Element: EntityIdentifiable & Sendable {
     }
     
     Task { @MainActor in
-        let stream = await Reactor.shared.subscribe(appID: appID, configuration: configuration)
+        let stream = await reactor.subscribe(appID: appID, configuration: configuration)
         for await data in stream {
             withResume {
                 continuation.resume(returning: Value(data))
@@ -312,6 +313,7 @@ where Value.Element: EntityIdentifiable & Sendable {
     context: LoadContext<Value>,
     subscriber: SharedSubscriber<Value>
   ) -> SharedSubscription {
+    @Dependency(\.instantReactor) var reactor
     guard let configuration = request.configuration else {
       logDebug("Query: no configuration provided, returning empty subscription")
       return SharedSubscription {}
@@ -332,7 +334,7 @@ where Value.Element: EntityIdentifiable & Sendable {
     logInfo("Query: starting subscription for namespace: \(configuration.namespace)")
     
     let task = Task { @MainActor in
-        let stream = await Reactor.shared.subscribe(appID: appID, configuration: configuration)
+        let stream = await reactor.subscribe(appID: appID, configuration: configuration)
         for await data in stream {
             logInfo("Query: returned \(data.count) items from \(Element.namespace)")
             withResume {

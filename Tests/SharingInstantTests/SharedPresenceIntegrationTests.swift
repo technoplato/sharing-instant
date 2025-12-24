@@ -85,6 +85,23 @@ final class SharedSyncIntegrationTests: XCTestCase {
   /// Timeout for waiting for sync operations.
   private let syncTimeout: TimeInterval = 10.0
   
+  // MARK: - Setup / Teardown
+
+  @MainActor
+  override func setUp() async throws {
+    try await super.setUp()
+
+    try IntegrationTestGate.requireEnabled()
+
+    prepareDependencies {
+      $0.context = .live
+      $0.instantAppID = testAppID
+      $0.instantEnableLocalPersistence = false
+    }
+
+    InstantClientFactory.clearCache()
+  }
+
   // MARK: - Tests
   
   /// Tests that `@Shared(.instantSync(...))` connects and receives initial data.
@@ -95,11 +112,6 @@ final class SharedSyncIntegrationTests: XCTestCase {
   /// 3. Verify that data is received from the server
   @MainActor
   func testSharedSyncConnectsAndReceivesData() async throws {
-    // Arrange: Set up dependencies
-    prepareDependencies {
-      $0.instantAppID = testAppID
-    }
-    
     // Act: Create a @Shared sync subscription
     // This is exactly how users would use it in their SwiftUI views
     @Shared(.instantSync(Schema.todos.orderBy(\Todo.createdAt, .desc)))
@@ -115,7 +127,7 @@ final class SharedSyncIntegrationTests: XCTestCase {
     // Assert
     XCTAssertTrue(connected, "Should connect within timeout")
     // Note: We can't assert on count because the database may have existing data
-    print("Connected! Found \(todos.count) existing todos")
+    TestLog.log("Connected! Found \(todos.count) existing todos")
   }
   
   /// Tests adding a todo via `$shared.withLock` and verifying it syncs.
@@ -128,11 +140,6 @@ final class SharedSyncIntegrationTests: XCTestCase {
   /// 5. Wait for sync confirmation
   @MainActor
   func testSharedSyncAddTodoViaWithLock() async throws {
-    // Arrange
-    prepareDependencies {
-      $0.instantAppID = testAppID
-    }
-    
     @Shared(.instantSync(Schema.todos.orderBy(\Todo.createdAt, .desc)))
     var todos: IdentifiedArrayOf<Todo> = []
     
@@ -143,13 +150,13 @@ final class SharedSyncIntegrationTests: XCTestCase {
     
     // Act: Add a todo using withLock (this is how users add items)
     let newTodo = Todo(
-      createdAt: Date().timeIntervalSince1970,
+      createdAt: Date().timeIntervalSince1970 * 1_000,
       done: false,
       title: "Integration Test Todo \(UUID().uuidString.prefix(8))"
     )
     
     $todos.withLock { todos in
-      todos.insert(newTodo, at: 0)
+      _ = todos.insert(newTodo, at: 0)
     }
     
     // Assert: Local state should update immediately (optimistic)
@@ -173,11 +180,6 @@ final class SharedSyncIntegrationTests: XCTestCase {
   /// 4. Verify the update is applied locally
   @MainActor
   func testSharedSyncUpdateTodoViaWithLock() async throws {
-    // Arrange
-    prepareDependencies {
-      $0.instantAppID = testAppID
-    }
-    
     @Shared(.instantSync(Schema.todos.orderBy(\Todo.createdAt, .desc)))
     var todos: IdentifiedArrayOf<Todo> = []
     
@@ -186,13 +188,13 @@ final class SharedSyncIntegrationTests: XCTestCase {
     
     // Add a todo first
     let newTodo = Todo(
-      createdAt: Date().timeIntervalSince1970,
+      createdAt: Date().timeIntervalSince1970 * 1_000,
       done: false,
       title: "Update Test Todo \(UUID().uuidString.prefix(8))"
     )
     
     $todos.withLock { todos in
-      todos.insert(newTodo, at: 0)
+      _ = todos.insert(newTodo, at: 0)
     }
     
     // Wait for the add to sync
@@ -230,11 +232,6 @@ final class SharedSyncIntegrationTests: XCTestCase {
   /// 4. Verify the delete is applied locally
   @MainActor
   func testSharedSyncDeleteTodoViaWithLock() async throws {
-    // Arrange
-    prepareDependencies {
-      $0.instantAppID = testAppID
-    }
-    
     @Shared(.instantSync(Schema.todos.orderBy(\Todo.createdAt, .desc)))
     var todos: IdentifiedArrayOf<Todo> = []
     
@@ -243,13 +240,13 @@ final class SharedSyncIntegrationTests: XCTestCase {
     
     // Add a todo first
     let newTodo = Todo(
-      createdAt: Date().timeIntervalSince1970,
+      createdAt: Date().timeIntervalSince1970 * 1_000,
       done: false,
       title: "Delete Test Todo \(UUID().uuidString.prefix(8))"
     )
     
     $todos.withLock { todos in
-      todos.insert(newTodo, at: 0)
+      _ = todos.insert(newTodo, at: 0)
     }
     
     // Wait for the add to sync
@@ -259,7 +256,7 @@ final class SharedSyncIntegrationTests: XCTestCase {
     
     // Act: Delete the todo
     $todos.withLock { todos in
-      todos.remove(id: newTodo.id)
+      _ = todos.remove(id: newTodo.id)
     }
     
     // Assert: Delete should be applied locally
@@ -284,34 +281,29 @@ final class SharedSyncIntegrationTests: XCTestCase {
   /// This is the comprehensive test that exercises the full sync stack.
   @MainActor
   func testSharedSyncFullCRUDLifecycle() async throws {
-    // Arrange
-    prepareDependencies {
-      $0.instantAppID = testAppID
-    }
-    
     @Shared(.instantSync(Schema.todos.orderBy(\Todo.createdAt, .desc)))
     var todos: IdentifiedArrayOf<Todo> = []
     
     // Step 1: Wait for connection
     try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
-    print("Step 1: Connected, found \(todos.count) existing todos")
+    TestLog.log("Step 1: Connected, found \(todos.count) existing todos")
     
     // Step 2: CREATE - Add a new todo
-    let todoId = UUID().uuidString
+    let todoId = UUID().uuidString.lowercased()
     let newTodo = Todo(
       id: todoId,
-      createdAt: Date().timeIntervalSince1970,
+      createdAt: Date().timeIntervalSince1970 * 1_000,
       done: false,
       title: "CRUD Test \(UUID().uuidString.prefix(8))"
     )
     
     $todos.withLock { todos in
-      todos.insert(newTodo, at: 0)
+      _ = todos.insert(newTodo, at: 0)
     }
     
     XCTAssertTrue(todos.contains { $0.id == todoId }, "CREATE: Todo should exist locally")
     try await Task.sleep(nanoseconds: 500_000_000) // 500ms
-    print("Step 2: Created todo '\(newTodo.title)'")
+    TestLog.log("Step 2: Created todo '\(newTodo.title)'")
     
     // Step 3: READ - Verify the todo is in the collection
     guard let readTodo = todos[id: todoId] else {
@@ -320,7 +312,7 @@ final class SharedSyncIntegrationTests: XCTestCase {
     }
     XCTAssertEqual(readTodo.title, newTodo.title, "READ: Title should match")
     XCTAssertFalse(readTodo.done, "READ: Should not be done initially")
-    print("Step 3: Read todo - title: '\(readTodo.title)', done: \(readTodo.done)")
+    TestLog.log("Step 3: Read todo - title: '\(readTodo.title)', done: \(readTodo.done)")
     
     // Step 4: UPDATE - Mark as done
     $todos.withLock { todos in
@@ -331,20 +323,20 @@ final class SharedSyncIntegrationTests: XCTestCase {
     
     XCTAssertTrue(todos[id: todoId]?.done == true, "UPDATE: Todo should be marked done")
     try await Task.sleep(nanoseconds: 500_000_000) // 500ms
-    print("Step 4: Updated todo - done: \(todos[id: todoId]?.done ?? false)")
+    TestLog.log("Step 4: Updated todo - done: \(todos[id: todoId]?.done ?? false)")
     
     // Step 5: DELETE - Remove the todo
     $todos.withLock { todos in
-      todos.remove(id: todoId)
+      _ = todos.remove(id: todoId)
     }
     
     XCTAssertNil(todos[id: todoId], "DELETE: Todo should be removed")
     try await Task.sleep(nanoseconds: 500_000_000) // 500ms
-    print("Step 5: Deleted todo")
+    TestLog.log("Step 5: Deleted todo")
     
     // Final verification
     XCTAssertFalse(todos.contains { $0.id == todoId }, "FINAL: Todo should not exist")
-    print("✅ Full CRUD lifecycle completed successfully!")
+    TestLog.log("✅ Full CRUD lifecycle completed successfully!")
   }
   
   /// Tests that multiple `@Shared` subscriptions to the same entity work correctly.
@@ -353,11 +345,6 @@ final class SharedSyncIntegrationTests: XCTestCase {
   /// This tests that changes in one subscription are reflected in others.
   @MainActor
   func testMultipleSharedSyncSubscriptions() async throws {
-    // Arrange
-    prepareDependencies {
-      $0.instantAppID = testAppID
-    }
-    
     // Create two @Shared subscriptions to the same entity
     @Shared(.instantSync(Schema.todos.orderBy(\Todo.createdAt, .desc)))
     var todos1: IdentifiedArrayOf<Todo> = []
@@ -370,13 +357,13 @@ final class SharedSyncIntegrationTests: XCTestCase {
     
     // Add via the first subscription
     let newTodo = Todo(
-      createdAt: Date().timeIntervalSince1970,
+      createdAt: Date().timeIntervalSince1970 * 1_000,
       done: false,
       title: "Multi-Sub Test \(UUID().uuidString.prefix(8))"
     )
     
     $todos1.withLock { todos in
-      todos.insert(newTodo, at: 0)
+      _ = todos.insert(newTodo, at: 0)
     }
     
     // Both should see the new todo (they share the same key)
@@ -385,7 +372,7 @@ final class SharedSyncIntegrationTests: XCTestCase {
     
     // Clean up
     $todos1.withLock { todos in
-      todos.remove(id: newTodo.id)
+      _ = todos.remove(id: newTodo.id)
     }
   }
   
@@ -446,6 +433,23 @@ final class SharedPresenceIntegrationTests: XCTestCase {
   
   /// Timeout for waiting for presence updates.
   private let presenceTimeout: TimeInterval = 10.0
+
+  // MARK: - Setup / Teardown
+
+  @MainActor
+  override func setUp() async throws {
+    try await super.setUp()
+
+    try IntegrationTestGate.requireEnabled()
+
+    prepareDependencies {
+      $0.context = .live
+      $0.instantAppID = testAppID
+      $0.instantEnableLocalPersistence = false
+    }
+
+    InstantClientFactory.clearCache()
+  }
   
   // MARK: - Presence Types (matching CaseStudies)
   
@@ -473,11 +477,6 @@ final class SharedPresenceIntegrationTests: XCTestCase {
   /// 4. Verify that the user presence matches the initial value
   @MainActor
   func testSharedPresenceConnectsAndReceivesInitialState() async throws {
-    // Arrange: Set up dependencies
-    prepareDependencies {
-      $0.instantAppID = testAppID
-    }
-    
     let roomId = "test-\(UUID().uuidString.prefix(8))"
     let initialPresence = TestPresence(name: "Alice", color: "#00FF00", isActive: true)
     
@@ -513,11 +512,6 @@ final class SharedPresenceIntegrationTests: XCTestCase {
   /// 4. Verify the local state updates immediately (optimistic)
   @MainActor
   func testSharedPresenceUpdateViaWithLock() async throws {
-    // Arrange
-    prepareDependencies {
-      $0.instantAppID = testAppID
-    }
-    
     let roomId = "test-\(UUID().uuidString.prefix(8))"
     let initialPresence = TestPresence(name: "Bob", color: "#0000FF", isActive: false)
     
@@ -557,11 +551,6 @@ final class SharedPresenceIntegrationTests: XCTestCase {
   /// queue instead of the main actor.
   @MainActor
   func testSharedPresenceFullLifecycle() async throws {
-    // Arrange
-    prepareDependencies {
-      $0.instantAppID = testAppID
-    }
-    
     let roomId = "lifecycle-\(UUID().uuidString.prefix(8))"
     let initialPresence = TestPresence(name: "Lifecycle Test", color: "#FFFF00", isActive: false)
     
@@ -612,11 +601,6 @@ final class SharedPresenceIntegrationTests: XCTestCase {
   /// This tests that the `TypedPresenceKey` correctly handles multiple subscribers.
   @MainActor
   func testMultipleSharedSubscriptionsToSameRoom() async throws {
-    // Arrange
-    prepareDependencies {
-      $0.instantAppID = testAppID
-    }
-    
     let roomId = "multi-\(UUID().uuidString.prefix(8))"
     let initialPresence = TestPresence(name: "Multi Test", color: "#FF00FF", isActive: true)
     
@@ -679,4 +663,3 @@ final class SharedPresenceIntegrationTests: XCTestCase {
     return condition()
   }
 }
-
