@@ -246,10 +246,15 @@ where Value.Element: EntityIdentifiable & Sendable {
   public typealias ID = UniqueRequestKeyID
   
   public var id: ID {
-    ID(
+    let configuration = request.configuration
+    return ID(
       appID: appID,
-      namespace: request.configuration?.namespace ?? "",
-      orderBy: request.configuration?.orderBy
+      namespace: configuration?.namespace ?? "",
+      orderBy: configuration?.orderBy,
+      limit: configuration?.limit,
+      whereClause: configuration?.whereClause,
+      includedLinks: configuration?.includedLinks ?? [],
+      linkTree: configuration?.linkTree ?? []
     )
   }
   
@@ -361,4 +366,3 @@ private struct QueryConfigurationRequest<
     self.configuration = configuration
   }
 }
-

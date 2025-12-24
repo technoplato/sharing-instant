@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		9413CDD22EF573A600BD70B4 /* SharingInstant in Frameworks */ = {isa = PBXBuildFile; productRef = 9413CDD12EF573A600BD70B4 /* SharingInstant */; };
+		94A522452EFC383C00A6BE80 /* SharingInstant in Frameworks */ = {isa = PBXBuildFile; productRef = 94A522442EFC383C00A6BE80 /* SharingInstant */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -28,6 +29,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				9413CDD22EF573A600BD70B4 /* SharingInstant in Frameworks */,
+				94A522452EFC383C00A6BE80 /* SharingInstant in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -79,6 +81,7 @@
 			name = CaseStudies;
 			packageProductDependencies = (
 				9413CDD12EF573A600BD70B4 /* SharingInstant */,
+				94A522442EFC383C00A6BE80 /* SharingInstant */,
 			);
 			productName = CaseStudies;
 			productReference = 94B1381D2EF571DE00C78368 /* CaseStudies.app */;
@@ -108,6 +111,9 @@
 			);
 			mainGroup = 94B138142EF571DE00C78368;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				94A522432EFC383C00A6BE80 /* XCLocalSwiftPackageReference "../../sharing-instant" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 94B1381E2EF571DE00C78368 /* Products */;
 			projectDirPath = "";
@@ -368,8 +374,19 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		94A522432EFC383C00A6BE80 /* XCLocalSwiftPackageReference "../../sharing-instant" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "../../sharing-instant";
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
 		9413CDD12EF573A600BD70B4 /* SharingInstant */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SharingInstant;
+		};
+		94A522442EFC383C00A6BE80 /* SharingInstant */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SharingInstant;
 		};

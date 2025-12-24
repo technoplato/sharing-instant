@@ -18,10 +18,12 @@ public actor Reactor {
 
   
   private let store: SharedTripleStore
+  private let clientInstanceID: String
   private var activeSubscriptions: [UUID: SubscriptionHandle] = [:]
   
-  public init(store: SharedTripleStore) {
+  public init(store: SharedTripleStore, clientInstanceID: String = "default") {
     self.store = store
+    self.clientInstanceID = clientInstanceID
   }
 
   // MARK: - Schema Readiness
@@ -198,7 +200,7 @@ public actor Reactor {
     appID: String,
     chunks: [TransactionChunk]
   ) async throws {
-    let client = await MainActor.run { InstantClientFactory.makeClient(appID: appID) }
+    let client = await MainActor.run { InstantClientFactory.makeClient(appID: appID, instanceID: self.clientInstanceID) }
 
     // Ensure connected
     let isDisconnected = await MainActor.run { client.connectionState == .disconnected }
@@ -223,7 +225,7 @@ public actor Reactor {
   /// Explicitly sign in as a guest.
   /// Useful for testing or anonymous usage.
   public func signInAsGuest(appID: String) async throws {
-      let client = await MainActor.run { InstantClientFactory.makeClient(appID: appID) }
+      let client = await MainActor.run { InstantClientFactory.makeClient(appID: appID, instanceID: self.clientInstanceID) }
       
       // Perform sign in on MainActor
       // Perform sign in (AuthManager is @MainActor, so this hops automatically)
@@ -376,7 +378,7 @@ public actor Reactor {
     includedLinks: Set<String>,
     continuation: AsyncStream<[Value]>.Continuation
   ) async {
-    let client = await MainActor.run { InstantClientFactory.makeClient(appID: appID) }
+    let client = await MainActor.run { InstantClientFactory.makeClient(appID: appID, instanceID: self.clientInstanceID) }
     
     // Connect if needed
     let isDisconnected = await MainActor.run { client.connectionState == .disconnected }
