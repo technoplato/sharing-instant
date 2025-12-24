@@ -85,22 +85,24 @@ struct RecursiveLoaderDemo: SwiftUICaseStudy {
   }
 
   private func generateData() {
+    let now = Date().timeIntervalSince1970 * 1_000
+
     let profile = Profile(
       displayName: "User \(Int.random(in: 1...100))",
       handle: "@user\(Int.random(in: 1...100))",
-      createdAt: Date().timeIntervalSince1970
+      createdAt: now
     )
     
     // Create nested data
     let post = Post(
       content: "Recursive queries are powerful! 🚀",
-      createdAt: Date().timeIntervalSince1970,
+      createdAt: now,
       likesCount: 0
     )
     
     let comment = Comment(
       text: "Totally agree! simple and effective.",
-      createdAt: Date().timeIntervalSince1970
+      createdAt: now
     )
     
     // Link them up
@@ -113,7 +115,7 @@ struct RecursiveLoaderDemo: SwiftUICaseStudy {
     fullProfile.posts = [fullPost]
     
     // Optimistic update
-    $profiles.withLock {
+    _ = $profiles.withLock {
       $0.append(fullProfile)
     }
   }

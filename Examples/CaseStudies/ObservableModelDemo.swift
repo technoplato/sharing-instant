@@ -86,9 +86,9 @@ final class TodoListModel {
     let title = newTodoTitle.trimmingCharacters(in: .whitespaces)
     guard !title.isEmpty else { return }
     
-    // Generated Todo uses Double for createdAt (Unix timestamp)
+    // Generated Todo uses Double for createdAt (epoch milliseconds).
     let todo = Todo(
-      createdAt: Date().timeIntervalSince1970,
+      createdAt: Date().timeIntervalSince1970 * 1_000,
       done: false,
       title: title
     )
@@ -100,7 +100,7 @@ final class TodoListModel {
   }
   
   func toggleTodo(_ todo: Todo) {
-    _ = $todos.withLock { todos in
+    $todos.withLock { todos in
       if let index = todos.firstIndex(where: { $0.id == todo.id }) {
         todos[index].done.toggle()
       }
@@ -108,7 +108,7 @@ final class TodoListModel {
   }
   
   func deleteTodos(at offsets: IndexSet) {
-    _ = $todos.withLock { todos in
+    $todos.withLock { todos in
       todos.remove(atOffsets: offsets)
     }
   }
@@ -139,8 +139,7 @@ private struct ObservableTodoRow: View {
         Text(todo.title)
           .strikethrough(todo.done)
         
-        // Convert Unix timestamp to Date for display
-        Text(Date(timeIntervalSince1970: todo.createdAt), style: .relative)
+        Text(InstantEpochTimestamp.date(from: todo.createdAt), style: .relative)
           .font(.caption)
           .foregroundStyle(.secondary)
       }
