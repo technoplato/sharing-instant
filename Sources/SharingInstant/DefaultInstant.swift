@@ -84,6 +84,34 @@ private enum InstantEnableLocalPersistenceKey: DependencyKey {
   static let testValue: Bool = false
 }
 
+// MARK: - Client Instance ID
+
+extension DependencyValues {
+  /// A logical identifier used to isolate `InstantClient` instances for the same InstantDB app.
+  ///
+  /// ## Why This Exists
+  /// SharingInstant caches `InstantClient` instances so that subscriptions, presence, and writes
+  /// share a single underlying WebSocket connection (which is the right default for apps).
+  ///
+  /// However, this caching makes it impossible to simulate multiple independent clients to the
+  /// *same* app ID inside a single process (e.g. integration tests that model "Client A" and
+  /// "Client B" with separate stores). Without a distinct cache key, all test clients end up
+  /// sharing one WebSocket session, which hides real multi-client behavior and can produce
+  /// misleading failures.
+  ///
+  /// Set this to a unique value (like `"A"` / `"B"`) to create truly independent client
+  /// instances in the same process.
+  public var instantClientInstanceID: String {
+    get { self[InstantClientInstanceIDKey.self] }
+    set { self[InstantClientInstanceIDKey.self] = newValue }
+  }
+}
+
+private enum InstantClientInstanceIDKey: DependencyKey {
+  static let liveValue: String = "default"
+  static let testValue: String = "test"
+}
+
 // MARK: - Client Factory
 
 /// Factory for creating and caching InstantDB clients.
@@ -92,9 +120,14 @@ private enum InstantEnableLocalPersistenceKey: DependencyKey {
 /// Clients are cached by appID so that the same connected client is reused across
 /// all operations (subscribe, save, etc.).
 public enum InstantClientFactory {
+  private struct ClientCacheKey: Hashable {
+    let appID: String
+    let instanceID: String
+  }
+
   /// Cache of clients by appID to ensure we reuse connected clients
   @MainActor
-  private static var clientCache: [String: InstantClient] = [:]
+  private static var clientCache: [ClientCacheKey: InstantClient] = [:]
   
   /// Creates or returns a cached InstantDB client for the configured app ID.
   ///
@@ -102,7 +135,8 @@ public enum InstantClientFactory {
   @MainActor
   public static func makeClient() -> InstantClient {
     @Dependency(\.instantAppID) var appID
-    return makeClient(appID: appID)
+    @Dependency(\.instantClientInstanceID) var instanceID
+    return makeClient(appID: appID, instanceID: instanceID)
   }
   
   /// Creates or returns a cached InstantDB client for a specific app ID.
@@ -114,13 +148,25 @@ public enum InstantClientFactory {
   /// Must be called from the main actor.
   @MainActor
   public static func makeClient(appID: String) -> InstantClient {
+    @Dependency(\.instantClientInstanceID) var instanceID
+    return makeClient(appID: appID, instanceID: instanceID)
+  }
+
+  /// Creates or returns a cached InstantDB client for a specific app ID and client instance ID.
+  ///
+  /// This is primarily intended for tests that need multiple independent clients in-process.
+  ///
+  /// Must be called from the main actor.
+  @MainActor
+  public static func makeClient(appID: String, instanceID: String) -> InstantClient {
     @Dependency(\.instantEnableLocalPersistence) var enableLocalPersistence
 
-    if let cached = clientCache[appID] {
+    let cacheKey = ClientCacheKey(appID: appID, instanceID: instanceID)
+    if let cached = clientCache[cacheKey] {
       return cached
     }
     let client = InstantClient(appID: appID, enableLocalPersistence: enableLocalPersistence)
-    clientCache[appID] = client
+    clientCache[cacheKey] = client
     return client
   }
   
@@ -132,7 +178,15 @@ public enum InstantClientFactory {
   
   /// Removes a specific client from the cache.
   @MainActor
-  public static func removeClient(appID: String) {
-    clientCache.removeValue(forKey: appID)
+  public static func removeClient(appID: String, instanceID: String) {
+    clientCache.removeValue(forKey: ClientCacheKey(appID: appID, instanceID: instanceID))
+  }
+
+  /// Removes all clients for a specific app ID (across all instance IDs).
+  @MainActor
+  public static func removeAllClients(appID: String) {
+    clientCache.keys
+      .filter { $0.appID == appID }
+      .forEach { clientCache.removeValue(forKey: $0) }
   }
 }
