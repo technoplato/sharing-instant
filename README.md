@@ -26,6 +26,8 @@ Point-Free's [Sharing](https://github.com/pointfreeco/swift-sharing) library.
   * [Schema codegen](#schema-codegen)
   * [Demos](#demos)
   * [Documentation](#documentation)
+  * [Debugging & troubleshooting](#debugging--troubleshooting)
+  * [Testing](#testing)
   * [Installation](#installation)
   * [License](#license)
 
@@ -128,14 +130,14 @@ struct TodoListView: View {
     let title = newTitle.trimmingCharacters(in: .whitespaces)
     guard !title.isEmpty else { return }
     
-    let todo = Todo(
-      title: title,
-      done: false,
-      createdAt: Date().timeIntervalSince1970
-    )
-    $todos.withLock { $0.append(todo) }
-    newTitle = ""
-  }
+	    let todo = Todo(
+	      title: title,
+	      done: false,
+	      createdAt: Date().timeIntervalSince1970 * 1_000
+	    )
+	    $todos.withLock { $0.append(todo) }
+	    newTitle = ""
+	  }
   
   private func toggleTodo(_ todo: Todo) {
     $todos.withLock { $0[id: todo.id]?.done.toggle() }
@@ -408,10 +410,10 @@ All mutations go through `$todos.withLock { ... }`, which:
 3. Receives confirmation or rollback from the server
 
 ```swift
-// Create
-$todos.withLock { todos in
-  todos.append(Todo(title: "New todo", done: false, createdAt: Date().timeIntervalSince1970))
-}
+	// Create
+	$todos.withLock { todos in
+	  todos.append(Todo(title: "New todo", done: false, createdAt: Date().timeIntervalSince1970 * 1_000))
+	}
 
 // Update
 $todos.withLock { todos in
@@ -610,7 +612,7 @@ public struct Todo: EntityIdentifiable, Codable, Sendable {
   public var createdAt: Double
   
   public init(
-    id: String = UUID().uuidString,
+    id: String = UUID().uuidString.lowercased(),
     title: String,
     done: Bool,
     createdAt: Double
@@ -741,6 +743,117 @@ xcodebuild -workspace SharingInstant.xcworkspace \
 
 - **[Swift Sharing](https://swiftpackageindex.com/pointfreeco/swift-sharing/main/documentation/sharing)** – Point-Free's Sharing library docs
 - **[Schema Codegen](./Sources/InstantSchemaCodegen/Documentation.docc/SchemaCodegen.md)** – Schema codegen documentation
+
+## Debugging & troubleshooting
+
+SharingInstant is intentionally “boring” in the best way: your models update locally immediately,
+and then reconcile with the server. When something looks correct optimistically but later “flips”
+after a refresh, it’s almost always because the server and client disagree about schema or link
+metadata — not because SwiftUI is doing something mysterious.
+
+This section documents the debugging tools and failure modes we’ve hit in real apps, in the
+spirit of Point-Free’s libraries: explain the why, keep the defaults safe, and make the sharp
+tools opt-in.
+
+### Logging philosophy
+
+- **Quiet by default**: Real-time systems generate a lot of state changes. Unbounded `print(...)`
+  output makes logs unusable and slows tests down.
+- **Opt-in verbosity**: When you need to debug a tricky ordering issue, you should be able to
+  turn on the firehose without changing source code.
+- **Prefer structured sinks**: Use `os.Logger`/Console.app for high-volume diagnostics, and keep
+  stdout for human-facing “something is wrong” signals.
+
+### Controlling log output
+
+#### InstantDB Swift SDK (transport/query/schema)
+
+The upstream Swift SDK defaults to **error-only** stdout logging. Enable more output with:
+
+- `INSTANTDB_LOG_LEVEL`: `off`, `error`, `info`, `debug` (default: `error`)
+- `INSTANTDB_DEBUG=1`: forces `debug`
+
+Examples:
+
+```bash
+# High-signal connection events
+INSTANTDB_LOG_LEVEL=info swift test --package-path sharing-instant
+
+# Verbose protocol + query tracing
+INSTANTDB_LOG_LEVEL=debug swift test --package-path sharing-instant
+```
+
+#### SharingInstant internal diagnostics
+
+SharingInstant keeps a few internal diagnostics (like TripleStore decoding failures) behind
+an `os.Logger` gate so they don’t spam stdout.
+
+- `SHARINGINSTANT_LOG_LEVEL`: `off`, `error`, `info`, `debug` (default: `error`)
+- `SHARINGINSTANT_DEBUG=1`: forces `debug`
+
+For convenience, the internal logger also respects `INSTANTDB_LOG_LEVEL` / `INSTANTDB_DEBUG`
+when you want to flip both layers at once.
+
+To tail logs from Terminal:
+
+```bash
+log stream --level debug --predicate 'subsystem == "SharingInstant"'
+```
+
+#### InstantLogger (application-level observability)
+
+SharingInstant includes `InstantLogger` for application-level logging (optionally syncable to
+InstantDB). By default it prints to stdout, but you can tune it at app launch:
+
+```swift
+InstantLoggerConfig.printToStdout = false
+InstantLoggerConfig.logToOSLog = true
+```
+
+### Troubleshooting: linked entities resolve to `nil` (e.g. "Unknown Author")
+
+If a linked entity appears correctly in the optimistic UI but later resolves to `nil` after a
+server refresh, the most common cause is **server-side schema corruption** for the link attribute:
+
+- The attribute exists but has `value-type: blob` instead of `ref`, or
+- The attribute is a `ref` but is missing `reverse-identity` metadata.
+
+#### Why this happens
+
+SharingInstant (and the underlying Swift SDK) rely on InstantDB schema metadata to perform
+client-side joins. `reverse-identity` is the piece that tells the client which namespace + label
+represent “the other side” of a link. Without it, the client can’t safely resolve the relationship
+after a refresh, and your UI falls back to `nil`.
+
+#### How to fix it
+
+1. **Prefer fixing the schema at the source**: push a correct schema (TypeScript or Swift DSL)
+   so the server stores the link as a real `ref` with forward + reverse identities.
+2. **Lazy repair exists as a safety net**: the Swift SDK can piggyback an attribute update when it
+   detects a broken `ref` during a link operation, and then it applies refreshed schema from
+   `refresh-ok` before recomputing query results.
+
+## Testing
+
+SharingInstant includes both deterministic unit tests and end-to-end integration tests.
+
+### Why integration tests are opt-in
+
+Tests that create real apps / data on the InstantDB backend are inherently “louder”:
+
+- They require network access and backend credentials.
+- They need isolation to avoid flaking due to shared state.
+- They can be slow compared to local-only tests.
+
+For that reason, ephemeral backend round-trip tests are **skipped by default** and enabled only
+when explicitly requested.
+
+### Running ephemeral backend round-trip tests
+
+```bash
+INSTANT_RUN_EPHEMERAL_INTEGRATION_TESTS=1 \
+  swift test --package-path sharing-instant --filter EphemeralMicroblogRoundTripTests
+```
 
 ## Installation
 
