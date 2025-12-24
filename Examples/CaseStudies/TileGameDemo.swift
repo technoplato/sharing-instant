@@ -187,57 +187,106 @@ struct TileGameDemo: SwiftUICaseStudy {
     $presence.withLock { state in
       state.user = TileGamePresence(name: userId, color: myColor.hexString)
     }
-    
-    // Initialize board if it doesn't exist
-    if boards.first == nil {
-      let newBoard = Board(id: boardId, title: "Collaborative Game", createdAt: now)
-      
-      var newTiles: [Tile] = []
-      for row in 0..<boardSize {
-        for col in 0..<boardSize {
-          newTiles.append(
-            Tile(
-              x: Double(row),
-              y: Double(col),
-              color: "#FFFFFF",
-              createdAt: now
-            )
-          )
+
+    // Ensure the deterministic board exists and has a full tile grid.
+    //
+    // Why this exists:
+    // The Tile Game uses a fixed board ID so multiple clients share a single board.
+    // If a previous run created the board without properly linking tiles (or if a
+    // partial write occurred), the board may exist with `tiles == nil`, making the
+    // UI appear "blank" and preventing local taps from updating any tile.
+    ensureBoardHasTiles(now: now)
+  }
+
+  // MARK: - Board Initialization & Repair
+
+  private func ensureBoardHasTiles(now: Double) {
+    let expectedTileCount = boardSize * boardSize
+
+    $boards.withLock { boards in
+      let existingBoard = boards[id: boardId]
+
+      var board = existingBoard ?? Board(id: boardId, title: "Collaborative Game", createdAt: now)
+
+      let existingTiles = board.tiles ?? []
+      var existingTilesByPosition: [String: Tile] = [:]
+      for tile in existingTiles {
+        let key = "\(Int(tile.x))-\(Int(tile.y))"
+
+        // Prefer the first tile we see for each position. If the backend has
+        // duplicates for a coordinate, we still want the UI to be functional.
+        if existingTilesByPosition[key] == nil {
+          existingTilesByPosition[key] = tile
         }
       }
-      
-      var boardWithTiles = newBoard
-      boardWithTiles.tiles = newTiles
-      
-      _ = $boards.withLock { $0.append(boardWithTiles) }
+
+      if existingTilesByPosition.count == expectedTileCount {
+        if existingBoard == nil {
+          boards.append(board)
+        }
+        return
+      }
+
+      var repairedTiles: [Tile] = []
+      repairedTiles.reserveCapacity(expectedTileCount)
+
+      for row in 0..<boardSize {
+        for col in 0..<boardSize {
+          let key = "\(row)-\(col)"
+          if let existing = existingTilesByPosition[key] {
+            repairedTiles.append(existing)
+          } else {
+            repairedTiles.append(
+              Tile(
+                x: Double(row),
+                y: Double(col),
+                color: "#FFFFFF",
+                createdAt: now
+              )
+            )
+          }
+        }
+      }
+
+      board.tiles = repairedTiles
+      if existingBoard == nil {
+        boards.append(board)
+      } else {
+        boards[id: boardId] = board
+      }
     }
   }
   
   private func setTileColor(row: Int, col: Int) {
-    guard let board = boards.first, var tiles = board.tiles else { return }
-    guard let index = tiles.firstIndex(where: { Int($0.x) == row && Int($0.y) == col }) else { return }
-    
-    var tile = tiles[index]
-    tile.color = myColor.hexString
-    tiles[index] = tile
-    
-    var newBoard = board
-    newBoard.tiles = tiles
-    
-    $boards.withLock { $0[id: boardId] = newBoard }
+    let now = Date().timeIntervalSince1970 * 1_000
+
+    ensureBoardHasTiles(now: now)
+
+    $boards.withLock { boards in
+      guard var board = boards[id: boardId], var tiles = board.tiles else { return }
+      guard let index = tiles.firstIndex(where: { Int($0.x) == row && Int($0.y) == col }) else { return }
+
+      tiles[index].color = myColor.hexString
+      board.tiles = tiles
+      boards[id: boardId] = board
+    }
   }
   
   private func resetBoard() {
-    guard let board = boards.first, var tiles = board.tiles else { return }
-    
-    for i in 0..<tiles.count {
-      tiles[i].color = "#FFFFFF"
+    let now = Date().timeIntervalSince1970 * 1_000
+
+    ensureBoardHasTiles(now: now)
+
+    $boards.withLock { boards in
+      guard var board = boards[id: boardId], var tiles = board.tiles else { return }
+
+      for index in tiles.indices {
+        tiles[index].color = "#FFFFFF"
+      }
+
+      board.tiles = tiles
+      boards[id: boardId] = board
     }
-    
-    var newBoard = board
-    newBoard.tiles = tiles
-    
-    $boards.withLock { $0[id: boardId] = newBoard }
   }
 }
 
