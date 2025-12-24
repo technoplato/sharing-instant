@@ -150,7 +150,7 @@ private struct DynamicFilterView: View {
   }
   
   private func toggleTodo(_ todo: Todo) {
-    _ = $todos.withLock { todos in
+    $todos.withLock { todos in
       if let index = todos.firstIndex(where: { $0.id == todo.id }) {
         todos[index].done.toggle()
       }
@@ -196,8 +196,7 @@ private struct TodoFilterRow: View {
           .strikethrough(todo.done)
           .foregroundStyle(todo.done ? .secondary : .primary)
         
-        // Convert Unix timestamp to Date for display
-        Text(Date(timeIntervalSince1970: todo.createdAt), style: .relative)
+        Text(InstantEpochTimestamp.date(from: todo.createdAt), style: .relative)
           .font(.caption)
           .foregroundStyle(.secondary)
       }

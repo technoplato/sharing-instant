@@ -122,6 +122,19 @@ struct CaseStudiesApp: App {
                   .foregroundStyle(.secondary)
               }
             }
+
+            NavigationLink {
+              CaseStudyView {
+                StorageDemo()
+              }
+            } label: {
+              VStack(alignment: .leading, spacing: 4) {
+                Label("Storage", systemImage: "externaldrive")
+                Text("Upload, list, and preview files ($files)")
+                  .font(.caption)
+                  .foregroundStyle(.secondary)
+              }
+            }
           }
           
           Section("Presence & Real-time") {

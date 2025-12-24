@@ -5,6 +5,14 @@ import type { InstantRules } from "@instantdb/react";
 const rules = {
   // Allow all operations for guest users during development
   // In production, you should add proper authentication checks
+  "$files": {
+    allow: {
+      view: "isOwner",
+      create: "isOwner",
+      delete: "isOwner",
+    },
+    bind: ["isOwner", "auth.id != null && data.path.startsWith(auth.id + '/')"],
+  },
   todos: {
     allow: {
       view: "true",
@@ -24,7 +32,6 @@ const rules = {
 } satisfies InstantRules;
 
 export default rules;
-
 
 
 

@@ -60,9 +60,10 @@ struct TileGameDemo: SwiftUICaseStudy {
   private var boards: IdentifiedArrayOf<Board> = []
   
   /// Ephemeral presence for who's playing.
+  /// Ephemeral presence for who's playing.
   @Shared(.instantPresence(
     Schema.Rooms.tileGame,
-    roomId: "demo-123",
+    roomId: "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
     initialPresence: TileGamePresence(name: "", color: "")
   ))
   private var presence: RoomPresence<TileGamePresence>
@@ -171,6 +172,8 @@ struct TileGameDemo: SwiftUICaseStudy {
   }
   
   private func initializeGame() {
+    let now = Date().timeIntervalSince1970 * 1_000
+
     // Choose a color that's not taken by peers
     let takenColors = Set(presence.peers.compactMap { $0.data.color })
     let availableColors: [Color] = [.red, .green, .blue, .yellow, .purple, .orange]
@@ -181,13 +184,13 @@ struct TileGameDemo: SwiftUICaseStudy {
     }
     
     // Set presence
-    _ = $presence.withLock { state in
+    $presence.withLock { state in
       state.user = TileGamePresence(name: userId, color: myColor.hexString)
     }
     
     // Initialize board if it doesn't exist
     if boards.first == nil {
-      let newBoard = Board(id: boardId, title: "Collaborative Game", createdAt: Date().timeIntervalSince1970)
+      let newBoard = Board(id: boardId, title: "Collaborative Game", createdAt: now)
       
       var newTiles: [Tile] = []
       for row in 0..<boardSize {
@@ -197,7 +200,7 @@ struct TileGameDemo: SwiftUICaseStudy {
               x: Double(row),
               y: Double(col),
               color: "#FFFFFF",
-              createdAt: Date().timeIntervalSince1970
+              createdAt: now
             )
           )
         }
@@ -221,7 +224,7 @@ struct TileGameDemo: SwiftUICaseStudy {
     var newBoard = board
     newBoard.tiles = tiles
     
-    _ = $boards.withLock { $0[id: boardId] = newBoard }
+    $boards.withLock { $0[id: boardId] = newBoard }
   }
   
   private func resetBoard() {
@@ -234,7 +237,7 @@ struct TileGameDemo: SwiftUICaseStudy {
     var newBoard = board
     newBoard.tiles = tiles
     
-    _ = $boards.withLock { $0[id: boardId] = newBoard }
+    $boards.withLock { $0[id: boardId] = newBoard }
   }
 }
 

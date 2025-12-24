@@ -2,7 +2,7 @@ import SharingInstant
 import SwiftUI
 
 // NOTE: Schema.todos is now auto-generated in Sources/Generated/Schema.swift
-// The generated Todo type uses `createdAt: Double` (Unix timestamp)
+// The generated Todo type uses `createdAt: Double` (epoch timestamp).
 
 struct SwiftUISyncDemo: SwiftUICaseStudy {
   let readMe = """
@@ -110,9 +110,9 @@ private struct TodoListView: View {
     let title = newTodoTitle.trimmingCharacters(in: .whitespaces)
     guard !title.isEmpty else { return }
     
-    // Generated Todo uses Double for createdAt (Unix timestamp)
+    // Generated Todo uses Double for createdAt (epoch milliseconds).
     let todo = Todo(
-      createdAt: Date().timeIntervalSince1970,
+      createdAt: Date().timeIntervalSince1970 * 1_000,
       done: false,
       title: title
     )
@@ -143,8 +143,8 @@ private struct TodoRowReadOnly: View {
         Text(todo.title)
           .strikethrough(todo.done)
         
-        // Convert Unix timestamp to Date for display
-        Text(Date(timeIntervalSince1970: todo.createdAt), style: .relative)
+        // Normalize seconds vs milliseconds for display.
+        Text(InstantEpochTimestamp.date(from: todo.createdAt), style: .relative)
           .font(.caption)
           .foregroundStyle(.secondary)
       }
