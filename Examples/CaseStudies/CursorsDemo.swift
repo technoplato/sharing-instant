@@ -33,7 +33,7 @@ struct CursorsDemo: SwiftUICaseStudy {
   /// Type-safe presence subscription with cursor data.
   @Shared(.instantPresence(
     Schema.Rooms.cursors,
-    roomId: "demo-123",
+    roomId: "cursors-demo",
     initialPresence: CursorsPresence(name: "", color: "", cursorX: 0, cursorY: 0)
   ))
   private var presence: RoomPresence<CursorsPresence>
@@ -107,7 +107,7 @@ struct CursorsDemo: SwiftUICaseStudy {
     }
     .onAppear {
       InstantLogger.viewAppeared("CursorsDemo")
-      InstantLogger.info("Joining cursors room", json: ["userId": userId, "roomId": "demo-123"])
+      InstantLogger.info("Joining cursors room", json: ["userId": userId, "roomId": "cursors-demo"])
       
       // Set initial presence with actual values
       $presence.withLock { state in
