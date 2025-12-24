@@ -33,7 +33,7 @@ struct TestTodo: Codable, EntityIdentifiable, Sendable, Equatable {
   var createdAt: Date
   
   init(
-    id: String = UUID().uuidString,
+    id: String = UUID().uuidString.lowercased(),
     title: String = "Test Todo",
     done: Bool = false,
     createdAt: Date = Date()
@@ -52,7 +52,7 @@ struct TestFact: Codable, EntityIdentifiable, Sendable, Equatable {
   var text: String
   var count: Int
   
-  init(id: String = UUID().uuidString, text: String = "Test Fact", count: Int = 0) {
+  init(id: String = UUID().uuidString.lowercased(), text: String = "Test Fact", count: Int = 0) {
     self.id = id
     self.text = text
     self.count = count
@@ -68,7 +68,7 @@ struct Todo: Codable, InstantEntity, Sendable {
   var done: Bool
   var createdAt: Date  // Timestamp - InstantDB stores as milliseconds since epoch
   
-  init(id: String = UUID().uuidString, title: String, done: Bool = false, createdAt: Date = Date()) {
+  init(id: String = UUID().uuidString.lowercased(), title: String, done: Bool = false, createdAt: Date = Date()) {
     self.id = id
     self.title = title
     self.done = done
@@ -933,4 +933,3 @@ struct IntegrationRunnerApp {
     exit(0)
   }
 }
-

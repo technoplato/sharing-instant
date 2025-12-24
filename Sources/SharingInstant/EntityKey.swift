@@ -519,7 +519,7 @@ public enum EntityKeyPredicate: Hashable, Sendable {
     case .equals(let value):
       return value.base
     case .notEquals(let value):
-      return ["$neq": value.base]
+      return ["$ne": value.base]
     case .greaterThan(let value):
       return ["$gt": value.base]
     case .greaterOrEqual(let value):
@@ -684,4 +684,3 @@ struct EntityKeyQueryRequest<E: EntityIdentifiable & Sendable>: SharingInstantQu
     )
   }
 }
-

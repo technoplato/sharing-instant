@@ -132,8 +132,7 @@ extension InstantDB.TripleStore {
             decoder.dateDecodingStrategy = .iso8601 
             return try decoder.decode(T.self, from: data)
         } catch {
-            print("TripleStore Decode Error for \(id): \(error)")
-            // print("Dict: \(dict)")
+            SharingInstantInternalLog.debug("TripleStore decode failed for \(id): \(error)")
             return nil
         }
     }

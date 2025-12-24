@@ -93,6 +93,7 @@ struct TodoListContentView: View {
 /// GENERATION INFO
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
+/// Mode:            Production (full traceability)
 /// Generated:       December 18, 2024 at 7:24 PM EST
 /// Machine:         test-machine (Apple M1, macOS 14.0)
 /// Generator:       Sources/instant-schema/main.swift
@@ -104,7 +105,6 @@ swift run instant-schema generate \
   --from test.schema.ts \
   --to Sources/Generated/
 */
-
 /// ─────────────────────────────────────────────────────────────────────────────────
 /// GIT STATE AT GENERATION
 /// ─────────────────────────────────────────────────────────────────────────────────
@@ -124,9 +124,10 @@ swift run instant-schema generate \
 /// ═══════════════════════════════════════════════════════════════════════════════
 
 import Foundation
+import InstantDB
 import SharingInstant
 
-public struct Todo: EntityIdentifiable, Codable, Sendable {
+public struct Todo: EntityIdentifiable, Codable, Sendable, Equatable {
   public static var namespace: String { "todos" }
   
   // MARK: - Fields
@@ -148,7 +149,7 @@ public struct Todo: EntityIdentifiable, Codable, Sendable {
   // MARK: - Initializer
 
   public init(
-    id: String = UUID().uuidString,
+    id: String = UUID().uuidString.lowercased(),
     title: String,
     done: Bool,
     priority: Double? = nil,
@@ -160,10 +161,29 @@ public struct Todo: EntityIdentifiable, Codable, Sendable {
     self.priority = priority
     self.owner = owner
   }
+
+  // MARK: - Custom Codable (handles InstantDB type quirks)
+
+  private enum CodingKeys: String, CodingKey {
+    case id, title, done, priority, owner
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.id = try container.decode(String.self, forKey: .id)
+    self.title = try container.decode(String.self, forKey: .title)
+    self.done = try container.decode(FlexibleBool.self, forKey: .done).wrappedValue
+    if let flexValue = try container.decodeIfPresent(FlexibleDouble.self, forKey: .priority) {
+      self.priority = flexValue.wrappedValue
+    } else {
+      self.priority = nil
+    }
+    self.owner = try container.decodeIfPresent(User.self, forKey: .owner)
+  }
 }
 
 
-public struct User: EntityIdentifiable, Codable, Sendable {
+public struct User: EntityIdentifiable, Codable, Sendable, Equatable {
   public static var namespace: String { "users" }
   
   // MARK: - Fields
@@ -185,7 +205,7 @@ public struct User: EntityIdentifiable, Codable, Sendable {
   // MARK: - Initializer
 
   public init(
-    id: String = UUID().uuidString,
+    id: String = UUID().uuidString.lowercased(),
     name: String,
     email: String,
     createdAt: Date,

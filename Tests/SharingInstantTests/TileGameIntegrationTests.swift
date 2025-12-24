@@ -1,3 +1,4 @@
+
 import Dependencies
 import DependenciesTestSupport
 import IdentifiedCollections
@@ -42,7 +43,7 @@ private class TileGameModelRefactored: ObservableObject {
     _presence = Shared(
       .instantPresence(
         Schema.Rooms.tileGame,
-        roomId: "test-room-\(boardId)",
+        roomId: boardId,
         initialPresence: TileGamePresence(name: "", color: "")
       )
     )
@@ -64,7 +65,8 @@ private class TileGameModelRefactored: ObservableObject {
     }
     
     if board == nil {
-      let newBoard = Board(id: boardId, title: "Test Board", createdAt: Date().timeIntervalSince1970)
+      let now = Date().timeIntervalSince1970 * 1_000
+      let newBoard = Board(id: boardId, title: "Test Board", createdAt: now)
       $boards.withLock { $0.append(newBoard) }
       
       var newTiles: [Tile] = []
@@ -75,7 +77,7 @@ private class TileGameModelRefactored: ObservableObject {
               x: Double(row),
               y: Double(col),
               color: "#FFFFFF",
-              createdAt: Date().timeIntervalSince1970
+              createdAt: now
             )
           )
         }
@@ -130,44 +132,91 @@ final class TileGameIntegrationTests: XCTestCase {
   
   @MainActor
   func testTileGameFlow() async throws {
-    try await withDependencies {
-      $0.instantAppID = Self.testAppID
-    } operation: {
-      let client = InstantClientFactory.makeClient(appID: Self.testAppID)
-      if client.connectionState != .authenticated {
-        client.connect()
-        try await Task.sleep(nanoseconds: 2_000_000_000) // 2s wait
-      }
-      
-      let boardId = UUID().uuidString
-      let model = TileGameModelRefactored(boardId: boardId, appID: Self.testAppID)
-      
-      // Init
-      model.initializeGame()
-      try await Task.sleep(nanoseconds: 500_000_000)
-      
-      XCTAssertEqual(model.boards.count, 1)
-      XCTAssertEqual(model.board?.tiles?.count, 16)
-      XCTAssertEqual(model.tileColor(x: 0, y: 0), "#FFFFFF")
-      
-      // Set Color
-      model.setTileColor(x: 0, y: 0)
-      try await Task.sleep(nanoseconds: 100_000_000)
-      XCTAssertEqual(model.tileColor(x: 0, y: 0), "#FF0000")
-      
-      // Reset
-      model.resetBoard()
-      try await Task.sleep(nanoseconds: 100_000_000)
-      XCTAssertEqual(model.tileColor(x: 0, y: 0), "#FFFFFF")
-      
-      // Cleanup
-      let deleteChunk = TransactionChunk(
-        namespace: "boards",
-        id: boardId,
-        ops: [["delete", "boards", boardId]]
-      )
-      try client.transact(deleteChunk)
-      try await Task.sleep(nanoseconds: 500_000_000)
+    try IntegrationTestGate.requireEnabled()
+
+    // Clear any stale persistence
+    if let bundleID = Bundle.main.bundleIdentifier {
+        UserDefaults.standard.removePersistentDomain(forName: bundleID)
     }
+    // Also try to clear known keys if bundle ID method fails (CLI tests often have no bundle ID)
+    UserDefaults.standard.dictionaryRepresentation().keys.forEach { key in
+        if key.contains("instant") {
+            UserDefaults.standard.removeObject(forKey: key)
+        }
+    }
+    
+    // 1. Setup two isolated environments (Client A and Client B)
+    let storeA = SharedTripleStore()
+    let reactorA = Reactor(store: storeA)
+    
+    let storeB = SharedTripleStore()
+    let reactorB = Reactor(store: storeB)
+    
+    let boardId = UUID().uuidString
+    
+    // 2. Initialize Model A (Player 1)
+    let modelA = withDependencies {
+      $0.context = .live
+      $0.instantReactor = reactorA
+      $0.instantAppID = Self.testAppID
+      $0.instantEnableLocalPersistence = false
+    } operation: {
+      TileGameModelRefactored(boardId: boardId, appID: Self.testAppID)
+    }
+    
+    // 3. Initialize Model B (Player 2)
+    let modelB = withDependencies {
+      $0.context = .live
+      $0.instantReactor = reactorB
+      $0.instantAppID = Self.testAppID
+      $0.instantEnableLocalPersistence = false
+    } operation: {
+      TileGameModelRefactored(boardId: boardId, appID: Self.testAppID)
+    }
+    
+    // Connect both clients
+    // Note: Reactor connects on demand, but we can force it or wait for basic query
+    
+    // Connect and Auth
+    try await reactorA.signInAsGuest(appID: Self.testAppID)
+    
+    // 4. Player A initializes the game
+    modelA.initializeGame()
+    
+    // Wait for A to write and B to receive
+    // Since B is a separate Reactor/Store, it MUST receive data from the server.
+    // Optimistic updates on A won't show up in B.
+    try await Task.sleep(nanoseconds: 2_000_000_000) // 2s
+    
+    // Verify B sees the board created by A
+    XCTAssertEqual(modelB.boards.count, 1, "Client B should see the board created by A")
+    XCTAssertEqual(modelB.board?.tiles?.count, 16)
+    
+    // 5. Player A moves (sets color)
+    modelA.setTileColor(x: 0, y: 0)
+    
+    // Wait for sync
+    try await Task.sleep(nanoseconds: 1_000_000_000) // 1s
+    
+    // Verify B sees the change
+    XCTAssertEqual(modelB.tileColor(x: 0, y: 0), "#FF0000", "Client B should see A's move")
+    
+    // 6. Player B moves (resets board)
+    modelB.resetBoard()
+    
+    // Wait for sync
+    try await Task.sleep(nanoseconds: 1_000_000_000) // 1s
+    
+    // Verify A sees the change
+    XCTAssertEqual(modelA.tileColor(x: 0, y: 0), "#FFFFFF", "Client A should see B's reset")
+    
+    // Cleanup
+    let deleteChunk = TransactionChunk(
+      namespace: "boards",
+      id: boardId,
+      ops: [["delete", "boards", boardId]]
+    )
+    try await reactorA.transact(appID: Self.testAppID, chunks: [deleteChunk])
+    try await Task.sleep(nanoseconds: 500_000_000)
   }
 }

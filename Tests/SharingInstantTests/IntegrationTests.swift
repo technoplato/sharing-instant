@@ -25,13 +25,12 @@ final class IntegrationTests: XCTestCase {
   @MainActor
   override func setUp() async throws {
     try await super.setUp()
-    client = InstantClient(appID: Self.testAppID)
-    
-    // Wait for connection
-    try await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+    client = nil
   }
   
+  @MainActor
   override func tearDown() async throws {
+    client?.disconnect()
     client = nil
     try await super.tearDown()
   }
@@ -40,6 +39,11 @@ final class IntegrationTests: XCTestCase {
   
   @MainActor
   func testClientConnection() async throws {
+    try IntegrationTestGate.requireEnabled()
+
+    client = InstantClient(appID: Self.testAppID, enableLocalPersistence: false)
+    client.connect()
+
     // Verify client was created with correct app ID
     XCTAssertEqual(client.appID, Self.testAppID)
     
@@ -138,7 +142,7 @@ struct TestTodo: Codable, EntityIdentifiable, Sendable, Equatable {
   var createdAt: Date
   
   init(
-    id: String = UUID().uuidString,
+    id: String = UUID().uuidString.lowercased(),
     title: String = "Test Todo",
     done: Bool = false,
     createdAt: Date = Date()
@@ -158,10 +162,9 @@ struct TestFact: Codable, EntityIdentifiable, Sendable, Equatable {
   var text: String
   var count: Int
   
-  init(id: String = UUID().uuidString, text: String = "Test Fact", count: Int = 0) {
+  init(id: String = UUID().uuidString.lowercased(), text: String = "Test Fact", count: Int = 0) {
     self.id = id
     self.text = text
     self.count = count
   }
 }
-

@@ -346,7 +346,7 @@ public struct SwiftCodeGenerator {
     var params: [(name: String, type: String, defaultValue: String?)] = []
     
     // ID
-    params.append((name: "id", type: "String", defaultValue: "UUID().uuidString"))
+    params.append((name: "id", type: "String", defaultValue: "UUID().uuidString.lowercased()"))
     
     // Fields
     for field in entity.fields {

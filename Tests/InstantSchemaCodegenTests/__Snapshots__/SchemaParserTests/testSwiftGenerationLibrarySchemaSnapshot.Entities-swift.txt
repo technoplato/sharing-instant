@@ -141,9 +141,10 @@ struct MemberListContentView: View {
 /// ═══════════════════════════════════════════════════════════════════════════════
 
 import Foundation
+import InstantDB
 import SharingInstant
 
-public struct Member: EntityIdentifiable, Codable, Sendable {
+public struct Member: EntityIdentifiable, Codable, Sendable, Equatable {
   public static var namespace: String { "members" }
   
   // MARK: - Fields
@@ -181,7 +182,7 @@ public struct Member: EntityIdentifiable, Codable, Sendable {
   // MARK: - Initializer
 
   public init(
-    id: String = UUID().uuidString,
+    id: String = UUID().uuidString.lowercased(),
     name: String,
     email: String,
     memberSince: Date,
@@ -207,10 +208,32 @@ public struct Member: EntityIdentifiable, Codable, Sendable {
     self.borrowedBooks = borrowedBooks
     self.borrowHistory = borrowHistory
   }
+
+  // MARK: - Custom Codable (handles InstantDB type quirks)
+
+  private enum CodingKeys: String, CodingKey {
+    case id, name, email, memberSince, isActive, phoneNumber, currentBorrowCount, preferences, favoriteAuthor, genreInterests, borrowedBooks, borrowHistory
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.id = try container.decode(String.self, forKey: .id)
+    self.name = try container.decode(String.self, forKey: .name)
+    self.email = try container.decode(String.self, forKey: .email)
+    self.memberSince = try container.decode(Date.self, forKey: .memberSince)
+    self.isActive = try container.decode(FlexibleBool.self, forKey: .isActive).wrappedValue
+    self.phoneNumber = try container.decodeIfPresent(String.self, forKey: .phoneNumber)
+    self.currentBorrowCount = try container.decode(FlexibleDouble.self, forKey: .currentBorrowCount).wrappedValue
+    self.preferences = try container.decodeIfPresent(AnyCodable.self, forKey: .preferences)
+    self.favoriteAuthor = try container.decodeIfPresent(Author.self, forKey: .favoriteAuthor)
+    self.genreInterests = try container.decodeIfPresent([Genre].self, forKey: .genreInterests)
+    self.borrowedBooks = try container.decodeIfPresent([Book].self, forKey: .borrowedBooks)
+    self.borrowHistory = try container.decodeIfPresent([BorrowRecord].self, forKey: .borrowHistory)
+  }
 }
 
 
-public struct Author: EntityIdentifiable, Codable, Sendable {
+public struct Author: EntityIdentifiable, Codable, Sendable, Equatable {
   public static var namespace: String { "authors" }
   
   // MARK: - Fields
@@ -238,7 +261,7 @@ public struct Author: EntityIdentifiable, Codable, Sendable {
   // MARK: - Initializer
 
   public init(
-    id: String = UUID().uuidString,
+    id: String = UUID().uuidString.lowercased(),
     name: String,
     bio: String? = nil,
     birthYear: Double? = nil,
@@ -256,10 +279,32 @@ public struct Author: EntityIdentifiable, Codable, Sendable {
     self.books = books
     self.fans = fans
   }
+
+  // MARK: - Custom Codable (handles InstantDB type quirks)
+
+  private enum CodingKeys: String, CodingKey {
+    case id, name, bio, birthYear, isActive, bookCount, books, fans
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.id = try container.decode(String.self, forKey: .id)
+    self.name = try container.decode(String.self, forKey: .name)
+    self.bio = try container.decodeIfPresent(String.self, forKey: .bio)
+    if let flexValue = try container.decodeIfPresent(FlexibleDouble.self, forKey: .birthYear) {
+      self.birthYear = flexValue.wrappedValue
+    } else {
+      self.birthYear = nil
+    }
+    self.isActive = try container.decode(FlexibleBool.self, forKey: .isActive).wrappedValue
+    self.bookCount = try container.decode(FlexibleDouble.self, forKey: .bookCount).wrappedValue
+    self.books = try container.decodeIfPresent([Book].self, forKey: .books)
+    self.fans = try container.decodeIfPresent([Member].self, forKey: .fans)
+  }
 }
 
 
-public struct Book: EntityIdentifiable, Codable, Sendable {
+public struct Book: EntityIdentifiable, Codable, Sendable, Equatable {
   public static var namespace: String { "books" }
   
   // MARK: - Fields
@@ -298,7 +343,7 @@ public struct Book: EntityIdentifiable, Codable, Sendable {
   // MARK: - Initializer
 
   public init(
-    id: String = UUID().uuidString,
+    id: String = UUID().uuidString.lowercased(),
     title: String,
     isbn: String,
     publicationYear: Double,
@@ -326,10 +371,41 @@ public struct Book: EntityIdentifiable, Codable, Sendable {
     self.author = author
     self.borrowHistory = borrowHistory
   }
+
+  // MARK: - Custom Codable (handles InstantDB type quirks)
+
+  private enum CodingKeys: String, CodingKey {
+    case id, title, isbn, publicationYear, pageCount, description, averageRating, availableCopies, metadata, genres, currentBorrower, author, borrowHistory
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.id = try container.decode(String.self, forKey: .id)
+    self.title = try container.decode(String.self, forKey: .title)
+    self.isbn = try container.decode(String.self, forKey: .isbn)
+    self.publicationYear = try container.decode(FlexibleDouble.self, forKey: .publicationYear).wrappedValue
+    if let flexValue = try container.decodeIfPresent(FlexibleDouble.self, forKey: .pageCount) {
+      self.pageCount = flexValue.wrappedValue
+    } else {
+      self.pageCount = nil
+    }
+    self.description = try container.decodeIfPresent(String.self, forKey: .description)
+    if let flexValue = try container.decodeIfPresent(FlexibleDouble.self, forKey: .averageRating) {
+      self.averageRating = flexValue.wrappedValue
+    } else {
+      self.averageRating = nil
+    }
+    self.availableCopies = try container.decode(FlexibleDouble.self, forKey: .availableCopies).wrappedValue
+    self.metadata = try container.decodeIfPresent(AnyCodable.self, forKey: .metadata)
+    self.genres = try container.decodeIfPresent([Genre].self, forKey: .genres)
+    self.currentBorrower = try container.decodeIfPresent(Member.self, forKey: .currentBorrower)
+    self.author = try container.decodeIfPresent(Author.self, forKey: .author)
+    self.borrowHistory = try container.decodeIfPresent([BorrowRecord].self, forKey: .borrowHistory)
+  }
 }
 
 
-public struct Genre: EntityIdentifiable, Codable, Sendable {
+public struct Genre: EntityIdentifiable, Codable, Sendable, Equatable {
   public static var namespace: String { "genres" }
   
   // MARK: - Fields
@@ -356,7 +432,7 @@ public struct Genre: EntityIdentifiable, Codable, Sendable {
   // MARK: - Initializer
 
   public init(
-    id: String = UUID().uuidString,
+    id: String = UUID().uuidString.lowercased(),
     name: String,
     code: String,
     description: String? = nil,
@@ -372,10 +448,27 @@ public struct Genre: EntityIdentifiable, Codable, Sendable {
     self.books = books
     self.interestedMembers = interestedMembers
   }
+
+  // MARK: - Custom Codable (handles InstantDB type quirks)
+
+  private enum CodingKeys: String, CodingKey {
+    case id, name, code, description, bookCount, books, interestedMembers
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.id = try container.decode(String.self, forKey: .id)
+    self.name = try container.decode(String.self, forKey: .name)
+    self.code = try container.decode(String.self, forKey: .code)
+    self.description = try container.decodeIfPresent(String.self, forKey: .description)
+    self.bookCount = try container.decode(FlexibleDouble.self, forKey: .bookCount).wrappedValue
+    self.books = try container.decodeIfPresent([Book].self, forKey: .books)
+    self.interestedMembers = try container.decodeIfPresent([Member].self, forKey: .interestedMembers)
+  }
 }
 
 
-public struct BorrowRecord: EntityIdentifiable, Codable, Sendable {
+public struct BorrowRecord: EntityIdentifiable, Codable, Sendable, Equatable {
   public static var namespace: String { "borrowRecords" }
   
   // MARK: - Fields
@@ -402,7 +495,7 @@ public struct BorrowRecord: EntityIdentifiable, Codable, Sendable {
   // MARK: - Initializer
 
   public init(
-    id: String = UUID().uuidString,
+    id: String = UUID().uuidString.lowercased(),
     borrowedAt: Date,
     dueAt: Date,
     returnedAt: Date? = nil,
@@ -417,6 +510,27 @@ public struct BorrowRecord: EntityIdentifiable, Codable, Sendable {
     self.lateFeeInCents = lateFeeInCents
     self.book = book
     self.member = member
+  }
+
+  // MARK: - Custom Codable (handles InstantDB type quirks)
+
+  private enum CodingKeys: String, CodingKey {
+    case id, borrowedAt, dueAt, returnedAt, lateFeeInCents, book, member
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.id = try container.decode(String.self, forKey: .id)
+    self.borrowedAt = try container.decode(Date.self, forKey: .borrowedAt)
+    self.dueAt = try container.decode(Date.self, forKey: .dueAt)
+    self.returnedAt = try container.decodeIfPresent(Date.self, forKey: .returnedAt)
+    if let flexValue = try container.decodeIfPresent(FlexibleDouble.self, forKey: .lateFeeInCents) {
+      self.lateFeeInCents = flexValue.wrappedValue
+    } else {
+      self.lateFeeInCents = nil
+    }
+    self.book = try container.decodeIfPresent(Book.self, forKey: .book)
+    self.member = try container.decodeIfPresent(Member.self, forKey: .member)
   }
 }
 
