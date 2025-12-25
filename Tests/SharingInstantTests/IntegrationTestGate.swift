@@ -27,4 +27,21 @@ enum IntegrationTestGate {
       )
     }
   }
+
+  static func requireEphemeralEnabled(
+    envVar: String = "INSTANT_RUN_EPHEMERAL_INTEGRATION_TESTS",
+    file: StaticString = #filePath,
+    line: UInt = #line
+  ) throws {
+    guard ProcessInfo.processInfo.environment[envVar] == "1" else {
+      throw XCTSkip(
+        """
+        Ephemeral backend integration tests are disabled.
+
+        Set `\(envVar)=1` to run tests that create a fresh InstantDB app on each run via \
+        `/dash/apps/ephemeral`.
+        """
+      )
+    }
+  }
 }
