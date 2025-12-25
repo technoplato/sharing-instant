@@ -220,16 +220,19 @@ public struct SwiftCodeGenerator {
     
     
     """
+
+    let indirectLinkLabelsByEntityName = indirectLinkLabelsByEntityName(for: schema)
     
     for entity in schema.entities {
-      output += generateEntity(entity, schema: schema)
+      let indirectLabels = indirectLinkLabelsByEntityName[entity.name] ?? []
+      output += generateEntity(entity, schema: schema, indirectLinkLabels: indirectLabels)
       output += "\n\n"
     }
     
     return output
   }
   
-  private func generateEntity(_ entity: EntityIR, schema: SchemaIR) -> String {
+  private func generateEntity(_ entity: EntityIR, schema: SchemaIR, indirectLinkLabels: Set<String>) -> String {
     let access = configuration.accessLevel.rawValue
     let sendable = configuration.generateSendable ? ", Sendable" : ""
     
@@ -271,7 +274,8 @@ public struct SwiftCodeGenerator {
           label: link.forward.label,
           targetEntity: schema.entity(named: link.reverse.entityName),
           cardinality: link.forward.cardinality,
-          documentation: "Link to \(link.reverse.entityName) via '\(link.name)'"
+          documentation: "Link to \(link.reverse.entityName) via '\(link.name)'",
+          usesIndirectLink: indirectLinkLabels.contains(link.forward.label)
         )
       }
       
@@ -280,7 +284,8 @@ public struct SwiftCodeGenerator {
           label: link.reverse.label,
           targetEntity: schema.entity(named: link.forward.entityName),
           cardinality: link.reverse.cardinality,
-          documentation: "Link to \(link.forward.entityName) via '\(link.name)'"
+          documentation: "Link to \(link.forward.entityName) via '\(link.name)'",
+          usesIndirectLink: indirectLinkLabels.contains(link.reverse.label)
         )
       }
     }
@@ -313,7 +318,8 @@ public struct SwiftCodeGenerator {
     label: String,
     targetEntity: EntityIR?,
     cardinality: Cardinality,
-    documentation: String
+    documentation: String,
+    usesIndirectLink: Bool
   ) -> String {
     let access = configuration.accessLevel.rawValue
     guard let target = targetEntity else { return "" }
@@ -323,6 +329,10 @@ public struct SwiftCodeGenerator {
     if configuration.includeDocumentation {
       output += "  /// \(documentation)\n"
       output += "  /// - Note: Only populated when queried with `.with(\\.\(label))`\n"
+    }
+
+    if usesIndirectLink {
+      output += "  @IndirectLink\n"
     }
     
     let type: String
@@ -336,6 +346,130 @@ public struct SwiftCodeGenerator {
     output += "  \(access) var \(label): \(type)\n\n"
     
     return output
+  }
+
+  // MARK: - Recursive Link Detection
+
+  /// Returns a map of `entityName -> link labels` that must be stored indirectly to avoid
+  /// recursive value-type cycles in generated entity structs.
+  ///
+  /// Swift `struct`s cannot contain themselves (directly or indirectly) through `Optional`,
+  /// because `Optional` stores its payload inline. A schema with a has-one cycle like:
+  /// - `Segment.parent -> Segment`, or
+  /// - `A.oneB -> B.oneA`
+  ///
+  /// will fail to compile unless at least one has-one link in the cycle is made indirect.
+  ///
+  /// InstantSchemaCodegen resolves this by applying `@IndirectLink` to has-one link
+  /// properties that participate in a cycle in the has-one graph.
+  private func indirectLinkLabelsByEntityName(for schema: SchemaIR) -> [String: Set<String>] {
+    struct HasOneEdge: Hashable {
+      var fromEntityName: String
+      var toEntityName: String
+      var label: String
+    }
+
+    var edges: [HasOneEdge] = []
+    edges.reserveCapacity(schema.links.count * 2)
+
+    for link in schema.links {
+      if link.forward.cardinality == .one {
+        edges.append(
+          HasOneEdge(
+            fromEntityName: link.forward.entityName,
+            toEntityName: link.reverse.entityName,
+            label: link.forward.label
+          )
+        )
+      }
+
+      if link.reverse.cardinality == .one {
+        edges.append(
+          HasOneEdge(
+            fromEntityName: link.reverse.entityName,
+            toEntityName: link.forward.entityName,
+            label: link.reverse.label
+          )
+        )
+      }
+    }
+
+    var adjacency: [String: [HasOneEdge]] = [:]
+    for edge in edges {
+      adjacency[edge.fromEntityName, default: []].append(edge)
+    }
+
+    let allNodes = Set(schema.entities.map(\.name))
+      .union(edges.map(\.fromEntityName))
+      .union(edges.map(\.toEntityName))
+
+    var index = 0
+    var indices: [String: Int] = [:]
+    var lowlinks: [String: Int] = [:]
+    var stack: [String] = []
+    var onStack: Set<String> = []
+    var stronglyConnectedComponents: [[String]] = []
+
+    func strongConnect(_ node: String) {
+      indices[node] = index
+      lowlinks[node] = index
+      index += 1
+
+      stack.append(node)
+      onStack.insert(node)
+
+      for edge in adjacency[node] ?? [] {
+        let neighbor = edge.toEntityName
+
+        if indices[neighbor] == nil {
+          strongConnect(neighbor)
+          lowlinks[node] = min(lowlinks[node] ?? 0, lowlinks[neighbor] ?? 0)
+        } else if onStack.contains(neighbor) {
+          lowlinks[node] = min(lowlinks[node] ?? 0, indices[neighbor] ?? 0)
+        }
+      }
+
+      guard lowlinks[node] == indices[node] else { return }
+
+      var component: [String] = []
+      while let last = stack.popLast() {
+        onStack.remove(last)
+        component.append(last)
+
+        if last == node {
+          break
+        }
+      }
+
+      stronglyConnectedComponents.append(component)
+    }
+
+    for node in allNodes.sorted() {
+      if indices[node] == nil {
+        strongConnect(node)
+      }
+    }
+
+    var labelsByEntityName: [String: Set<String>] = [:]
+
+    for component in stronglyConnectedComponents {
+      let componentSet = Set(component)
+
+      if component.count > 1 {
+        for edge in edges where componentSet.contains(edge.fromEntityName) && componentSet.contains(edge.toEntityName) {
+          labelsByEntityName[edge.fromEntityName, default: []].insert(edge.label)
+        }
+        continue
+      }
+
+      guard let onlyNode = component.first else { continue }
+
+      for edge in edges where edge.fromEntityName == onlyNode && edge.toEntityName == onlyNode {
+        labelsByEntityName[edge.fromEntityName, default: []].insert(edge.label)
+      }
+    }
+
+    return labelsByEntityName
   }
   
   private func generateInitializer(_ entity: EntityIR, schema: SchemaIR) -> String {
