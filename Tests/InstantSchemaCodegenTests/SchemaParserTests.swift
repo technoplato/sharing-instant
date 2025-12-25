@@ -261,6 +261,33 @@ final class SchemaParserTests: XCTestCase {
       assertSnapshot(of: stableContent, as: .lines, named: file.name)
     }
   }
+
+  func testSwiftGenerationUsesIndirectLinkForHasOneCycles() throws {
+    let schema = try parseFixture("RecursiveLinksSchema.ts")
+    let generator = SwiftCodeGenerator()
+    let files = generator.generate(from: schema)
+
+    let entitiesFile = try XCTUnwrap(files.first { $0.name == "Entities.swift" })
+    let stableContent = removeTimestamp(from: entitiesFile.content)
+
+    XCTAssertTrue(
+      stableContent.contains("  @IndirectLink\n  public var parent: Segment?"),
+      "Self has-one links should be generated with @IndirectLink to avoid recursive value types."
+    )
+
+    XCTAssertTrue(
+      stableContent.contains("  @IndirectLink\n  public var createdFromSplit: Split?"),
+      "Has-one links that participate in a cycle should be generated with @IndirectLink."
+    )
+
+    XCTAssertTrue(
+      stableContent.contains("  @IndirectLink\n  public var originalSegment: Segment?"),
+      "Has-one links that participate in a cycle should be generated with @IndirectLink."
+    )
+
+    XCTAssertTrue(stableContent.contains("  public var children: [Segment]?"))
+    XCTAssertFalse(stableContent.contains("  @IndirectLink\n  public var children: [Segment]?"))
+  }
   
   func testSwiftGenerationWithContextSnapshot() throws {
     // Test with a mock generation context to verify enhanced headers
