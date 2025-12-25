@@ -12,22 +12,27 @@ import XCTest
 /// - Filtering a parent collection (`posts`) by a linked attribute (`author.handle`)
 /// - Using case-insensitive prefix matching (`$ilike` via `.startsWith`)
 final class NestedFilteringIntegrationTests: XCTestCase {
-  static let testAppID = "b9319949-2f2d-410b-8f8a-6990177c1d44"
   static let timeout: TimeInterval = 20.0
 
   @MainActor
   func testPostsWhereAuthorHandleStartsWith() async throws {
-    try IntegrationTestGate.requireEnabled()
+    try IntegrationTestGate.requireEphemeralEnabled()
 
-    InstantClientFactory.clearCache()
-    addTeardownBlock {
-      Task { @MainActor in
-        InstantClientFactory.clearCache()
-      }
-    }
+    let app = try await EphemeralAppFactory.createApp(
+      titlePrefix: "sharing-instant-nested-filter",
+      schema: EphemeralAppFactory.minimalMicroblogSchema(),
+      rules: EphemeralAppFactory.openRules(for: ["profiles", "posts"])
+    )
+
+    let authClient = InstantClient(appID: app.id, enableLocalPersistence: false)
+    try await InstantTestAuth.signInAsGuestAndReconnect(client: authClient, timeout: Self.timeout)
+    authClient.disconnect()
 
     let store = SharedTripleStore()
-    let reactor = Reactor(store: store)
+    let reactor = Reactor(
+      store: store,
+      clientInstanceID: "nested-filter-\(UUID().uuidString.lowercased())"
+    )
 
     let prefix = "b-nested-\(UUID().uuidString.lowercased())"
 
@@ -52,14 +57,21 @@ final class NestedFilteringIntegrationTests: XCTestCase {
       return
     }
 
-    let stream = await reactor.subscribe(appID: Self.testAppID, configuration: configuration)
+    let stream = await reactor.subscribe(appID: app.id, configuration: configuration)
 
     var latest: [Post] = []
+    let receivedInitialEmission = XCTestExpectation(description: "Receives initial server emission for nested filter query")
     let expectation = XCTestExpectation(description: "Receives matching post from nested filter query")
 
     let consumeTask = Task { @MainActor in
+      var didReceiveInitial = false
       for await posts in stream {
         latest = posts
+
+        if !didReceiveInitial {
+          didReceiveInitial = true
+          receivedInitialEmission.fulfill()
+        }
 
         let hasMatchingPost = posts.contains { $0.id == matchingPostId }
         if hasMatchingPost {
@@ -72,6 +84,8 @@ final class NestedFilteringIntegrationTests: XCTestCase {
     defer {
       consumeTask.cancel()
     }
+
+    await fulfillment(of: [receivedInitialEmission], timeout: Self.timeout)
 
     // Create two authors and two posts, but only one author matches the prefix filter.
     let createMatchingProfile = TransactionChunk(
@@ -145,7 +159,7 @@ final class NestedFilteringIntegrationTests: XCTestCase {
     defer {
       Task {
         try? await reactor.transact(
-          appID: Self.testAppID,
+          appID: app.id,
           chunks: [
             TransactionChunk(namespace: "posts", id: matchingPostId, ops: [["delete", "posts", matchingPostId]]),
             TransactionChunk(namespace: "posts", id: nonMatchingPostId, ops: [["delete", "posts", nonMatchingPostId]]),
@@ -157,7 +171,7 @@ final class NestedFilteringIntegrationTests: XCTestCase {
     }
 
     try await reactor.transact(
-      appID: Self.testAppID,
+      appID: app.id,
       chunks: [
         createMatchingProfile,
         createNonMatchingProfile,
@@ -170,6 +184,28 @@ final class NestedFilteringIntegrationTests: XCTestCase {
 
     await fulfillment(of: [expectation], timeout: Self.timeout)
 
+    let verifierClient = InstantClient(appID: app.id, enableLocalPersistence: false)
+    defer { verifierClient.disconnect() }
+    try await InstantTestAuth.waitForAuthenticated(verifierClient, timeout: Self.timeout)
+
+    let instaqlQuery: [String: Any] = [
+      "posts": [
+        "$": [
+          "where": [
+            "author.handle": ["$ilike": "\(prefix)%"],
+          ]
+        ]
+      ]
+    ]
+
+    let serverSawMatching = try await waitForServerToReturn(
+      client: verifierClient,
+      query: instaqlQuery,
+      expectedPostId: matchingPostId,
+      timeout: Self.timeout
+    )
+    XCTAssertTrue(serverSawMatching, "Server should return the post for nested filter query.")
+
     XCTAssertFalse(latest.contains(where: { $0.id == nonMatchingPostId }))
 
     guard let returned = latest.first(where: { $0.id == matchingPostId }) else {
@@ -179,5 +215,31 @@ final class NestedFilteringIntegrationTests: XCTestCase {
 
     XCTAssertEqual(returned.author?.handle, matchingHandle)
     XCTAssertTrue(returned.author?.handle.hasPrefix(prefix) == true)
+  }
+
+  @MainActor
+  private func waitForServerToReturn(
+    client: InstantClient,
+    query: [String: Any],
+    expectedPostId: String,
+    timeout: TimeInterval
+  ) async throws -> Bool {
+    let deadline = Date().addingTimeInterval(timeout)
+
+    while Date() < deadline {
+      let result = try await client.queryOnce(query, timeout: min(5.0, timeout))
+      let posts = result.get("posts")
+      let containsExpected = posts.contains { row in
+        (row["id"] as? String)?.lowercased() == expectedPostId
+      }
+      if containsExpected { return true }
+      try await Task.sleep(nanoseconds: 200_000_000)
+    }
+
+    let result = try await client.queryOnce(query, timeout: min(5.0, timeout))
+    let posts = result.get("posts")
+    return posts.contains { row in
+      (row["id"] as? String)?.lowercased() == expectedPostId
+    }
   }
 }

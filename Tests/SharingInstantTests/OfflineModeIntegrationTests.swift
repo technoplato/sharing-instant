@@ -17,26 +17,25 @@ import XCTest
 /// These tests validate the Swift iOS SDK behavior end-to-end against the real
 /// server, while simulating offline periods via explicit WebSocket disconnects.
 final class OfflineModeIntegrationTests: XCTestCase {
-  static let testAppID = "b9319949-2f2d-410b-8f8a-6990177c1d44"
-  static let timeout: TimeInterval = 20.0
+  static let timeout: TimeInterval = 30.0
 
   // MARK: - Cached Subscriptions
 
   @MainActor
   func testSubscribeEmitsCachedResultsWhileDisconnected() async throws {
-    try IntegrationTestGate.requireEnabled()
+    try IntegrationTestGate.requireEphemeralEnabled()
 
-    InstantClientFactory.clearCache()
-    addTeardownBlock {
-      Task { @MainActor in
-        InstantClientFactory.clearCache()
-      }
-    }
+    let app = try await EphemeralAppFactory.createApp(
+      titlePrefix: "sharing-instant-offline-cache",
+      schema: EphemeralAppFactory.minimalTodosSchema(),
+      rules: EphemeralAppFactory.openRules(for: ["todos"])
+    )
 
-    let appID = Self.testAppID
+    let appID = app.id
     let client = InstantClient(appID: appID)
     let storage = try LocalStorage(appId: appID)
 
+    try await InstantTestAuth.signInAsGuestAndReconnect(client: client, timeout: Self.timeout)
     try await waitForSchemaPersistence(storage: storage, timeout: Self.timeout)
 
     let todoId = UUID().uuidString.lowercased()
@@ -105,7 +104,7 @@ final class OfflineModeIntegrationTests: XCTestCase {
     await fulfillment(of: [receivedFromCache], timeout: Self.timeout)
 
     client.connect()
-    try await waitForAuthenticated(client, timeout: Self.timeout)
+    try await InstantTestAuth.waitForAuthenticated(client, timeout: Self.timeout)
 
     let deleteChunk = TransactionChunk(
       namespace: "todos",
@@ -121,19 +120,19 @@ final class OfflineModeIntegrationTests: XCTestCase {
 
   @MainActor
   func testQueryOnceFailsOfflineAndCarriesLastKnownResultWhenAvailable() async throws {
-    try IntegrationTestGate.requireEnabled()
+    try IntegrationTestGate.requireEphemeralEnabled()
 
-    InstantClientFactory.clearCache()
-    addTeardownBlock {
-      Task { @MainActor in
-        InstantClientFactory.clearCache()
-      }
-    }
+    let app = try await EphemeralAppFactory.createApp(
+      titlePrefix: "sharing-instant-offline-query-once",
+      schema: EphemeralAppFactory.minimalTodosSchema(),
+      rules: EphemeralAppFactory.openRules(for: ["todos"])
+    )
 
-    let appID = Self.testAppID
+    let appID = app.id
     let client = InstantClient(appID: appID)
     let storage = try LocalStorage(appId: appID)
 
+    try await InstantTestAuth.signInAsGuestAndReconnect(client: client, timeout: Self.timeout)
     try await waitForSchemaPersistence(storage: storage, timeout: Self.timeout)
 
     let todoId = UUID().uuidString.lowercased()
@@ -200,33 +199,22 @@ final class OfflineModeIntegrationTests: XCTestCase {
       let cached: [Todo]? = error.decodeLastKnownEntities(Todo.self, from: "todos")
       XCTAssertEqual(cached?.first?.id, todoId)
     }
-
-    client.connect()
-    try await waitForAuthenticated(client, timeout: Self.timeout)
-
-    let deleteChunk = TransactionChunk(
-      namespace: "todos",
-      id: todoId,
-      ops: [["delete", "todos", todoId]]
-    )
-    _ = try await client.transactLocalFirst([deleteChunk])
   }
 
   @MainActor
   func testQueryOnceFailsOfflineWithNilLastKnownResultWhenNoCacheExists() async throws {
-    try IntegrationTestGate.requireEnabled()
+    try IntegrationTestGate.requireEphemeralEnabled()
 
-    InstantClientFactory.clearCache()
-    addTeardownBlock {
-      Task { @MainActor in
-        InstantClientFactory.clearCache()
-      }
-    }
+    let app = try await EphemeralAppFactory.createApp(
+      titlePrefix: "sharing-instant-offline-query-once-no-cache",
+      schema: EphemeralAppFactory.minimalTodosSchema(),
+      rules: EphemeralAppFactory.openRules(for: ["todos"])
+    )
 
-    let appID = Self.testAppID
+    let appID = app.id
     let client = InstantClient(appID: appID)
 
-    try await waitForAuthenticated(client, timeout: Self.timeout)
+    try await InstantTestAuth.signInAsGuestAndReconnect(client: client, timeout: Self.timeout)
 
     let todoId = UUID().uuidString.lowercased()
     let query = client.query(Todo.self).where(["id": todoId])
@@ -259,19 +247,19 @@ final class OfflineModeIntegrationTests: XCTestCase {
 
   @MainActor
   func testOfflineWriteQueuesAndFlushesAfterReconnectRefreshingSubscriptions() async throws {
-    try IntegrationTestGate.requireEnabled()
+    try IntegrationTestGate.requireEphemeralEnabled()
 
-    InstantClientFactory.clearCache()
-    addTeardownBlock {
-      Task { @MainActor in
-        InstantClientFactory.clearCache()
-      }
-    }
+    let app = try await EphemeralAppFactory.createApp(
+      titlePrefix: "sharing-instant-offline-flush",
+      schema: EphemeralAppFactory.minimalTodosSchema(),
+      rules: EphemeralAppFactory.openRules(for: ["todos"])
+    )
 
-    let appID = Self.testAppID
+    let appID = app.id
     let client = InstantClient(appID: appID)
     let storage = try LocalStorage(appId: appID)
 
+    try await InstantTestAuth.signInAsGuestAndReconnect(client: client, timeout: Self.timeout)
     try await waitForSchemaPersistence(storage: storage, timeout: Self.timeout)
 
     let todoId = UUID().uuidString.lowercased()
@@ -315,7 +303,7 @@ final class OfflineModeIntegrationTests: XCTestCase {
     XCTAssertTrue(pending.contains(where: { $0.eventId == eventId }))
 
     client.connect()
-    try await waitForAuthenticated(client, timeout: Self.timeout)
+    try await InstantTestAuth.waitForAuthenticated(client, timeout: Self.timeout)
 
     await fulfillment(of: [receivedAfterReconnect], timeout: Self.timeout)
 
@@ -330,23 +318,6 @@ final class OfflineModeIntegrationTests: XCTestCase {
   }
 
   // MARK: - Helpers
-
-  @MainActor
-  private func waitForAuthenticated(_ client: InstantClient, timeout: TimeInterval) async throws {
-    let deadline = Date().addingTimeInterval(timeout)
-
-    while Date() < deadline {
-      if client.connectionState == .authenticated { return }
-
-      if case .error(let error) = client.connectionState {
-        throw error
-      }
-
-      try await Task.sleep(nanoseconds: 100_000_000)
-    }
-
-    XCTFail("Timed out waiting for authenticated connection state.")
-  }
 
   @MainActor
   private func waitForSchemaPersistence(storage: LocalStorage, timeout: TimeInterval) async throws {

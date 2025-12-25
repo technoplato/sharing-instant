@@ -9,43 +9,41 @@ import XCTest
 @testable import SharingInstant
 
 final class ReactorIntegrationTests: XCTestCase {
-  
-  // Same as Microblog
-  static let testAppID = "b9319949-2f2d-410b-8f8a-6990177c1d44"
-  static let timeout: TimeInterval = 10
-  
-  override func setUp() async throws {
-    try await super.setUp()
-    try IntegrationTestGate.requireEnabled()
-  }
+  static let timeout: TimeInterval = 15
   
   @MainActor
   func testReactorTransactAndSubscribe() async throws {
+    try IntegrationTestGate.requireEphemeralEnabled()
+
+    let app = try await EphemeralAppFactory.createApp(
+      titlePrefix: "sharing-instant-reactor",
+      schema: EphemeralAppFactory.minimalProfilesSchema(),
+      rules: EphemeralAppFactory.openRules(for: ["profiles"])
+    )
+
     // Explicitly scope TripleStore to avoid ambiguity with InstantDB's TripleStore
     let store = SharedTripleStore()
     // Reactor is unique to SharingInstant
-    let reactor = Reactor(store: store)
+    let reactor = Reactor(
+      store: store,
+      clientInstanceID: "reactor-\(UUID().uuidString.lowercased())"
+    )
     
-    let id = UUID().uuidString
+    let id = UUID().uuidString.lowercased()
     
     let config = SharingInstantSync.CollectionConfiguration<Profile>(
       namespace: "profiles",
       orderBy: .desc("createdAt")
     )
     
-    let stream = await reactor.subscribe(appID: Self.testAppID, configuration: config)
+    let stream = await reactor.subscribe(appID: app.id, configuration: config)
     
-    let subscriptionReady = XCTestExpectation(description: "Subscription registered on the server")
+    let receivedInitialEmission = XCTestExpectation(description: "Receives initial emission from subscription")
     let receivedProfile = XCTestExpectation(description: "Receives profile from server")
     
     let consumeTask = Task { @MainActor in
-      var emissionCount = 0
       for await profiles in stream {
-        emissionCount += 1
-        
-        if emissionCount == 2 {
-          subscriptionReady.fulfill()
-        }
+        receivedInitialEmission.fulfill()
         
         if profiles.contains(where: { $0.id == id }) {
           receivedProfile.fulfill()
@@ -58,7 +56,7 @@ final class ReactorIntegrationTests: XCTestCase {
       consumeTask.cancel()
     }
     
-    await fulfillment(of: [subscriptionReady], timeout: Self.timeout)
+    await fulfillment(of: [receivedInitialEmission], timeout: Self.timeout)
     
     let chunk = TransactionChunk(
       namespace: "profiles",
@@ -70,7 +68,7 @@ final class ReactorIntegrationTests: XCTestCase {
       ]]]
     )
     
-    try await reactor.transact(appID: Self.testAppID, chunks: [chunk])
+    try await reactor.transact(appID: app.id, chunks: [chunk])
     
     await fulfillment(of: [receivedProfile], timeout: Self.timeout)
     
@@ -85,6 +83,6 @@ final class ReactorIntegrationTests: XCTestCase {
       id: id,
       ops: [["delete", "profiles", id]]
     )
-    try await reactor.transact(appID: Self.testAppID, chunks: [deleteChunk])
+    try await reactor.transact(appID: app.id, chunks: [deleteChunk])
   }
 }
