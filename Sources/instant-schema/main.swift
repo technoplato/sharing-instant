@@ -65,15 +65,23 @@ extension InstantSchema {
     @Option(name: .long, help: "Admin token for API access (or set INSTANT_ADMIN_TOKEN)")
     var adminToken: String?
     
+    @Flag(name: .long, help: "Validate that generated files are up-to-date without modifying them")
+    var validate: Bool = false
+    
     mutating func run() async throws {
       // Resolve credentials from environment if not provided
       let resolvedAppId = appId ?? ProcessInfo.processInfo.environment["INSTANT_APP_ID"]
       let resolvedToken = adminToken ?? ProcessInfo.processInfo.environment["INSTANT_ADMIN_TOKEN"]
       
-      // STEP 1: Ensure git working directory is clean
-      print("🔍 Checking git status...")
-      try GitUtilities.ensureCleanWorkingDirectory()
-      print("✅ Working directory is clean")
+      // Skip git check in validate mode - we're just comparing files
+      if !validate {
+        // STEP 1: Ensure git working directory is clean
+        print("🔍 Checking git status...")
+        try GitUtilities.ensureCleanWorkingDirectory()
+        print("✅ Working directory is clean")
+      } else {
+        print("🔍 Validating generated files are up-to-date...")
+      }
       
       // STEP 2: Get schema from file or API
       let schema: SchemaIR
@@ -107,35 +115,199 @@ extension InstantSchema {
       
       print("✅ Found \(schema.entities.count) entities, \(schema.links.count) links, \(schema.rooms.count) rooms")
       
-      // STEP 3: Build generation context
-      print("📋 Capturing generation context...")
-      let context = try buildGenerationContext(
-        inputPath: resolvedInputPath,
-        outputDir: outputDir
-      )
+      // STEP 3: Build generation context (use validation context if in validate mode)
+      let context: GenerationContext?
+      if validate {
+        // In validate mode, we use a minimal context that produces stable output
+        // for comparison (no timestamps, git info, or machine info)
+        context = nil
+      } else {
+        print("📋 Capturing generation context...")
+        context = try buildGenerationContext(
+          inputPath: resolvedInputPath,
+          outputDir: outputDir
+        )
+      }
       
       // STEP 4: Generate Swift code
       print("🔨 Generating Swift code...")
       let generator = SwiftCodeGenerator()
       let files = generator.generate(from: schema, context: context)
       
-      // Create output directory
-      try FileManager.default.createDirectory(atPath: outputDir, withIntermediateDirectories: true)
+      if validate {
+        // VALIDATION MODE: Compare generated files against existing files
+        try runValidation(files: files)
+      } else {
+        // NORMAL MODE: Write files to disk
+        try FileManager.default.createDirectory(atPath: outputDir, withIntermediateDirectories: true)
+        
+        for file in files {
+          let path = (outputDir as NSString).appendingPathComponent(file.name)
+          try file.content.write(toFile: path, atomically: true, encoding: .utf8)
+          print("  ✓ \(path)")
+        }
+        
+        print("✅ Generated \(files.count) files in \(outputDir)")
+        print("")
+        print("📝 Generation Info:")
+        print("   Date:    \(context!.formattedDate)")
+        print("   Machine: \(context!.machine.formatted)")
+        if let gitState = context!.gitState {
+          print("   Commit:  \(String(gitState.headCommit.sha.prefix(8))) - \(gitState.headCommit.message)")
+        }
+      }
+    }
+    
+    /// Validates that existing generated files match what would be generated.
+    /// 
+    /// Compares the semantic content of files, stripping dynamic metadata
+    /// (timestamps, git state, machine info) before comparison.
+    /// 
+    /// Returns successfully if files are up-to-date, throws if there are differences.
+    private func runValidation(files: [SwiftCodeGenerator.GeneratedFile]) throws {
+      var hasErrors = false
+      var missingFiles: [String] = []
+      var differentFiles: [(name: String, existingLines: Int, expectedLines: Int)] = []
+      
+      print("")
+      print("📋 Comparing \(files.count) generated files against \(outputDir)...")
+      print("")
       
       for file in files {
-        let path = (outputDir as NSString).appendingPathComponent(file.name)
-        try file.content.write(toFile: path, atomically: true, encoding: .utf8)
-        print("  ✓ \(path)")
+        let existingPath = (outputDir as NSString).appendingPathComponent(file.name)
+        
+        // Check if file exists
+        guard FileManager.default.fileExists(atPath: existingPath) else {
+          print("  ❌ \(file.name) - MISSING")
+          missingFiles.append(file.name)
+          hasErrors = true
+          continue
+        }
+        
+        // Read existing file
+        let existingContent: String
+        do {
+          existingContent = try String(contentsOfFile: existingPath, encoding: .utf8)
+        } catch {
+          print("  ❌ \(file.name) - Could not read: \(error.localizedDescription)")
+          hasErrors = true
+          continue
+        }
+        
+        // Compare semantic content (strip dynamic metadata)
+        let existingStripped = stripDynamicMetadata(from: existingContent)
+        let generatedStripped = stripDynamicMetadata(from: file.content)
+        
+        if existingStripped == generatedStripped {
+          print("  ✓ \(file.name) - up to date")
+        } else {
+          print("  ❌ \(file.name) - OUT OF DATE")
+          let existingLines = existingStripped.components(separatedBy: .newlines).count
+          let expectedLines = generatedStripped.components(separatedBy: .newlines).count
+          differentFiles.append((name: file.name, existingLines: existingLines, expectedLines: expectedLines))
+          hasErrors = true
+          
+          // Find first differing line for debugging
+          let existingLinesArray = existingStripped.components(separatedBy: .newlines)
+          let expectedLinesArray = generatedStripped.components(separatedBy: .newlines)
+          for (i, (existing, expected)) in zip(existingLinesArray, expectedLinesArray).enumerated() {
+            if existing != expected {
+              print("      First difference at line \(i + 1):")
+              print("        existing: \"\(existing.prefix(80))\"")
+              print("        expected: \"\(expected.prefix(80))\"")
+              break
+            }
+          }
+          if existingLinesArray.count != expectedLinesArray.count {
+            print("      Line count: existing=\(existingLinesArray.count), expected=\(expectedLinesArray.count)")
+          }
+        }
       }
       
-      print("✅ Generated \(files.count) files in \(outputDir)")
       print("")
-      print("📝 Generation Info:")
-      print("   Date:    \(context.formattedDate)")
-      print("   Machine: \(context.machine.formatted)")
-      if let gitState = context.gitState {
-        print("   Commit:  \(String(gitState.headCommit.sha.prefix(8))) - \(gitState.headCommit.message)")
+      
+      if hasErrors {
+        print("═══════════════════════════════════════════════════════════════════════════════")
+        print("❌ VALIDATION FAILED")
+        print("═══════════════════════════════════════════════════════════════════════════════")
+        print("")
+        
+        if !missingFiles.isEmpty {
+          print("Missing files:")
+          for file in missingFiles {
+            print("  • \(file)")
+          }
+          print("")
+        }
+        
+        if !differentFiles.isEmpty {
+          print("Files that need regeneration:")
+          for (name, existingLines, expectedLines) in differentFiles {
+            print("  • \(name) (existing: \(existingLines) lines, expected: \(expectedLines) lines)")
+          }
+          print("")
+        }
+        
+        print("To fix, run:")
+        print("  swift run instant-schema generate --from \(inputPath ?? "<schema>") --to \(outputDir)")
+        print("")
+        
+        throw ExitCode.failure
+      } else {
+        print("═══════════════════════════════════════════════════════════════════════════════")
+        print("✅ VALIDATION PASSED - All generated files are up to date")
+        print("═══════════════════════════════════════════════════════════════════════════════")
       }
+    }
+    
+    /// Strips dynamic metadata from generated file content for comparison.
+    /// 
+    /// This removes sections that change on every generation:
+    /// - GENERATION INFO section (timestamps, machine info) and its preceding divider
+    /// - GIT STATE AT GENERATION section
+    /// - Regeneration command comments (contain absolute paths)
+    /// 
+    /// The approach: extract just the code (starting from `import` outside of comments) and compare that.
+    /// The headers are documentation and don't affect functionality.
+    private func stripDynamicMetadata(from content: String) -> String {
+      let lines = content.components(separatedBy: .newlines)
+      
+      // Find the first import statement that's NOT inside a block comment
+      var inBlockComment = false
+      var importIndex: Int? = nil
+      
+      for (index, line) in lines.enumerated() {
+        // Track block comment state
+        if line.contains("/*") {
+          inBlockComment = true
+        }
+        if line.contains("*/") {
+          inBlockComment = false
+          continue  // The */ line itself might have content after it
+        }
+        
+        // Look for import outside of block comments
+        if !inBlockComment && line.hasPrefix("import ") {
+          importIndex = index
+          break
+        }
+      }
+      
+      guard let startIndex = importIndex else {
+        // No import found outside comments, return as-is
+        return content
+      }
+      
+      // Return everything from the first real import onwards
+      let codeLines = Array(lines[startIndex...])
+      
+      // Normalize: remove trailing empty lines
+      var normalized = codeLines
+      while let last = normalized.last, last.trimmingCharacters(in: .whitespaces).isEmpty {
+        normalized.removeLast()
+      }
+      
+      return normalized.joined(separator: "\n")
     }
     
     private func buildGenerationContext(inputPath: String, outputDir: String) throws -> GenerationContext {
