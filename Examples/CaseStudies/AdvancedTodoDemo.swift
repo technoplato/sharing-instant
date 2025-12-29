@@ -4,15 +4,19 @@ import SwiftUI
 
 struct AdvancedTodoDemo: SwiftUICaseStudy {
   let readMe = """
-    This demo shows advanced querying features with **server-side filtering**:
+    This is the key demo for **dynamic queries with server-side operations**.
     
-    • **Search** - Filter todos by title using InstantDB's `$ilike` operator
-    • **Sort** - Order by name or date (server-side)
-    • **Filter** - Show all, active, or completed todos (server-side)
+    **All operations happen on InstantDB's server:**
+    • **Search** - Uses InstantDB's `$ilike` operator (not Swift's `.contains`)
+    • **Sort** - Server orders by name or date before sending data
+    • **Filter** - Server filters by completion status using `.where()` predicates
     
-    All filtering happens on the server using dynamic EntityKeys with \
-    `.where()` predicates. This is more efficient than client-side filtering \
-    because only matching data is transferred.
+    **Why server-side?** Only matching data is transferred over the network. \
+    For large datasets, this is far more efficient than downloading everything \
+    and filtering in Swift.
+    
+    **How it works:** When filters change, we rebuild the `EntityKey` query \
+    and reassign `$todos` to create a new server subscription.
     """
   let caseStudyTitle = "Advanced Todo"
   
