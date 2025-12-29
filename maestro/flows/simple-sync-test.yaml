@@ -1,0 +1,100 @@
+# Simple Bidirectional Sync Test
+#
+# This test:
+# 1. Launches the app
+# 2. Navigates to Observable Model demo
+# 3. Creates a todo via Admin API (server-side)
+# 4. Verifies the todo appears in UI
+# 5. Taps the todo to toggle it (local mutation)
+# 6. Triggers another server-side mutation via Admin API
+# 7. Waits and checks if UI updates
+#
+# Run with:
+#   cd /Users/mlustig/Development/personal/instantdb/sharing-instant/maestro
+#   maestro test -e INSTANT_ADMIN_TOKEN=<token> flows/simple-sync-test.yaml
+
+appId: com.lustig.sharinginstant.Sharing-Instant-Examples
+---
+
+# Launch app fresh
+- launchApp:
+    clearState: true
+
+# Wait for app to load - look for the main list
+- extendedWaitUntil:
+    visible: "Observable Model"
+    timeout: 15000
+
+# Navigate to Observable Model demo
+- tapOn: "Observable Model"
+
+# Wait for the demo view to load
+- extendedWaitUntil:
+    visible: "Add New Todo"
+    timeout: 10000
+
+# First, create some todos via Admin API so we have data to work with
+- runScript:
+    file: ../helpers/setup-test-data.js
+    env:
+      ADMIN_TOKEN: ${INSTANT_ADMIN_TOKEN}
+
+# Wait for the server-created todos to appear in UI
+- extendedWaitUntil:
+    visible: "Test Todo A"
+    timeout: 10000
+
+# Take initial screenshot
+- takeScreenshot: 01_initial_state_with_todos
+
+# Log that we're ready
+- runScript:
+    file: ../helpers/log-state.js
+    env:
+      STEP: "ready"
+      MESSAGE: "Todos created via Admin API and visible in UI"
+
+# Now tap on Test Todo A to toggle it (local mutation)
+- tapOn: "Test Todo A"
+
+# Wait a moment for local mutation
+- extendedWaitUntil:
+    visible: "Test Todo A"
+    timeout: 2000
+
+# Take screenshot after local toggle
+- takeScreenshot: 02_after_local_toggle
+
+# Log the local toggle
+- runScript:
+    file: ../helpers/log-state.js
+    env:
+      STEP: "local_toggle"
+      MESSAGE: "Tapped Test Todo A to toggle it locally"
+
+# Now trigger server-side mutation on Test Todo B
+- runScript:
+    file: ../helpers/toggle-todo-b.js
+    env:
+      ADMIN_TOKEN: ${INSTANT_ADMIN_TOKEN}
+
+# Wait for server mutation to potentially sync (5 seconds)
+- extendedWaitUntil:
+    visible: "Test Todo B"
+    timeout: 5000
+
+# Take screenshot after server mutation
+- takeScreenshot: 03_after_server_mutation
+
+# Log final state
+- runScript:
+    file: ../helpers/log-state.js
+    env:
+      STEP: "complete"
+      MESSAGE: "Test complete - check screenshots and debug logs to see if Test Todo B toggle was reflected in UI"
+
+# Cleanup - delete test todos
+- runScript:
+    file: ../helpers/cleanup-test-data.js
+    env:
+      ADMIN_TOKEN: ${INSTANT_ADMIN_TOKEN}
