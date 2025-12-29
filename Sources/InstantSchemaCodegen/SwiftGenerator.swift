@@ -227,13 +227,29 @@ public struct SwiftCodeGenerator {
     // Helper function to collect types recursively from a generic type
     func collectAndGenerateTypes(from genericType: GenericTypeIR, fieldName: String, entityName: String) {
       switch genericType {
-      case .stringUnion, .object:
-        // Generate type from field name
+      case .stringUnion:
+        // Generate enum from field name
         let typeName = swiftTypeForGeneric(genericType, fieldName: fieldName, entityName: entityName)
         if !generatedTypes.contains(typeName) {
           generatedTypes.insert(typeName)
           output += generateTypeFromGeneric(genericType, typeName: typeName)
           output += "\n"
+        }
+        
+      case .object(let fields):
+        // Generate struct from field name
+        let typeName = swiftTypeForGeneric(genericType, fieldName: fieldName, entityName: entityName)
+        if !generatedTypes.contains(typeName) {
+          generatedTypes.insert(typeName)
+          output += generateTypeFromGeneric(genericType, typeName: typeName)
+          output += "\n"
+        }
+        // Also recursively collect nested types from object fields
+        for field in fields {
+          if let nestedType = field.genericType {
+            // For nested types, use the parent type name as the entity prefix
+            collectAndGenerateTypes(from: nestedType, fieldName: field.name, entityName: typeName)
+          }
         }
         
       case .array(let elementType):
@@ -246,6 +262,14 @@ public struct SwiftCodeGenerator {
           generatedTypes.insert(name)
           output += generateTypeFromGeneric(definition, typeName: name)
           output += "\n"
+          // Also recursively collect nested types if the definition is an object
+          if case .object(let fields) = definition {
+            for field in fields {
+              if let nestedType = field.genericType {
+                collectAndGenerateTypes(from: nestedType, fieldName: field.name, entityName: name)
+              }
+            }
+          }
         }
         
       case .unresolved:
