@@ -1,0 +1,418 @@
+▿ SchemaIR
+  - documentation: Optional<String>.none
+  ▿ entities: 3 elements
+    ▿ EntityIR
+      - documentation: Optional<String>.none
+      ▿ fields: 7 elements
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
+          - isOptional: false
+          - name: "title"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          ▿ genericType: Optional<GenericTypeIR>
+            ▿ some: GenericTypeIR
+              ▿ stringUnion: 3 elements
+                - "pending"
+                - "active"
+                - "done"
+          - isOptional: false
+          - name: "statusInline"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          ▿ genericType: Optional<GenericTypeIR>
+            ▿ some: GenericTypeIR
+              ▿ stringUnion: 4 elements
+                - "pending"
+                - "in_progress"
+                - "completed"
+                - "cancelled"
+          - isOptional: false
+          - name: "statusAlias"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          ▿ genericType: Optional<GenericTypeIR>
+            ▿ some: GenericTypeIR
+              ▿ stringUnion: 4 elements
+                - "low"
+                - "medium"
+                - "high"
+                - "urgent"
+          - isOptional: false
+          - name: "priority"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          ▿ genericType: Optional<GenericTypeIR>
+            ▿ some: GenericTypeIR
+              ▿ object: 2 elements
+                ▿ ObjectFieldIR
+                  - genericType: Optional<GenericTypeIR>.none
+                  - isOptional: false
+                  - name: "createdBy"
+                  - type: FieldType.string
+                ▿ ObjectFieldIR
+                  - genericType: Optional<GenericTypeIR>.none
+                  - isOptional: false
+                  - name: "version"
+                  - type: FieldType.number
+          - isOptional: false
+          - name: "metadataInline"
+          - type: FieldType.json
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          ▿ genericType: Optional<GenericTypeIR>
+            ▿ some: GenericTypeIR
+              ▿ object: 2 elements
+                ▿ ObjectFieldIR
+                  - genericType: Optional<GenericTypeIR>.none
+                  - isOptional: false
+                  - name: "start"
+                  - type: FieldType.number
+                ▿ ObjectFieldIR
+                  - genericType: Optional<GenericTypeIR>.none
+                  - isOptional: false
+                  - name: "end"
+                  - type: FieldType.number
+          - isOptional: false
+          - name: "timestamp"
+          - type: FieldType.json
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          ▿ genericType: Optional<GenericTypeIR>
+            ▿ some: GenericTypeIR
+              ▿ object: 3 elements
+                ▿ ObjectFieldIR
+                  - genericType: Optional<GenericTypeIR>.none
+                  - isOptional: false
+                  - name: "id"
+                  - type: FieldType.string
+                ▿ ObjectFieldIR
+                  - genericType: Optional<GenericTypeIR>.none
+                  - isOptional: false
+                  - name: "name"
+                  - type: FieldType.string
+                ▿ ObjectFieldIR
+                  - genericType: Optional<GenericTypeIR>.none
+                  - isOptional: false
+                  - name: "confidence"
+                  - type: FieldType.number
+          - isOptional: true
+          - name: "speaker"
+          - type: FieldType.json
+      - name: "tasks"
+    ▿ EntityIR
+      - documentation: Optional<String>.none
+      ▿ fields: 6 elements
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
+          - isOptional: false
+          - name: "title"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          ▿ genericType: Optional<GenericTypeIR>
+            ▿ some: GenericTypeIR
+              ▿ stringUnion: 3 elements
+                - "audio"
+                - "video"
+                - "text"
+          - isOptional: false
+          - name: "mediaType"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          ▿ genericType: Optional<GenericTypeIR>
+            ▿ some: GenericTypeIR
+              ▿ array: GenericTypeIR
+                ▿ object: 4 elements
+                  ▿ ObjectFieldIR
+                    - genericType: Optional<GenericTypeIR>.none
+                    - isOptional: false
+                    - name: "text"
+                    - type: FieldType.string
+                  ▿ ObjectFieldIR
+                    - genericType: Optional<GenericTypeIR>.none
+                    - isOptional: false
+                    - name: "start"
+                    - type: FieldType.number
+                  ▿ ObjectFieldIR
+                    - genericType: Optional<GenericTypeIR>.none
+                    - isOptional: false
+                    - name: "end"
+                    - type: FieldType.number
+                  ▿ ObjectFieldIR
+                    - genericType: Optional<GenericTypeIR>.none
+                    - isOptional: false
+                    - name: "confidence"
+                    - type: FieldType.number
+          - isOptional: false
+          - name: "wordsBracket"
+          - type: FieldType.json
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          ▿ genericType: Optional<GenericTypeIR>
+            ▿ some: GenericTypeIR
+              ▿ array: GenericTypeIR
+                ▿ object: 4 elements
+                  ▿ ObjectFieldIR
+                    - genericType: Optional<GenericTypeIR>.none
+                    - isOptional: false
+                    - name: "text"
+                    - type: FieldType.string
+                  ▿ ObjectFieldIR
+                    - genericType: Optional<GenericTypeIR>.none
+                    - isOptional: false
+                    - name: "start"
+                    - type: FieldType.number
+                  ▿ ObjectFieldIR
+                    - genericType: Optional<GenericTypeIR>.none
+                    - isOptional: false
+                    - name: "end"
+                    - type: FieldType.number
+                  ▿ ObjectFieldIR
+                    - genericType: Optional<GenericTypeIR>.none
+                    - isOptional: false
+                    - name: "confidence"
+                    - type: FieldType.number
+          - isOptional: false
+          - name: "wordsGeneric"
+          - type: FieldType.json
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          ▿ genericType: Optional<GenericTypeIR>
+            ▿ some: GenericTypeIR
+              ▿ array: GenericTypeIR
+                ▿ object: 2 elements
+                  ▿ ObjectFieldIR
+                    - genericType: Optional<GenericTypeIR>.none
+                    - isOptional: false
+                    - name: "start"
+                    - type: FieldType.number
+                  ▿ ObjectFieldIR
+                    - genericType: Optional<GenericTypeIR>.none
+                    - isOptional: false
+                    - name: "end"
+                    - type: FieldType.number
+          - isOptional: false
+          - name: "timestampsInline"
+          - type: FieldType.json
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          ▿ genericType: Optional<GenericTypeIR>
+            ▿ some: GenericTypeIR
+              ▿ array: GenericTypeIR
+                ▿ object: 3 elements
+                  ▿ ObjectFieldIR
+                    - genericType: Optional<GenericTypeIR>.none
+                    - isOptional: false
+                    - name: "id"
+                    - type: FieldType.string
+                  ▿ ObjectFieldIR
+                    - genericType: Optional<GenericTypeIR>.none
+                    - isOptional: false
+                    - name: "name"
+                    - type: FieldType.string
+                  ▿ ObjectFieldIR
+                    - genericType: Optional<GenericTypeIR>.none
+                    - isOptional: false
+                    - name: "confidence"
+                    - type: FieldType.number
+          - isOptional: true
+          - name: "speakers"
+          - type: FieldType.json
+      - name: "media"
+    ▿ EntityIR
+      - documentation: Optional<String>.none
+      ▿ fields: 3 elements
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
+          - isOptional: false
+          - name: "text"
+          - type: FieldType.string
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          ▿ genericType: Optional<GenericTypeIR>
+            ▿ some: GenericTypeIR
+              ▿ object: 4 elements
+                ▿ ObjectFieldIR
+                  - genericType: Optional<GenericTypeIR>.none
+                  - isOptional: false
+                  - name: "source"
+                  - type: FieldType.string
+                ▿ ObjectFieldIR
+                  - genericType: Optional<GenericTypeIR>.none
+                  - isOptional: false
+                  - name: "language"
+                  - type: FieldType.string
+                ▿ ObjectFieldIR
+                  - genericType: Optional<GenericTypeIR>.none
+                  - isOptional: false
+                  - name: "confidence"
+                  - type: FieldType.number
+                ▿ ObjectFieldIR
+                  ▿ genericType: Optional<GenericTypeIR>
+                    ▿ some: GenericTypeIR
+                      ▿ object: 2 elements
+                        ▿ ObjectFieldIR
+                          - genericType: Optional<GenericTypeIR>.none
+                          - isOptional: false
+                          - name: "start"
+                          - type: FieldType.number
+                        ▿ ObjectFieldIR
+                          - genericType: Optional<GenericTypeIR>.none
+                          - isOptional: false
+                          - name: "end"
+                          - type: FieldType.number
+                  - isOptional: false
+                  - name: "timestamps"
+                  - type: FieldType.json
+          - isOptional: false
+          - name: "metadata"
+          - type: FieldType.json
+        ▿ FieldIR
+          - defaultValue: Optional<String>.none
+          - documentation: Optional<String>.none
+          ▿ genericType: Optional<GenericTypeIR>
+            ▿ some: GenericTypeIR
+              ▿ array: GenericTypeIR
+                ▿ object: 4 elements
+                  ▿ ObjectFieldIR
+                    - genericType: Optional<GenericTypeIR>.none
+                    - isOptional: false
+                    - name: "text"
+                    - type: FieldType.string
+                  ▿ ObjectFieldIR
+                    - genericType: Optional<GenericTypeIR>.none
+                    - isOptional: false
+                    - name: "speaker"
+                    - type: FieldType.number
+                  ▿ ObjectFieldIR
+                    - genericType: Optional<GenericTypeIR>.none
+                    - isOptional: false
+                    - name: "start"
+                    - type: FieldType.number
+                  ▿ ObjectFieldIR
+                    - genericType: Optional<GenericTypeIR>.none
+                    - isOptional: false
+                    - name: "end"
+                    - type: FieldType.number
+          - isOptional: false
+          - name: "segments"
+          - type: FieldType.json
+      - name: "transcriptions"
+  ▿ imports: 1 element
+    ▿ ImportDeclaration
+      - fromPath: "./ImportedTypes"
+      - isTypeOnly: false
+      ▿ namedImports: 2 elements
+        - "TaskPriority"
+        - "Word"
+  ▿ links: 2 elements
+    ▿ LinkIR
+      - documentation: Optional<String>.none
+      ▿ forward: LinkSide
+        - cardinality: Cardinality.many
+        - entityName: "tasks"
+        - label: "media"
+      - name: "taskMedia"
+      ▿ reverse: LinkSide
+        - cardinality: Cardinality.one
+        - entityName: "media"
+        - label: "task"
+    ▿ LinkIR
+      - documentation: Optional<String>.none
+      ▿ forward: LinkSide
+        - cardinality: Cardinality.one
+        - entityName: "media"
+        - label: "transcription"
+      - name: "mediaTranscription"
+      ▿ reverse: LinkSide
+        - cardinality: Cardinality.one
+        - entityName: "transcriptions"
+        - label: "media"
+  - rooms: 0 elements
+  ▿ sourceFile: Optional<String>
+    - some: "/Users/mlustig/Development/personal/instantdb/sharing-instant/.build/arm64-apple-macosx/debug/sharing-instant_InstantSchemaCodegenTests.bundle/Fixtures/GenericTypesSchema.ts"
+  ▿ typeAliases: 4 elements
+    ▿ TypeAliasIR
+      ▿ definition: GenericTypeIR
+        ▿ stringUnion: 4 elements
+          - "pending"
+          - "in_progress"
+          - "completed"
+          - "cancelled"
+      - isExported: true
+      - name: "TaskStatus"
+      ▿ sourceFile: Optional<String>
+        - some: "/Users/mlustig/Development/personal/instantdb/sharing-instant/.build/arm64-apple-macosx/debug/sharing-instant_InstantSchemaCodegenTests.bundle/Fixtures/GenericTypesSchema.ts"
+    ▿ TypeAliasIR
+      ▿ definition: GenericTypeIR
+        ▿ stringUnion: 3 elements
+          - "audio"
+          - "video"
+          - "text"
+      - isExported: true
+      - name: "MediaType"
+      ▿ sourceFile: Optional<String>
+        - some: "/Users/mlustig/Development/personal/instantdb/sharing-instant/.build/arm64-apple-macosx/debug/sharing-instant_InstantSchemaCodegenTests.bundle/Fixtures/GenericTypesSchema.ts"
+    ▿ TypeAliasIR
+      ▿ definition: GenericTypeIR
+        ▿ object: 2 elements
+          ▿ ObjectFieldIR
+            - genericType: Optional<GenericTypeIR>.none
+            - isOptional: false
+            - name: "start"
+            - type: FieldType.number
+          ▿ ObjectFieldIR
+            - genericType: Optional<GenericTypeIR>.none
+            - isOptional: false
+            - name: "end"
+            - type: FieldType.number
+      - isExported: true
+      - name: "Timestamp"
+      ▿ sourceFile: Optional<String>
+        - some: "/Users/mlustig/Development/personal/instantdb/sharing-instant/.build/arm64-apple-macosx/debug/sharing-instant_InstantSchemaCodegenTests.bundle/Fixtures/GenericTypesSchema.ts"
+    ▿ TypeAliasIR
+      ▿ definition: GenericTypeIR
+        ▿ object: 3 elements
+          ▿ ObjectFieldIR
+            - genericType: Optional<GenericTypeIR>.none
+            - isOptional: false
+            - name: "id"
+            - type: FieldType.string
+          ▿ ObjectFieldIR
+            - genericType: Optional<GenericTypeIR>.none
+            - isOptional: false
+            - name: "name"
+            - type: FieldType.string
+          ▿ ObjectFieldIR
+            - genericType: Optional<GenericTypeIR>.none
+            - isOptional: false
+            - name: "confidence"
+            - type: FieldType.number
+      - isExported: true
+      - name: "Speaker"
+      ▿ sourceFile: Optional<String>
+        - some: "/Users/mlustig/Development/personal/instantdb/sharing-instant/.build/arm64-apple-macosx/debug/sharing-instant_InstantSchemaCodegenTests.bundle/Fixtures/GenericTypesSchema.ts"

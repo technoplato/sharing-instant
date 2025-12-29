@@ -1,0 +1,13 @@
+# Maestro Configuration for SharingInstant CaseStudies App
+# 
+# This configuration sets up the test environment for running
+# bidirectional sync tests against the iOS app.
+
+appId: com.lustig.sharinginstant.Sharing-Instant-Examples
+name: SharingInstant CaseStudies
+
+# Environment variables for InstantDB Admin SDK
+env:
+  INSTANT_APP_ID: "b9319949-2f2d-410b-8f8a-6990177c1d44"
+  # Note: INSTANT_ADMIN_TOKEN should be set via environment or --env flag
+  DEBUG_ENDPOINT: "http://127.0.0.1:7243/ingest/b61a72ba-9985-415b-9c60-d4184ed05385"
