@@ -433,6 +433,29 @@ public indirect enum GenericTypeIR: Codable, Sendable, Equatable {
       return name
     }
   }
+  
+  /// Unwraps a typeAlias to get the underlying definition.
+  /// For non-typeAlias cases, returns self.
+  /// This is useful for tests and code that needs to inspect the actual type structure.
+  public var unwrapped: GenericTypeIR {
+    switch self {
+    case .typeAlias(_, let definition):
+      return definition.unwrapped
+    default:
+      return self
+    }
+  }
+  
+  /// The name of the type alias, if this is a typeAlias case.
+  /// Returns nil for other cases.
+  public var typeAliasName: String? {
+    switch self {
+    case .typeAlias(let name, _):
+      return name
+    default:
+      return nil
+    }
+  }
 }
 
 /// A field within an object type in a generic parameter.

@@ -113,8 +113,8 @@ final class GenericTypeParserTests: XCTestCase {
     let tasks = schema.entities.first { $0.name == "tasks" }!
     let statusField = tasks.fields.first { $0.name == "status" }!
     
-    // Type alias should be resolved to string union
-    guard case .stringUnion(let cases) = statusField.genericType else {
+    // Type alias should be resolved to string union (unwrap the typeAlias wrapper)
+    guard case .stringUnion(let cases) = statusField.genericType?.unwrapped else {
       XCTFail("Expected string union generic type (resolved from alias)")
       return
     }
@@ -145,7 +145,7 @@ final class GenericTypeParserTests: XCTestCase {
     let media = schema.entities.first { $0.name == "media" }!
     let mediaTypeField = media.fields.first { $0.name == "mediaType" }!
     
-    guard case .stringUnion(let cases) = mediaTypeField.genericType else {
+    guard case .stringUnion(let cases) = mediaTypeField.genericType?.unwrapped else {
       XCTFail("Expected string union generic type")
       return
     }
@@ -163,8 +163,8 @@ final class GenericTypeParserTests: XCTestCase {
     let tasks = schema.entities.first { $0.name == "tasks" }!
     let priorityField = tasks.fields.first { $0.name == "priority" }!
     
-    // Should resolve TaskPriority from ImportedTypes.ts
-    guard case .stringUnion(let cases) = priorityField.genericType else {
+    // Should resolve TaskPriority from ImportedTypes.ts (unwrap the typeAlias wrapper)
+    guard case .stringUnion(let cases) = priorityField.genericType?.unwrapped else {
       XCTFail("Expected string union generic type (resolved from import)")
       return
     }
@@ -269,7 +269,8 @@ final class GenericTypeParserTests: XCTestCase {
     let segments = schema.entities.first { $0.name == "segments" }!
     let timestampField = segments.fields.first { $0.name == "timestamp" }!
     
-    guard case .object(let fields) = timestampField.genericType else {
+    // Unwrap the typeAlias wrapper to get the underlying object type
+    guard case .object(let fields) = timestampField.genericType?.unwrapped else {
       XCTFail("Expected object generic type (resolved from alias)")
       return
     }
@@ -309,7 +310,8 @@ final class GenericTypeParserTests: XCTestCase {
       return
     }
     
-    guard case .object(let fields) = elementType else {
+    // Unwrap the typeAlias wrapper to get the underlying object type
+    guard case .object(let fields) = elementType.unwrapped else {
       XCTFail("Expected object element type")
       return
     }
@@ -345,7 +347,8 @@ final class GenericTypeParserTests: XCTestCase {
       return
     }
     
-    guard case .object(let fields) = elementType else {
+    // Unwrap the typeAlias wrapper to get the underlying object type
+    guard case .object(let fields) = elementType.unwrapped else {
       XCTFail("Expected object element type")
       return
     }

@@ -28,11 +28,14 @@
           - documentation: Optional<String>.none
           ▿ genericType: Optional<GenericTypeIR>
             ▿ some: GenericTypeIR
-              ▿ stringUnion: 4 elements
-                - "pending"
-                - "in_progress"
-                - "completed"
-                - "cancelled"
+              ▿ typeAlias: (2 elements)
+                - name: "TaskStatus"
+                ▿ definition: GenericTypeIR
+                  ▿ stringUnion: 4 elements
+                    - "pending"
+                    - "in_progress"
+                    - "completed"
+                    - "cancelled"
           - isOptional: false
           - name: "statusAlias"
           - type: FieldType.string
@@ -41,11 +44,14 @@
           - documentation: Optional<String>.none
           ▿ genericType: Optional<GenericTypeIR>
             ▿ some: GenericTypeIR
-              ▿ stringUnion: 4 elements
-                - "low"
-                - "medium"
-                - "high"
-                - "urgent"
+              ▿ typeAlias: (2 elements)
+                - name: "TaskPriority"
+                ▿ definition: GenericTypeIR
+                  ▿ stringUnion: 4 elements
+                    - "low"
+                    - "medium"
+                    - "high"
+                    - "urgent"
           - isOptional: false
           - name: "priority"
           - type: FieldType.string
@@ -73,17 +79,20 @@
           - documentation: Optional<String>.none
           ▿ genericType: Optional<GenericTypeIR>
             ▿ some: GenericTypeIR
-              ▿ object: 2 elements
-                ▿ ObjectFieldIR
-                  - genericType: Optional<GenericTypeIR>.none
-                  - isOptional: false
-                  - name: "start"
-                  - type: FieldType.number
-                ▿ ObjectFieldIR
-                  - genericType: Optional<GenericTypeIR>.none
-                  - isOptional: false
-                  - name: "end"
-                  - type: FieldType.number
+              ▿ typeAlias: (2 elements)
+                - name: "Timestamp"
+                ▿ definition: GenericTypeIR
+                  ▿ object: 2 elements
+                    ▿ ObjectFieldIR
+                      - genericType: Optional<GenericTypeIR>.none
+                      - isOptional: false
+                      - name: "start"
+                      - type: FieldType.number
+                    ▿ ObjectFieldIR
+                      - genericType: Optional<GenericTypeIR>.none
+                      - isOptional: false
+                      - name: "end"
+                      - type: FieldType.number
           - isOptional: false
           - name: "timestamp"
           - type: FieldType.json
@@ -92,22 +101,25 @@
           - documentation: Optional<String>.none
           ▿ genericType: Optional<GenericTypeIR>
             ▿ some: GenericTypeIR
-              ▿ object: 3 elements
-                ▿ ObjectFieldIR
-                  - genericType: Optional<GenericTypeIR>.none
-                  - isOptional: false
-                  - name: "id"
-                  - type: FieldType.string
-                ▿ ObjectFieldIR
-                  - genericType: Optional<GenericTypeIR>.none
-                  - isOptional: false
-                  - name: "name"
-                  - type: FieldType.string
-                ▿ ObjectFieldIR
-                  - genericType: Optional<GenericTypeIR>.none
-                  - isOptional: false
-                  - name: "confidence"
-                  - type: FieldType.number
+              ▿ typeAlias: (2 elements)
+                - name: "Speaker"
+                ▿ definition: GenericTypeIR
+                  ▿ object: 3 elements
+                    ▿ ObjectFieldIR
+                      - genericType: Optional<GenericTypeIR>.none
+                      - isOptional: false
+                      - name: "id"
+                      - type: FieldType.string
+                    ▿ ObjectFieldIR
+                      - genericType: Optional<GenericTypeIR>.none
+                      - isOptional: false
+                      - name: "name"
+                      - type: FieldType.string
+                    ▿ ObjectFieldIR
+                      - genericType: Optional<GenericTypeIR>.none
+                      - isOptional: false
+                      - name: "confidence"
+                      - type: FieldType.number
           - isOptional: true
           - name: "speaker"
           - type: FieldType.json
@@ -127,10 +139,13 @@
           - documentation: Optional<String>.none
           ▿ genericType: Optional<GenericTypeIR>
             ▿ some: GenericTypeIR
-              ▿ stringUnion: 3 elements
-                - "audio"
-                - "video"
-                - "text"
+              ▿ typeAlias: (2 elements)
+                - name: "MediaType"
+                ▿ definition: GenericTypeIR
+                  ▿ stringUnion: 3 elements
+                    - "audio"
+                    - "video"
+                    - "text"
           - isOptional: false
           - name: "mediaType"
           - type: FieldType.string
@@ -140,27 +155,30 @@
           ▿ genericType: Optional<GenericTypeIR>
             ▿ some: GenericTypeIR
               ▿ array: GenericTypeIR
-                ▿ object: 4 elements
-                  ▿ ObjectFieldIR
-                    - genericType: Optional<GenericTypeIR>.none
-                    - isOptional: false
-                    - name: "text"
-                    - type: FieldType.string
-                  ▿ ObjectFieldIR
-                    - genericType: Optional<GenericTypeIR>.none
-                    - isOptional: false
-                    - name: "start"
-                    - type: FieldType.number
-                  ▿ ObjectFieldIR
-                    - genericType: Optional<GenericTypeIR>.none
-                    - isOptional: false
-                    - name: "end"
-                    - type: FieldType.number
-                  ▿ ObjectFieldIR
-                    - genericType: Optional<GenericTypeIR>.none
-                    - isOptional: false
-                    - name: "confidence"
-                    - type: FieldType.number
+                ▿ typeAlias: (2 elements)
+                  - name: "Word"
+                  ▿ definition: GenericTypeIR
+                    ▿ object: 4 elements
+                      ▿ ObjectFieldIR
+                        - genericType: Optional<GenericTypeIR>.none
+                        - isOptional: false
+                        - name: "text"
+                        - type: FieldType.string
+                      ▿ ObjectFieldIR
+                        - genericType: Optional<GenericTypeIR>.none
+                        - isOptional: false
+                        - name: "start"
+                        - type: FieldType.number
+                      ▿ ObjectFieldIR
+                        - genericType: Optional<GenericTypeIR>.none
+                        - isOptional: false
+                        - name: "end"
+                        - type: FieldType.number
+                      ▿ ObjectFieldIR
+                        - genericType: Optional<GenericTypeIR>.none
+                        - isOptional: false
+                        - name: "confidence"
+                        - type: FieldType.number
           - isOptional: false
           - name: "wordsBracket"
           - type: FieldType.json
@@ -170,27 +188,30 @@
           ▿ genericType: Optional<GenericTypeIR>
             ▿ some: GenericTypeIR
               ▿ array: GenericTypeIR
-                ▿ object: 4 elements
-                  ▿ ObjectFieldIR
-                    - genericType: Optional<GenericTypeIR>.none
-                    - isOptional: false
-                    - name: "text"
-                    - type: FieldType.string
-                  ▿ ObjectFieldIR
-                    - genericType: Optional<GenericTypeIR>.none
-                    - isOptional: false
-                    - name: "start"
-                    - type: FieldType.number
-                  ▿ ObjectFieldIR
-                    - genericType: Optional<GenericTypeIR>.none
-                    - isOptional: false
-                    - name: "end"
-                    - type: FieldType.number
-                  ▿ ObjectFieldIR
-                    - genericType: Optional<GenericTypeIR>.none
-                    - isOptional: false
-                    - name: "confidence"
-                    - type: FieldType.number
+                ▿ typeAlias: (2 elements)
+                  - name: "Word"
+                  ▿ definition: GenericTypeIR
+                    ▿ object: 4 elements
+                      ▿ ObjectFieldIR
+                        - genericType: Optional<GenericTypeIR>.none
+                        - isOptional: false
+                        - name: "text"
+                        - type: FieldType.string
+                      ▿ ObjectFieldIR
+                        - genericType: Optional<GenericTypeIR>.none
+                        - isOptional: false
+                        - name: "start"
+                        - type: FieldType.number
+                      ▿ ObjectFieldIR
+                        - genericType: Optional<GenericTypeIR>.none
+                        - isOptional: false
+                        - name: "end"
+                        - type: FieldType.number
+                      ▿ ObjectFieldIR
+                        - genericType: Optional<GenericTypeIR>.none
+                        - isOptional: false
+                        - name: "confidence"
+                        - type: FieldType.number
           - isOptional: false
           - name: "wordsGeneric"
           - type: FieldType.json
@@ -220,22 +241,25 @@
           ▿ genericType: Optional<GenericTypeIR>
             ▿ some: GenericTypeIR
               ▿ array: GenericTypeIR
-                ▿ object: 3 elements
-                  ▿ ObjectFieldIR
-                    - genericType: Optional<GenericTypeIR>.none
-                    - isOptional: false
-                    - name: "id"
-                    - type: FieldType.string
-                  ▿ ObjectFieldIR
-                    - genericType: Optional<GenericTypeIR>.none
-                    - isOptional: false
-                    - name: "name"
-                    - type: FieldType.string
-                  ▿ ObjectFieldIR
-                    - genericType: Optional<GenericTypeIR>.none
-                    - isOptional: false
-                    - name: "confidence"
-                    - type: FieldType.number
+                ▿ typeAlias: (2 elements)
+                  - name: "Speaker"
+                  ▿ definition: GenericTypeIR
+                    ▿ object: 3 elements
+                      ▿ ObjectFieldIR
+                        - genericType: Optional<GenericTypeIR>.none
+                        - isOptional: false
+                        - name: "id"
+                        - type: FieldType.string
+                      ▿ ObjectFieldIR
+                        - genericType: Optional<GenericTypeIR>.none
+                        - isOptional: false
+                        - name: "name"
+                        - type: FieldType.string
+                      ▿ ObjectFieldIR
+                        - genericType: Optional<GenericTypeIR>.none
+                        - isOptional: false
+                        - name: "confidence"
+                        - type: FieldType.number
           - isOptional: true
           - name: "speakers"
           - type: FieldType.json
