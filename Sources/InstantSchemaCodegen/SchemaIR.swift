@@ -409,10 +409,16 @@ public indirect enum GenericTypeIR: Codable, Sendable, Equatable {
   /// This is an error state - should be resolved before code generation
   case unresolved(String)
   
+  /// A resolved type alias - preserves the original name for code generation
+  /// The name is used for generating the Swift type name, and the definition
+  /// contains the actual type structure for generating the type body.
+  case typeAlias(name: String, definition: GenericTypeIR)
+  
   /// The Swift type name for this generic type
   /// - For stringUnion: generates an enum name based on context
   /// - For object: generates a struct name based on context
   /// - For array: wraps the element type in brackets
+  /// - For typeAlias: uses the preserved type alias name
   public func swiftTypeName(context: String) -> String {
     switch self {
     case .stringUnion:
@@ -422,6 +428,8 @@ public indirect enum GenericTypeIR: Codable, Sendable, Equatable {
     case .array(let elementType):
       return "[\(elementType.swiftTypeName(context: context))]"
     case .unresolved(let name):
+      return name
+    case .typeAlias(let name, _):
       return name
     }
   }

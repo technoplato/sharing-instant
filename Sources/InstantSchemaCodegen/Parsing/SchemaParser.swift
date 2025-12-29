@@ -606,7 +606,8 @@ public struct SwiftParsingSchemaParser {
     case .unresolved(let typeName):
       // Try to resolve from symbol table
       if let resolved = symbolTable.resolve(typeName) {
-        return resolved
+        // Wrap the resolved type in a typeAlias case to preserve the name
+        return .typeAlias(name: typeName, definition: resolved)
       }
       
       // Type not found - throw helpful error
@@ -647,6 +648,10 @@ public struct SwiftParsingSchemaParser {
       
     case .stringUnion:
       // String unions don't need resolution
+      return type
+      
+    case .typeAlias:
+      // Already resolved
       return type
     }
   }
