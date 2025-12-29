@@ -258,7 +258,7 @@ public struct SwiftCodeGenerator {
     for entity in schema.entities {
       for field in entity.fields {
         if let genericType = field.genericType {
-          collectAndGenerateTypes(from: genericType, fieldName: field.name, entityName: entity.name)
+          collectAndGenerateTypes(from: genericType, fieldName: field.name, entityName: entity.swiftTypeName)
         }
       }
     }
@@ -300,7 +300,7 @@ public struct SwiftCodeGenerator {
     
     // Fields
     for field in entity.fields {
-      output += generateField(field)
+      output += generateField(field, entityTypeName: entity.swiftTypeName)
     }
     
     // Links (as optional properties)
@@ -340,7 +340,7 @@ public struct SwiftCodeGenerator {
     return output
   }
   
-  private func generateField(_ field: FieldIR) -> String {
+  private func generateField(_ field: FieldIR, entityTypeName: String) -> String {
     let access = configuration.accessLevel.rawValue
     var output = ""
     
@@ -350,7 +350,7 @@ public struct SwiftCodeGenerator {
     }
     
     // Determine the Swift type based on generic type info
-    let swiftType = swiftTypeForField(field)
+    let swiftType = swiftTypeForField(field, entityTypeName: entityTypeName)
     
     // Property declaration
     let optionalMark = field.isOptional ? "?" : ""
@@ -360,23 +360,36 @@ public struct SwiftCodeGenerator {
   }
   
   /// Determine the Swift type for a field, considering generic type info
-  private func swiftTypeForField(_ field: FieldIR) -> String {
+  private func swiftTypeForField(_ field: FieldIR, entityTypeName: String) -> String {
     guard let genericType = field.genericType else {
       return field.type.swiftType
     }
     
-    return swiftTypeForGeneric(genericType, fieldName: field.name, entityName: "")
+    return swiftTypeForGeneric(genericType, fieldName: field.name, entityName: entityTypeName)
   }
   
   /// Determine the Swift type for a generic type
+  /// 
+  /// For inline types (stringUnion, object), generates a name from the entity and field names.
+  /// For type aliases, uses the preserved alias name.
   private func swiftTypeForGeneric(_ genericType: GenericTypeIR, fieldName: String, entityName: String) -> String {
     switch genericType {
     case .stringUnion:
-      // Generate enum name from field name
+      // Generate enum name from entity name + field name for inline types
+      // e.g., tasks.status → TaskStatus
+      if !entityName.isEmpty {
+        let fieldPart = fieldName.prefix(1).uppercased() + fieldName.dropFirst()
+        return entityName + fieldPart
+      }
       return fieldName.prefix(1).uppercased() + fieldName.dropFirst()
       
     case .object:
-      // Generate struct name from field name
+      // Generate struct name from entity name + field name for inline types
+      // e.g., tasks.metadata → TaskMetadata
+      if !entityName.isEmpty {
+        let fieldPart = fieldName.prefix(1).uppercased() + fieldName.dropFirst()
+        return entityName + fieldPart
+      }
       return fieldName.prefix(1).uppercased() + fieldName.dropFirst()
       
     case .array(let elementType):
@@ -657,7 +670,7 @@ public struct SwiftCodeGenerator {
     
     // Fields
     for field in entity.fields {
-      let type = swiftTypeForField(field) + (field.isOptional ? "?" : "")
+      let type = swiftTypeForField(field, entityTypeName: entity.swiftTypeName) + (field.isOptional ? "?" : "")
       let defaultValue = field.isOptional ? "nil" : field.defaultValue
       params.append((name: field.name, type: type, defaultValue: defaultValue))
     }
