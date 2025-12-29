@@ -67,6 +67,8 @@ struct ObservableModelDemo: SwiftUICaseStudy {
         LabeledContent("Remaining", value: "\(model.remainingCount)")
       }
     }
+    .onAppear {
+    }
   }
 }
 

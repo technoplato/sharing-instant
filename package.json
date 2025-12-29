@@ -1,6 +1,13 @@
 {
   "dependencies": {
+    "@instantdb/admin": "^0.22.96",
     "@instantdb/core": "^0.22.96",
     "ts-node": "^10.9.2"
+  },
+  "scripts": {
+    "nested-links:seed": "npx ts-node scripts/nested-links-test-helper.ts --action seed",
+    "nested-links:verify": "npx ts-node scripts/nested-links-test-helper.ts --action verify",
+    "nested-links:verify-writes": "npx ts-node scripts/nested-links-test-helper.ts --action verify-writes",
+    "nested-links:cleanup": "npx ts-node scripts/nested-links-test-helper.ts --action cleanup"
   }
 }

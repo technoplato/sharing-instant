@@ -55,6 +55,34 @@
 import Foundation
 @preconcurrency import Parsing
 
+// MARK: - Unsupported Pattern Errors
+
+/// Errors for unsupported TypeScript type patterns.
+///
+/// These errors are thrown when the parser encounters valid TypeScript
+/// that we don't support in code generation.
+public enum UnsupportedTypePatternError: Error, LocalizedError {
+  /// Intersection types (TypeA & TypeB) are not supported
+  case intersectionType
+  
+  /// Conditional types (T extends U ? X : Y) are not supported
+  case conditionalType
+  
+  /// Mapped types ({ [K in keyof T]: ... }) are not supported
+  case mappedType
+  
+  public var errorDescription: String? {
+    switch self {
+    case .intersectionType:
+      return "Intersection types (TypeA & TypeB) are not supported. Use a single object type instead."
+    case .conditionalType:
+      return "Conditional types (T extends U ? X : Y) are not supported."
+    case .mappedType:
+      return "Mapped types ({ [K in keyof T]: ... }) are not supported."
+    }
+  }
+}
+
 // MARK: - Whitespace Parsers
 
 /// Parses optional horizontal whitespace (spaces and tabs only, NOT newlines).
@@ -841,6 +869,473 @@ public struct Colon: Parser {
     }
     input.removeFirst()
     try OptionalWhitespace().parse(&input)
+  }
+}
+
+// MARK: - Import Parser
+
+/// Parses a TypeScript import declaration.
+///
+/// ## What It Parses
+///
+/// ```typescript
+/// import { i } from "@instantdb/core";
+/// import { TaskPriority, Word } from "./types";
+/// import type { MyType } from "./my-types";
+/// ```
+///
+/// ## Output
+///
+/// Returns an `ImportDeclaration` with the named imports and source path.
+///
+/// ```swift
+/// try ImportParser().parse("import { A, B } from \"./types\";")
+/// // Returns: ImportDeclaration(namedImports: ["A", "B"], fromPath: "./types")
+/// ```
+///
+/// ## Why This Exists
+///
+/// Import declarations are needed to resolve type references.
+/// When we see `i.string<MyType>()`, we need to know where MyType comes from.
+public struct ImportParser: Parser {
+  public init() {}
+  
+  public func parse(_ input: inout Substring) throws -> ImportDeclaration {
+    try SkipWhitespaceAndComments().parse(&input)
+    
+    // Check for "import"
+    guard input.hasPrefix("import") else {
+      struct ExpectedImport: Error {}
+      throw ExpectedImport()
+    }
+    input.removeFirst(6) // "import"
+    
+    try RequiredWhitespace().parse(&input)
+    
+    // Check for "type" (import type { ... })
+    var isTypeOnly = false
+    if input.hasPrefix("type") {
+      isTypeOnly = true
+      input.removeFirst(4)
+      try RequiredWhitespace().parse(&input)
+    }
+    
+    // Parse { A, B, C }
+    guard input.first == "{" else {
+      struct ExpectedOpenBrace: Error {}
+      throw ExpectedOpenBrace()
+    }
+    input.removeFirst()
+    
+    var namedImports: [String] = []
+    try SkipWhitespaceAndComments().parse(&input)
+    
+    while !input.hasPrefix("}") && !input.isEmpty {
+      let name = try Identifier().parse(&input)
+      namedImports.append(name)
+      
+      try SkipWhitespaceAndComments().parse(&input)
+      
+      // Optional comma
+      if input.first == "," {
+        input.removeFirst()
+        try SkipWhitespaceAndComments().parse(&input)
+      }
+    }
+    
+    guard input.first == "}" else {
+      struct ExpectedCloseBrace: Error {}
+      throw ExpectedCloseBrace()
+    }
+    input.removeFirst()
+    
+    try RequiredWhitespace().parse(&input)
+    
+    // Parse "from"
+    guard input.hasPrefix("from") else {
+      struct ExpectedFrom: Error {}
+      throw ExpectedFrom()
+    }
+    input.removeFirst(4)
+    
+    try RequiredWhitespace().parse(&input)
+    
+    // Parse the path string
+    let fromPath = try StringLiteral().parse(&input)
+    
+    try SkipWhitespaceAndComments().parse(&input)
+    
+    // Optional semicolon
+    if input.first == ";" {
+      input.removeFirst()
+    }
+    
+    return ImportDeclaration(
+      namedImports: namedImports,
+      fromPath: fromPath,
+      isTypeOnly: isTypeOnly
+    )
+  }
+}
+
+// MARK: - Type Alias Parser
+
+/// Parses a TypeScript type alias declaration.
+///
+/// ## What It Parses
+///
+/// ```typescript
+/// type Status = "pending" | "active" | "completed";
+/// export type MediaType = "audio" | "video" | "text";
+/// type Word = { text: string, start: number, end: number };
+/// ```
+///
+/// ## Output
+///
+/// Returns a `TypeAliasIR` with the type name and definition.
+///
+/// ```swift
+/// try TypeAliasParser().parse("type Status = \"pending\" | \"active\";")
+/// // Returns: TypeAliasIR(name: "Status", definition: .stringUnion(["pending", "active"]))
+/// ```
+///
+/// ## Why This Exists
+///
+/// Type aliases define reusable types that can be referenced in the schema.
+/// When we see `i.string<Status>()`, we need to resolve Status to its definition.
+public struct TypeAliasParser: Parser {
+  public init() {}
+  
+  public func parse(_ input: inout Substring) throws -> TypeAliasIR {
+    try SkipWhitespaceAndComments().parse(&input)
+    
+    // Check for "export"
+    var isExported = false
+    if input.hasPrefix("export") {
+      isExported = true
+      input.removeFirst(6)
+      try RequiredWhitespace().parse(&input)
+    }
+    
+    // Check for "type"
+    guard input.hasPrefix("type") else {
+      struct ExpectedType: Error {}
+      throw ExpectedType()
+    }
+    input.removeFirst(4)
+    
+    try RequiredWhitespace().parse(&input)
+    
+    // Parse the type name
+    let name = try Identifier().parse(&input)
+    
+    try SkipWhitespaceAndComments().parse(&input)
+    
+    // Parse "="
+    guard input.first == "=" else {
+      struct ExpectedEquals: Error {}
+      throw ExpectedEquals()
+    }
+    input.removeFirst()
+    
+    try SkipWhitespaceAndComments().parse(&input)
+    
+    // Parse the type definition
+    let definition = try GenericTypeParser().parse(&input)
+    
+    try SkipWhitespaceAndComments().parse(&input)
+    
+    // Optional semicolon
+    if input.first == ";" {
+      input.removeFirst()
+    }
+    
+    return TypeAliasIR(
+      name: name,
+      definition: definition,
+      isExported: isExported
+    )
+  }
+}
+
+// MARK: - Generic Type Parser
+
+/// Parses a generic type expression.
+///
+/// ## What It Parses
+///
+/// ```typescript
+/// "pending" | "active" | "completed"  // String union
+/// { text: string, start: number }     // Object type
+/// Word[]                              // Array (bracket syntax)
+/// Array<Word>                         // Array (generic syntax)
+/// MyTypeAlias                         // Type reference
+/// ```
+///
+/// ## Output
+///
+/// Returns a `GenericTypeIR` representing the parsed type.
+///
+/// ## Why This Exists
+///
+/// Generic types appear in two places:
+/// 1. Type alias definitions: `type Status = "pending" | "active"`
+/// 2. Field type parameters: `i.string<"pending" | "active">()`
+public struct GenericTypeParser: Parser {
+  public init() {}
+  
+  public func parse(_ input: inout Substring) throws -> GenericTypeIR {
+    try SkipWhitespaceAndComments().parse(&input)
+    
+    // Check what kind of type this is
+    let result: GenericTypeIR
+    if input.first == "\"" || input.first == "'" {
+      // String literal - start of a string union
+      result = try parseStringUnion(&input)
+    } else if input.first == "{" {
+      // Object type
+      result = try parseObjectType(&input)
+    } else if input.hasPrefix("Array<") {
+      // Array<T> syntax
+      result = try parseArrayGenericSyntax(&input)
+    } else {
+      // Type reference (identifier) - could be followed by []
+      let typeName = try Identifier().parse(&input)
+      try SkipWhitespaceAndComments().parse(&input)
+      
+      // Check for array suffix []
+      if input.hasPrefix("[]") {
+        input.removeFirst(2)
+        // This is an array of the referenced type
+        result = .array(.unresolved(typeName))
+      } else {
+        // Plain type reference
+        result = .unresolved(typeName)
+      }
+    }
+    
+    // Check for intersection type operator (&) - not supported
+    try SkipWhitespaceAndComments().parse(&input)
+    if input.first == "&" {
+      throw UnsupportedTypePatternError.intersectionType
+    }
+    
+    return result
+  }
+  
+  /// Parse a string union: "a" | "b" | "c"
+  private func parseStringUnion(_ input: inout Substring) throws -> GenericTypeIR {
+    var cases: [String] = []
+    
+    // Parse first string literal
+    let firstCase = try StringLiteral().parse(&input)
+    cases.append(firstCase)
+    
+    try SkipWhitespaceAndComments().parse(&input)
+    
+    // Parse remaining cases separated by |
+    while input.first == "|" {
+      input.removeFirst()
+      try SkipWhitespaceAndComments().parse(&input)
+      
+      let nextCase = try StringLiteral().parse(&input)
+      cases.append(nextCase)
+      
+      try SkipWhitespaceAndComments().parse(&input)
+    }
+    
+    return .stringUnion(cases)
+  }
+  
+  /// Parse an object type: { field: type, ... }
+  private func parseObjectType(_ input: inout Substring) throws -> GenericTypeIR {
+    guard input.first == "{" else {
+      struct ExpectedOpenBrace: Error {}
+      throw ExpectedOpenBrace()
+    }
+    input.removeFirst()
+    
+    var fields: [ObjectFieldIR] = []
+    try SkipWhitespaceAndComments().parse(&input)
+    
+    while !input.hasPrefix("}") && !input.isEmpty {
+      let field = try parseObjectField(&input)
+      fields.append(field)
+      
+      try SkipWhitespaceAndComments().parse(&input)
+      
+      // Optional comma or semicolon
+      if input.first == "," || input.first == ";" {
+        input.removeFirst()
+        try SkipWhitespaceAndComments().parse(&input)
+      }
+    }
+    
+    guard input.first == "}" else {
+      struct ExpectedCloseBrace: Error {}
+      throw ExpectedCloseBrace()
+    }
+    input.removeFirst()
+    
+    // Check for array suffix []
+    try SkipWhitespaceAndComments().parse(&input)
+    if input.hasPrefix("[]") {
+      input.removeFirst(2)
+      return .array(.object(fields))
+    }
+    
+    return .object(fields)
+  }
+  
+  /// Parse a single field in an object type: fieldName: type or fieldName?: type
+  private func parseObjectField(_ input: inout Substring) throws -> ObjectFieldIR {
+    let name = try Identifier().parse(&input)
+    
+    try SkipWhitespaceAndComments().parse(&input)
+    
+    // Check for optional marker (?)
+    var isOptional = false
+    if input.first == "?" {
+      isOptional = true
+      input.removeFirst()
+    }
+    
+    try Colon().parse(&input)
+    
+    // Parse the field type
+    let (fieldType, genericType) = try parseFieldType(&input)
+    
+    return ObjectFieldIR(
+      name: name,
+      type: fieldType,
+      isOptional: isOptional,
+      genericType: genericType
+    )
+  }
+  
+  /// Parse a field type within an object: string, number, boolean, or nested type
+  private func parseFieldType(_ input: inout Substring) throws -> (FieldType, GenericTypeIR?) {
+    try SkipWhitespaceAndComments().parse(&input)
+    
+    // Check for nested object type
+    if input.first == "{" {
+      let objectType = try parseObjectType(&input)
+      return (.json, objectType)
+    }
+    
+    // Parse type name
+    let typeName = try Identifier().parse(&input)
+    
+    try SkipWhitespaceAndComments().parse(&input)
+    
+    // Check for array suffix []
+    if input.hasPrefix("[]") {
+      input.removeFirst(2)
+      let elementType = mapTypeScriptToFieldType(typeName)
+      if elementType == .json {
+        // Unknown type - treat as reference
+        return (.json, .array(.unresolved(typeName)))
+      } else {
+        // Primitive array
+        return (.json, .array(.object([ObjectFieldIR(name: "_element", type: elementType)])))
+      }
+    }
+    
+    // Map TypeScript type to FieldType
+    let fieldType = mapTypeScriptToFieldType(typeName)
+    
+    // If it's an unknown type, it might be a reference
+    if fieldType == .json && !["any", "object", "unknown"].contains(typeName.lowercased()) {
+      return (.json, .unresolved(typeName))
+    }
+    
+    return (fieldType, nil)
+  }
+  
+  /// Map TypeScript type name to FieldType
+  private func mapTypeScriptToFieldType(_ typeName: String) -> FieldType {
+    switch typeName.lowercased() {
+    case "string": return .string
+    case "number": return .number
+    case "boolean", "bool": return .boolean
+    case "date": return .date
+    default: return .json
+    }
+  }
+  
+  /// Parse Array<T> syntax
+  private func parseArrayGenericSyntax(_ input: inout Substring) throws -> GenericTypeIR {
+    guard input.hasPrefix("Array<") else {
+      struct ExpectedArray: Error {}
+      throw ExpectedArray()
+    }
+    input.removeFirst(6) // "Array<"
+    
+    try SkipWhitespaceAndComments().parse(&input)
+    
+    // Parse the element type
+    let elementType = try parse(&input)
+    
+    try SkipWhitespaceAndComments().parse(&input)
+    
+    guard input.first == ">" else {
+      struct ExpectedClosingAngleBracket: Error {}
+      throw ExpectedClosingAngleBracket()
+    }
+    input.removeFirst()
+    
+    return .array(elementType)
+  }
+}
+
+// MARK: - Generic Parameter Parser
+
+/// Parses the generic type parameter from a field type: <T> in i.string<T>()
+///
+/// ## What It Parses
+///
+/// ```typescript
+/// <"pending" | "active">
+/// <{ text: string, start: number }>
+/// <Word[]>
+/// <Array<Word>>
+/// ```
+///
+/// ## Output
+///
+/// Returns a `GenericTypeIR` or nil if no generic parameter.
+///
+/// ## Why This Exists
+///
+/// Field types can have optional generic parameters that provide more
+/// specific type information than the base type.
+public struct GenericParameterParser: Parser {
+  public init() {}
+  
+  public func parse(_ input: inout Substring) throws -> GenericTypeIR? {
+    try SkipWhitespaceAndComments().parse(&input)
+    
+    // Check for opening <
+    guard input.first == "<" else {
+      return nil
+    }
+    input.removeFirst()
+    
+    try SkipWhitespaceAndComments().parse(&input)
+    
+    // Parse the type inside
+    let genericType = try GenericTypeParser().parse(&input)
+    
+    try SkipWhitespaceAndComments().parse(&input)
+    
+    // Expect closing >
+    guard input.first == ">" else {
+      struct ExpectedClosingAngleBracket: Error {}
+      throw ExpectedClosingAngleBracket()
+    }
+    input.removeFirst()
+    
+    return genericType
   }
 }
 

@@ -7,42 +7,49 @@
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "name"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "email"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "memberSince"
           - type: FieldType.date
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "isActive"
           - type: FieldType.boolean
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "phoneNumber"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "currentBorrowCount"
           - type: FieldType.number
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "preferences"
           - type: FieldType.json
@@ -53,30 +60,35 @@
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "name"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "bio"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "birthYear"
           - type: FieldType.number
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "isActive"
           - type: FieldType.boolean
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "bookCount"
           - type: FieldType.number
@@ -87,48 +99,56 @@
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "title"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "isbn"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "publicationYear"
           - type: FieldType.number
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "pageCount"
           - type: FieldType.number
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "description"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "averageRating"
           - type: FieldType.number
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "availableCopies"
           - type: FieldType.number
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "metadata"
           - type: FieldType.json
@@ -139,24 +159,28 @@
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "name"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "code"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "description"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "bookCount"
           - type: FieldType.number
@@ -167,28 +191,33 @@
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "borrowedAt"
           - type: FieldType.date
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "dueAt"
           - type: FieldType.date
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "returnedAt"
           - type: FieldType.date
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "lateFeeInCents"
           - type: FieldType.number
       - name: "borrowRecords"
+  - imports: 0 elements
   ▿ links: 7 elements
     ▿ LinkIR
       - documentation: Optional<String>.none
@@ -270,3 +299,4 @@
   - rooms: 0 elements
   ▿ sourceFile: Optional<String>
     - some: "LibrarySchema.ts"
+  - typeAliases: 0 elements

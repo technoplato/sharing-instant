@@ -391,38 +391,71 @@ final class ParserUnitTests: XCTestCase {
   
   func testFieldTypeParser_string_parses() throws {
     var input: Substring = "i.string() next"
-    let result = try FieldTypeParser().parse(&input)
-    XCTAssertEqual(result, .string)
+    let (fieldType, genericType) = try FieldTypeParser().parse(&input)
+    XCTAssertEqual(fieldType, .string)
+    XCTAssertNil(genericType)
     XCTAssertEqual(input, " next")
   }
   
   func testFieldTypeParser_number_parses() throws {
     var input: Substring = "i.number()"
-    let result = try FieldTypeParser().parse(&input)
-    XCTAssertEqual(result, .number)
+    let (fieldType, genericType) = try FieldTypeParser().parse(&input)
+    XCTAssertEqual(fieldType, .number)
+    XCTAssertNil(genericType)
   }
   
   func testFieldTypeParser_boolean_parses() throws {
     var input: Substring = "i.boolean()"
-    let result = try FieldTypeParser().parse(&input)
-    XCTAssertEqual(result, .boolean)
+    let (fieldType, genericType) = try FieldTypeParser().parse(&input)
+    XCTAssertEqual(fieldType, .boolean)
+    XCTAssertNil(genericType)
   }
   
   func testFieldTypeParser_date_parses() throws {
     var input: Substring = "i.date()"
-    let result = try FieldTypeParser().parse(&input)
-    XCTAssertEqual(result, .date)
+    let (fieldType, genericType) = try FieldTypeParser().parse(&input)
+    XCTAssertEqual(fieldType, .date)
+    XCTAssertNil(genericType)
   }
   
   func testFieldTypeParser_json_parses() throws {
     var input: Substring = "i.json()"
-    let result = try FieldTypeParser().parse(&input)
-    XCTAssertEqual(result, .json)
+    let (fieldType, genericType) = try FieldTypeParser().parse(&input)
+    XCTAssertEqual(fieldType, .json)
+    XCTAssertNil(genericType)
   }
   
   func testFieldTypeParser_unknownType_fails() throws {
     var input: Substring = "i.unknown()"
     XCTAssertThrowsError(try FieldTypeParser().parse(&input))
+  }
+  
+  // MARK: - Field Type Parser with Generics Tests
+  
+  func testFieldTypeParser_stringWithGeneric_parses() throws {
+    var input: Substring = "i.string<\"a\" | \"b\" | \"c\">()"
+    let (fieldType, genericType) = try FieldTypeParser().parse(&input)
+    XCTAssertEqual(fieldType, .string)
+    XCTAssertNotNil(genericType)
+    
+    guard case .stringUnion(let cases) = genericType else {
+      XCTFail("Expected string union generic type")
+      return
+    }
+    XCTAssertEqual(cases.sorted(), ["a", "b", "c"])
+  }
+  
+  func testFieldTypeParser_jsonWithObject_parses() throws {
+    var input: Substring = "i.json<{ name: string, value: number }>()"
+    let (fieldType, genericType) = try FieldTypeParser().parse(&input)
+    XCTAssertEqual(fieldType, .json)
+    XCTAssertNotNil(genericType)
+    
+    guard case .object(let fields) = genericType else {
+      XCTFail("Expected object generic type")
+      return
+    }
+    XCTAssertEqual(fields.count, 2)
   }
   
   // MARK: - Field Parser Tests

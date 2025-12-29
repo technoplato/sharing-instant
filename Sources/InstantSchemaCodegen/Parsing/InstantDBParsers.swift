@@ -75,15 +75,20 @@ import Foundation
 /// i.boolean()
 /// i.date()
 /// i.json()
+/// i.string<"pending" | "active">()
+/// i.json<{ text: string, start: number }>()
 /// ```
 ///
 /// ## Output
 ///
-/// Returns a `FieldType` enum value.
+/// Returns a tuple of `(FieldType, GenericTypeIR?)`.
 ///
 /// ```swift
 /// try FieldTypeParser().parse("i.string()")
-/// // Returns: FieldType.string
+/// // Returns: (FieldType.string, nil)
+///
+/// try FieldTypeParser().parse("i.string<\"a\" | \"b\">()")
+/// // Returns: (FieldType.string, .stringUnion(["a", "b"]))
 /// ```
 ///
 /// ## Why This Exists
@@ -101,7 +106,7 @@ import Foundation
 public struct FieldTypeParser: Parser {
   public init() {}
   
-  public func parse(_ input: inout Substring) throws -> FieldType {
+  public func parse(_ input: inout Substring) throws -> (FieldType, GenericTypeIR?) {
     guard input.hasPrefix("i.") else {
       struct ExpectedFieldType: Error {}
       throw ExpectedFieldType()
@@ -110,6 +115,10 @@ public struct FieldTypeParser: Parser {
     
     // Parse the type name
     let typeName = try Identifier().parse(&input)
+    
+    // Try to parse generic parameter <T>
+    try OptionalWhitespace().parse(&input)
+    let genericType = try GenericParameterParser().parse(&input)
     
     // Consume the ()
     try OptionalWhitespace().parse(&input)
@@ -120,16 +129,19 @@ public struct FieldTypeParser: Parser {
     input.removeFirst(2)
     
     // Map to FieldType
+    let fieldType: FieldType
     switch typeName.lowercased() {
-    case "string": return .string
-    case "number": return .number
-    case "boolean", "bool": return .boolean
-    case "date": return .date
-    case "json", "any": return .json
+    case "string": fieldType = .string
+    case "number": fieldType = .number
+    case "boolean", "bool": fieldType = .boolean
+    case "date": fieldType = .date
+    case "json", "any": fieldType = .json
     default:
       struct UnknownFieldType: Error { let typeName: String }
       throw UnknownFieldType(typeName: typeName)
     }
+    
+    return (fieldType, genericType)
   }
 }
 
@@ -144,18 +156,20 @@ public struct FieldTypeParser: Parser {
 /// done: i.boolean()
 /// priority: i.number().optional()
 /// bio: i.string().optional()
+/// status: i.string<"pending" | "active">()
+/// metadata: i.json<{ key: string }>()
 /// ```
 ///
 /// ## Output
 ///
-/// Returns a `FieldIR` with name, type, and optionality.
+/// Returns a `FieldIR` with name, type, optionality, and generic type.
 ///
 /// ```swift
 /// try FieldParser().parse("title: i.string()")
 /// // Returns: FieldIR(name: "title", type: .string, isOptional: false)
 ///
-/// try FieldParser().parse("bio: i.string().optional()")
-/// // Returns: FieldIR(name: "bio", type: .string, isOptional: true)
+/// try FieldParser().parse("status: i.string<\"pending\" | \"active\">()")
+/// // Returns: FieldIR(name: "status", type: .string, genericType: .stringUnion([...]))
 /// ```
 ///
 /// ## Why This Exists
@@ -164,6 +178,7 @@ public struct FieldTypeParser: Parser {
 /// - A name (JavaScript identifier)
 /// - A type (i.string(), i.number(), etc.)
 /// - Optional modifier (.optional())
+/// - Optional generic type parameter
 public struct FieldParser: Parser {
   public init() {}
   
@@ -174,8 +189,8 @@ public struct FieldParser: Parser {
     // Parse colon
     try Colon().parse(&input)
     
-    // Parse field type
-    let fieldType = try FieldTypeParser().parse(&input)
+    // Parse field type (now returns tuple with optional generic)
+    let (fieldType, genericType) = try FieldTypeParser().parse(&input)
     
     // Check for modifiers like .optional(), .indexed(), .unique()
     var isOptional = false
@@ -196,7 +211,12 @@ public struct FieldParser: Parser {
       // Other modifiers like .indexed(), .unique() are ignored
     }
     
-    return FieldIR(name: name, type: fieldType, isOptional: isOptional)
+    return FieldIR(
+      name: name,
+      type: fieldType,
+      isOptional: isOptional,
+      genericType: genericType
+    )
   }
 }
 

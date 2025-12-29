@@ -37,7 +37,10 @@ extension InstantDB.TripleStore {
             let label = attr.forwardIdentity.last ?? attrId
             
             if attr.valueType == .ref {
-                guard depth == 0 else {
+                // Allow nested forward links up to maxDepth
+                // Previously this was restricted to depth == 0, which prevented
+                // nested links like Media.transcriptionRuns.words from being resolved
+                if depth >= maxDepth {
                     continue
                 }
 
