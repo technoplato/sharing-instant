@@ -7,18 +7,21 @@
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "title"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "done"
           - type: FieldType.boolean
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "priority"
           - type: FieldType.number
@@ -29,22 +32,26 @@
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "name"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "email"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "createdAt"
           - type: FieldType.date
       - name: "users"
+  - imports: 0 elements
   ▿ links: 1 element
     ▿ LinkIR
       - documentation: Optional<String>.none
@@ -60,3 +67,4 @@
   - rooms: 0 elements
   ▿ sourceFile: Optional<String>
     - some: "SimpleSchema.ts"
+  - typeAliases: 0 elements

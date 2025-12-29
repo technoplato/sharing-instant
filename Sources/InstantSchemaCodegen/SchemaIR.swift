@@ -4,6 +4,14 @@
 // Intermediate Representation (IR) for InstantDB schemas.
 // This is the canonical representation that both TypeScript and Swift parsers produce,
 // and that both TypeScript and Swift generators consume.
+//
+// ## Generic Type Support
+//
+// This IR supports TypeScript generics on field types:
+// - String unions: i.string<"a" | "b" | "c">() → GenericTypeIR.stringUnion
+// - Object types: i.json<{ field: type }>() → GenericTypeIR.object
+// - Arrays: i.json<Type[]>() → GenericTypeIR.array
+// - Type references: i.string<MyType>() → resolved via SymbolTable
 
 import Foundation
 
@@ -38,6 +46,12 @@ public struct SchemaIR: Codable, Sendable, Equatable {
   /// All rooms for presence and topics
   public var rooms: [RoomIR]
   
+  /// Type aliases defined in the schema file
+  public var typeAliases: [TypeAliasIR]
+  
+  /// Import declarations from the schema file
+  public var imports: [ImportDeclaration]
+  
   /// Schema-level documentation comment
   public var documentation: String?
   
@@ -48,12 +62,16 @@ public struct SchemaIR: Codable, Sendable, Equatable {
     entities: [EntityIR] = [],
     links: [LinkIR] = [],
     rooms: [RoomIR] = [],
+    typeAliases: [TypeAliasIR] = [],
+    imports: [ImportDeclaration] = [],
     documentation: String? = nil,
     sourceFile: String? = nil
   ) {
     self.entities = entities
     self.links = links
     self.rooms = rooms
+    self.typeAliases = typeAliases
+    self.imports = imports
     self.documentation = documentation
     self.sourceFile = sourceFile
   }
@@ -232,6 +250,17 @@ public struct EntityIR: Codable, Sendable, Equatable, Identifiable {
 /// ```swift
 /// FieldIR(name: "bio", type: .string, isOptional: true)
 /// ```
+///
+/// ## Generic Types
+///
+/// For `status: i.string<"pending" | "active">()`, the IR is:
+/// ```swift
+/// FieldIR(
+///   name: "status",
+///   type: .string,
+///   genericType: .stringUnion(["pending", "active"])
+/// )
+/// ```
 public struct FieldIR: Codable, Sendable, Equatable, Identifiable {
   public var id: String { name }
   
@@ -250,18 +279,24 @@ public struct FieldIR: Codable, Sendable, Equatable, Identifiable {
   /// Default value (if specified)
   public var defaultValue: String?
   
+  /// Generic type information (for i.string<T>() or i.json<T>())
+  /// When present, this provides more specific type information than `type`
+  public var genericType: GenericTypeIR?
+  
   public init(
     name: String,
     type: FieldType,
     isOptional: Bool = false,
     documentation: String? = nil,
-    defaultValue: String? = nil
+    defaultValue: String? = nil,
+    genericType: GenericTypeIR? = nil
   ) {
     self.name = name
     self.type = type
     self.isOptional = isOptional
     self.documentation = documentation
     self.defaultValue = defaultValue
+    self.genericType = genericType
   }
 }
 
@@ -331,6 +366,299 @@ public enum FieldType: String, Codable, Sendable, Equatable {
     case .date: return "i.date()"
     case .json: return "i.json()"
     }
+  }
+}
+
+// MARK: - Generic Type IR
+
+/// Represents a generic type parameter on a field.
+///
+/// TypeScript schemas can specify generic types on field methods:
+/// - `i.string<"a" | "b" | "c">()` → String union
+/// - `i.json<{ field: type }>()` → Object type
+/// - `i.json<Type[]>()` → Array type
+///
+/// ## Example
+///
+/// For `status: i.string<"pending" | "active" | "completed">()`:
+/// ```swift
+/// GenericTypeIR.stringUnion(["pending", "active", "completed"])
+/// ```
+///
+/// For `metadata: i.json<{ createdBy: string, version: number }>()`:
+/// ```swift
+/// GenericTypeIR.object([
+///   ObjectFieldIR(name: "createdBy", type: .string),
+///   ObjectFieldIR(name: "version", type: .number)
+/// ])
+/// ```
+public indirect enum GenericTypeIR: Codable, Sendable, Equatable {
+  /// A union of string literal types: "a" | "b" | "c"
+  /// Used with i.string<T>() to generate Swift enums
+  case stringUnion([String])
+  
+  /// An object type: { field: type, ... }
+  /// Used with i.json<T>() to generate Swift structs
+  case object([ObjectFieldIR])
+  
+  /// An array type: Type[] or Array<Type>
+  /// The associated value is the element type
+  case array(GenericTypeIR)
+  
+  /// A reference to a type alias that couldn't be resolved
+  /// This is an error state - should be resolved before code generation
+  case unresolved(String)
+  
+  /// The Swift type name for this generic type
+  /// - For stringUnion: generates an enum name based on context
+  /// - For object: generates a struct name based on context
+  /// - For array: wraps the element type in brackets
+  public func swiftTypeName(context: String) -> String {
+    switch self {
+    case .stringUnion:
+      return context.prefix(1).uppercased() + context.dropFirst()
+    case .object:
+      return context.prefix(1).uppercased() + context.dropFirst()
+    case .array(let elementType):
+      return "[\(elementType.swiftTypeName(context: context))]"
+    case .unresolved(let name):
+      return name
+    }
+  }
+}
+
+/// A field within an object type in a generic parameter.
+///
+/// ## Example
+///
+/// For `{ createdBy: string, version: number }`:
+/// ```swift
+/// [
+///   ObjectFieldIR(name: "createdBy", type: .string),
+///   ObjectFieldIR(name: "version", type: .number)
+/// ]
+/// ```
+public struct ObjectFieldIR: Codable, Sendable, Equatable, Identifiable {
+  public var id: String { name }
+  
+  /// The field name
+  public var name: String
+  
+  /// The field's base type (string, number, boolean, etc.)
+  public var type: FieldType
+  
+  /// Whether this field is optional (field?: type in TypeScript)
+  public var isOptional: Bool
+  
+  /// Nested generic type (for nested objects or arrays)
+  public var genericType: GenericTypeIR?
+  
+  public init(
+    name: String,
+    type: FieldType,
+    isOptional: Bool = false,
+    genericType: GenericTypeIR? = nil
+  ) {
+    self.name = name
+    self.type = type
+    self.isOptional = isOptional
+    self.genericType = genericType
+  }
+}
+
+// MARK: - Type Alias IR
+
+/// A TypeScript type alias declaration.
+///
+/// ## Example
+///
+/// For `type Status = "pending" | "active" | "completed"`:
+/// ```swift
+/// TypeAliasIR(
+///   name: "Status",
+///   definition: .stringUnion(["pending", "active", "completed"])
+/// )
+/// ```
+///
+/// For `type Word = { text: string, start: number }`:
+/// ```swift
+/// TypeAliasIR(
+///   name: "Word",
+///   definition: .object([...])
+/// )
+/// ```
+public struct TypeAliasIR: Codable, Sendable, Equatable, Identifiable {
+  public var id: String { name }
+  
+  /// The type alias name (e.g., "Status", "Word")
+  public var name: String
+  
+  /// The type definition
+  public var definition: GenericTypeIR
+  
+  /// Whether this type is exported
+  public var isExported: Bool
+  
+  /// Source file this type was defined in (for error messages)
+  public var sourceFile: String?
+  
+  public init(
+    name: String,
+    definition: GenericTypeIR,
+    isExported: Bool = false,
+    sourceFile: String? = nil
+  ) {
+    self.name = name
+    self.definition = definition
+    self.isExported = isExported
+    self.sourceFile = sourceFile
+  }
+}
+
+// MARK: - Import Declaration
+
+/// A TypeScript import declaration.
+///
+/// ## Example
+///
+/// For `import { TaskPriority, Word } from "./types"`:
+/// ```swift
+/// ImportDeclaration(
+///   namedImports: ["TaskPriority", "Word"],
+///   fromPath: "./types"
+/// )
+/// ```
+public struct ImportDeclaration: Codable, Sendable, Equatable {
+  /// The named imports (e.g., ["TaskPriority", "Word"])
+  public var namedImports: [String]
+  
+  /// The import path (e.g., "./types", "@instantdb/core")
+  public var fromPath: String
+  
+  /// Whether this is a type-only import (import type { ... })
+  public var isTypeOnly: Bool
+  
+  public init(
+    namedImports: [String],
+    fromPath: String,
+    isTypeOnly: Bool = false
+  ) {
+    self.namedImports = namedImports
+    self.fromPath = fromPath
+    self.isTypeOnly = isTypeOnly
+  }
+  
+  /// Whether this is an InstantDB import (should be ignored for type resolution)
+  public var isInstantDBImport: Bool {
+    fromPath.contains("@instantdb")
+  }
+}
+
+// MARK: - Symbol Table
+
+/// A symbol table for resolving type references.
+///
+/// The symbol table is built during the first pass of parsing:
+/// 1. Parse import statements → record which types are imported from where
+/// 2. Parse type alias declarations → store type definitions
+/// 3. During schema parsing, resolve type references using this table
+///
+/// ## Example Usage
+///
+/// ```swift
+/// let symbolTable = SymbolTable()
+///
+/// // Register a type alias
+/// symbolTable.register(TypeAliasIR(
+///   name: "Status",
+///   definition: .stringUnion(["pending", "active"])
+/// ))
+///
+/// // Later, resolve the type
+/// if let resolved = symbolTable.resolve("Status") {
+///   // Use the resolved type
+/// }
+/// ```
+public final class SymbolTable: @unchecked Sendable {
+  /// Type aliases defined in the current file
+  private var localTypes: [String: TypeAliasIR] = [:]
+  
+  /// Imported type names and their source files
+  private var importedTypes: [String: String] = [:]
+  
+  /// Resolved types from imported files
+  private var resolvedImports: [String: TypeAliasIR] = [:]
+  
+  /// Import declarations for tracking where types come from
+  private var imports: [ImportDeclaration] = []
+  
+  /// The base path for resolving relative imports
+  public var basePath: String?
+  
+  public init() {}
+  
+  /// Register a type alias defined in the current file
+  public func register(_ typeAlias: TypeAliasIR) {
+    localTypes[typeAlias.name] = typeAlias
+  }
+  
+  /// Register an import declaration
+  public func registerImport(_ importDecl: ImportDeclaration) {
+    imports.append(importDecl)
+    for name in importDecl.namedImports {
+      importedTypes[name] = importDecl.fromPath
+    }
+  }
+  
+  /// Register a resolved type from an imported file
+  public func registerResolvedImport(_ typeAlias: TypeAliasIR) {
+    resolvedImports[typeAlias.name] = typeAlias
+  }
+  
+  /// Resolve a type name to its definition
+  ///
+  /// Resolution order:
+  /// 1. Local types (defined in current file)
+  /// 2. Resolved imports (types from imported files)
+  ///
+  /// Returns nil if the type cannot be resolved.
+  public func resolve(_ name: String) -> GenericTypeIR? {
+    // First check local types
+    if let local = localTypes[name] {
+      return local.definition
+    }
+    
+    // Then check resolved imports
+    if let imported = resolvedImports[name] {
+      return imported.definition
+    }
+    
+    return nil
+  }
+  
+  /// Check if a type name is known (either local or imported)
+  public func isKnown(_ name: String) -> Bool {
+    localTypes[name] != nil || resolvedImports[name] != nil || importedTypes[name] != nil
+  }
+  
+  /// Get the import path for a type name, if it's imported
+  public func importPath(for name: String) -> String? {
+    importedTypes[name]
+  }
+  
+  /// Get all local type aliases
+  public var allLocalTypes: [TypeAliasIR] {
+    Array(localTypes.values)
+  }
+  
+  /// Get all import declarations
+  public var allImports: [ImportDeclaration] {
+    imports
+  }
+  
+  /// Get all unresolved imported type names
+  public var unresolvedImports: [String] {
+    importedTypes.keys.filter { resolvedImports[$0] == nil }.sorted()
   }
 }
 

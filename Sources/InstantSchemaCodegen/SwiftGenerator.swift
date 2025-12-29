@@ -220,6 +220,26 @@ public struct SwiftCodeGenerator {
     
     
     """
+    
+    // Collect all generic types that need to be generated
+    var generatedTypes: Set<String> = []
+    
+    // Generate enums and structs from generic types
+    for entity in schema.entities {
+      for field in entity.fields {
+        if let genericType = field.genericType {
+          let typeName = swiftTypeForGeneric(genericType, fieldName: field.name, entityName: entity.name)
+          // Skip array types (they wrap other types)
+          if case .array = genericType { continue }
+          
+          if !generatedTypes.contains(typeName) {
+            generatedTypes.insert(typeName)
+            output += generateTypeFromGeneric(genericType, typeName: typeName)
+            output += "\n"
+          }
+        }
+      }
+    }
 
     let indirectLinkLabelsByEntityName = indirectLinkLabelsByEntityName(for: schema)
     
@@ -307,11 +327,134 @@ public struct SwiftCodeGenerator {
       output += "  " + formatDocumentation(doc, indent: "  ")
     }
     
+    // Determine the Swift type based on generic type info
+    let swiftType = swiftTypeForField(field)
+    
     // Property declaration
     let optionalMark = field.isOptional ? "?" : ""
-    output += "  \(access) var \(field.name): \(field.type.swiftType)\(optionalMark)\n"
+    output += "  \(access) var \(field.name): \(swiftType)\(optionalMark)\n"
     
     return output
+  }
+  
+  /// Determine the Swift type for a field, considering generic type info
+  private func swiftTypeForField(_ field: FieldIR) -> String {
+    guard let genericType = field.genericType else {
+      return field.type.swiftType
+    }
+    
+    return swiftTypeForGeneric(genericType, fieldName: field.name, entityName: "")
+  }
+  
+  /// Determine the Swift type for a generic type
+  private func swiftTypeForGeneric(_ genericType: GenericTypeIR, fieldName: String, entityName: String) -> String {
+    switch genericType {
+    case .stringUnion:
+      // Generate enum name from field name
+      return fieldName.prefix(1).uppercased() + fieldName.dropFirst()
+      
+    case .object:
+      // Generate struct name from field name
+      return fieldName.prefix(1).uppercased() + fieldName.dropFirst()
+      
+    case .array(let elementType):
+      let elementSwiftType = swiftTypeForGeneric(elementType, fieldName: fieldName, entityName: entityName)
+      return "[\(elementSwiftType)]"
+      
+    case .unresolved(let typeName):
+      return typeName
+    }
+  }
+  
+  /// Generate Swift type (enum or struct) from a generic type
+  private func generateTypeFromGeneric(_ genericType: GenericTypeIR, typeName: String) -> String {
+    let access = configuration.accessLevel.rawValue
+    let sendable = configuration.generateSendable ? ", Sendable" : ""
+    
+    switch genericType {
+    case .stringUnion(let cases):
+      return generateEnumFromStringUnion(cases, typeName: typeName, access: access, sendable: sendable)
+      
+    case .object(let fields):
+      return generateStructFromObject(fields, typeName: typeName, access: access, sendable: sendable)
+      
+    case .array:
+      // Arrays don't generate new types - they wrap existing types
+      return ""
+      
+    case .unresolved:
+      // Unresolved types shouldn't reach code generation
+      return ""
+    }
+  }
+  
+  /// Generate a Swift enum from a string union
+  private func generateEnumFromStringUnion(_ cases: [String], typeName: String, access: String, sendable: String) -> String {
+    var output = "/// Generated enum for string union type\n"
+    output += "\(access) enum \(typeName): String, Codable\(sendable), Equatable {\n"
+    
+    for caseName in cases {
+      // Convert snake_case to camelCase for Swift
+      let swiftCaseName = snakeToCamelCase(caseName)
+      
+      // If the case name differs from the raw value, include the raw value
+      if swiftCaseName != caseName {
+        output += "  case \(swiftCaseName) = \"\(caseName)\"\n"
+      } else {
+        output += "  case \(swiftCaseName)\n"
+      }
+    }
+    
+    output += "}\n"
+    return output
+  }
+  
+  /// Generate a Swift struct from an object type
+  private func generateStructFromObject(_ fields: [ObjectFieldIR], typeName: String, access: String, sendable: String) -> String {
+    var output = "/// Generated struct for JSON object type\n"
+    output += "\(access) struct \(typeName): Codable\(sendable), Equatable {\n"
+    
+    // Generate properties
+    for field in fields {
+      let swiftType = swiftTypeForObjectField(field)
+      let optionalMark = field.isOptional ? "?" : ""
+      output += "  \(access) var \(field.name): \(swiftType)\(optionalMark)\n"
+    }
+    
+    // Generate initializer
+    output += "\n  \(access) init(\n"
+    for (index, field) in fields.enumerated() {
+      let swiftType = swiftTypeForObjectField(field)
+      let optionalMark = field.isOptional ? "?" : ""
+      let defaultValue = field.isOptional ? " = nil" : ""
+      let comma = index < fields.count - 1 ? "," : ""
+      output += "    \(field.name): \(swiftType)\(optionalMark)\(defaultValue)\(comma)\n"
+    }
+    output += "  ) {\n"
+    for field in fields {
+      output += "    self.\(field.name) = \(field.name)\n"
+    }
+    output += "  }\n"
+    
+    output += "}\n"
+    return output
+  }
+  
+  /// Get Swift type for an object field
+  private func swiftTypeForObjectField(_ field: ObjectFieldIR) -> String {
+    if let nestedType = field.genericType {
+      return swiftTypeForGeneric(nestedType, fieldName: field.name, entityName: "")
+    }
+    return field.type.swiftType
+  }
+  
+  /// Convert snake_case to camelCase
+  private func snakeToCamelCase(_ input: String) -> String {
+    let parts = input.split(separator: "_")
+    guard let first = parts.first else { return input }
+    
+    let rest = parts.dropFirst().map { $0.prefix(1).uppercased() + $0.dropFirst() }
+    return String(first) + rest.joined()
   }
   
   private func generateLinkProperty(
@@ -484,7 +627,7 @@ public struct SwiftCodeGenerator {
     
     // Fields
     for field in entity.fields {
-      let type = field.type.swiftType + (field.isOptional ? "?" : "")
+      let type = swiftTypeForField(field) + (field.isOptional ? "?" : "")
       let defaultValue = field.isOptional ? "nil" : field.defaultValue
       params.append((name: field.name, type: type, defaultValue: defaultValue))
     }

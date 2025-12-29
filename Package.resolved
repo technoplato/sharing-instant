@@ -1,5 +1,5 @@
 {
-  "originHash" : "5b450d4388cbfd87486a0a80ae5c60659dfd5d6fda83e3e85cbad22fa526e71e",
+  "originHash" : "e18a49faf32014d7cb8b523c592346e22eba1271b447cb3537e3c9f46dfb8c70",
   "pins" : [
     {
       "identity" : "app-check",
@@ -170,15 +170,6 @@
       "state" : {
         "revision" : "4f47ebafed5f0b0172cf5c661454fa8e28fb2ac4",
         "version" : "2.0.9"
-      }
-    },
-    {
-      "identity" : "swift-sharing",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/pointfreeco/swift-sharing",
-      "state" : {
-        "revision" : "3bfc408cc2d0bee2287c174da6b1c76768377818",
-        "version" : "2.7.4"
       }
     },
     {

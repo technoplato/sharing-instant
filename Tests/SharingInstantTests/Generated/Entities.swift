@@ -745,4 +745,3 @@ public struct Board: EntityIdentifiable, Codable, Sendable {
     self.tiles = try container.decodeIfPresent([Tile].self, forKey: .tiles)
   }
 }
-

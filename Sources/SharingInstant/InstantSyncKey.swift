@@ -346,6 +346,9 @@ where Value.Element: EntityIdentifiable & Sendable {
     let subscriptionId = UUID().uuidString.prefix(8)
     logDebug("Subscribe[\(subscriptionId)]: creating new subscription task via Reactor")
     
+    // Capture subscriber identity for debugging - use address of the subscriber struct
+    let subscriberIdentity = withUnsafePointer(to: subscriber) { String(format: "%p", $0) }
+    
     let task = Task { @MainActor in
         let stream = await reactor.subscribe(appID: appID, configuration: configuration)
         for await data in stream {

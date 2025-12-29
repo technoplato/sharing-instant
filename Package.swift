@@ -32,8 +32,8 @@ let package = Package(
   dependencies: [
     // The upstream InstantDB iOS SDK (local path for development)
     .package(path: "../instant-ios-sdk"),
-    // Swift Sharing library from Point-Free
-    .package(url: "https://github.com/pointfreeco/swift-sharing", from: "2.3.0"),
+    // Swift Sharing library from Point-Free (local for debugging)
+    .package(path: "../swift-sharing"),
     // Swift Dependencies for DI
     .package(url: "https://github.com/pointfreeco/swift-dependencies", from: "1.6.4"),
     // Identified collections for type-safe arrays

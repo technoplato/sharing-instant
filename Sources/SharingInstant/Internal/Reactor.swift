@@ -630,6 +630,7 @@ private actor SubscriptionState<Value: EntityIdentifiable & Codable & Sendable> 
                 values.append(val)
             }
         }
+        
         continuation.yield(values)
     }
     

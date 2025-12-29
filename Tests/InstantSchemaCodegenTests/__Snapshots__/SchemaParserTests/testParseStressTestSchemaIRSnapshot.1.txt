@@ -7,12 +7,14 @@
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "path"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "url"
           - type: FieldType.string
@@ -23,18 +25,21 @@
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "email"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "imageURL"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "type"
           - type: FieldType.string
@@ -45,24 +50,28 @@
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "name"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "bio"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "ingested_at"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "metadata"
           - type: FieldType.json
@@ -73,42 +82,49 @@
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "title"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "media_type"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "duration_seconds"
           - type: FieldType.number
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "description"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "ingested_at"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "published_at"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "source_metadata"
           - type: FieldType.json
@@ -119,54 +135,63 @@
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "path"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "remote_url"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "machine_id"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "format"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "mime_type"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "size_bytes"
           - type: FieldType.number
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "access_requirements"
           - type: FieldType.json
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "ingested_at"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "last_accessed_at"
           - type: FieldType.string
@@ -177,54 +202,63 @@
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "title"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "start_time_ms"
           - type: FieldType.number
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "end_time_ms"
           - type: FieldType.number
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "length_ms"
           - type: FieldType.number
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "ordinal"
           - type: FieldType.number
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "source_type"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "source"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "source_metadata"
           - type: FieldType.json
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "ingested_at"
           - type: FieldType.string
@@ -235,24 +269,28 @@
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "name"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "base_url"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "content_types"
           - type: FieldType.json
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "ingested_at"
           - type: FieldType.string
@@ -263,24 +301,28 @@
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "external_id"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "normalized_url"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "external_published_at"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "ingested_at"
           - type: FieldType.string
@@ -291,24 +333,28 @@
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "external_id"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "normalized_url"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "external_created_at"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "ingested_at"
           - type: FieldType.string
@@ -319,18 +365,21 @@
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "external_id"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "normalized_url"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "ingested_at"
           - type: FieldType.string
@@ -341,36 +390,42 @@
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "access_type"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "has_ads"
           - type: FieldType.boolean
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "price_cents"
           - type: FieldType.number
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "currency"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "last_checked_at"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "ingested_at"
           - type: FieldType.string
@@ -381,42 +436,49 @@
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "additional_params"
           - type: FieldType.json
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "cluster_threshold"
           - type: FieldType.number
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "clustering_method"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "created_at"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "embedding_model"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "identification_threshold"
           - type: FieldType.number
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "tool"
           - type: FieldType.string
@@ -427,72 +489,84 @@
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "cost_usd"
           - type: FieldType.number
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "executed_at"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "git_commit_sha"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "input_duration_seconds"
           - type: FieldType.number
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "is_preferred"
           - type: FieldType.boolean
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "logs"
           - type: FieldType.json
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "num_speakers_detected"
           - type: FieldType.number
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "peak_memory_mb"
           - type: FieldType.number
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "pipeline_script"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "processing_time_seconds"
           - type: FieldType.number
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "tool_version"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "workflow"
           - type: FieldType.string
@@ -503,42 +577,49 @@
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "confidence"
           - type: FieldType.number
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "created_at"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "embedding_id"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "end_time"
           - type: FieldType.number
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "is_invalidated"
           - type: FieldType.boolean
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "speaker_label"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "start_time"
           - type: FieldType.number
@@ -549,36 +630,42 @@
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "external_id"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "ingested_at"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "name"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "publication_type"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "raw_metadata"
           - type: FieldType.json
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "url"
           - type: FieldType.string
@@ -589,18 +676,21 @@
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "split_at"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "split_by"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "split_time"
           - type: FieldType.number
@@ -611,30 +701,35 @@
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "catalog_version"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "cataloged_at"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "end_time"
           - type: FieldType.number
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "media_item_id"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "start_time"
           - type: FieldType.number
@@ -645,42 +740,49 @@
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "artist"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "created_at"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "end_time"
           - type: FieldType.number
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "match_offset"
           - type: FieldType.number
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "shazam_track_id"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "start_time"
           - type: FieldType.number
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "title"
           - type: FieldType.string
@@ -691,30 +793,35 @@
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "assigned_at"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "assigned_by"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "confidence"
           - type: FieldType.number
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "note"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "source"
           - type: FieldType.string
@@ -725,36 +832,42 @@
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "role"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "is_human"
           - type: FieldType.boolean
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "ingested_at"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "metadata"
           - type: FieldType.json
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "name"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "embedding_centroid_id"
           - type: FieldType.string
@@ -765,54 +878,63 @@
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "additional_params"
           - type: FieldType.json
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "beam_size"
           - type: FieldType.number
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "created_at"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "language"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "model"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "temperature"
           - type: FieldType.number
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "tool"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "vad_filter"
           - type: FieldType.boolean
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "word_timestamps"
           - type: FieldType.boolean
@@ -823,60 +945,70 @@
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "cost_usd"
           - type: FieldType.number
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "executed_at"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "git_commit_sha"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "input_duration_seconds"
           - type: FieldType.number
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "is_preferred"
           - type: FieldType.boolean
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "logs"
           - type: FieldType.json
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "peak_memory_mb"
           - type: FieldType.number
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "pipeline_script"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "processing_time_seconds"
           - type: FieldType.number
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "tool_version"
           - type: FieldType.string
@@ -887,54 +1019,63 @@
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "description"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "duration"
           - type: FieldType.number
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "external_published_at"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "filepath"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "ingested_at"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "raw_metadata"
           - type: FieldType.json
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "source_id"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "title"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "url"
           - type: FieldType.string
@@ -945,36 +1086,42 @@
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "confidence"
           - type: FieldType.number
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "end_time"
           - type: FieldType.number
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "ingested_at"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "start_time"
           - type: FieldType.number
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "text"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "transcription_segment_index"
           - type: FieldType.number
@@ -985,24 +1132,28 @@
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "corrected_at"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "corrected_by"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "corrected_text"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "note"
           - type: FieldType.string
@@ -1013,42 +1164,49 @@
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "title"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "asin"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "sku"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "runtime_seconds"
           - type: FieldType.number
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "chapter_count"
           - type: FieldType.number
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "ingested_at"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "raw_metadata"
           - type: FieldType.json
@@ -1059,52 +1217,61 @@
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "title"
           - type: FieldType.string
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "chapter_number"
           - type: FieldType.number
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "start_time_ms"
           - type: FieldType.number
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "end_time_ms"
           - type: FieldType.number
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "length_ms"
           - type: FieldType.number
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "is_subchapter"
           - type: FieldType.boolean
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: true
           - name: "parent_chapter_number"
           - type: FieldType.number
         ▿ FieldIR
           - defaultValue: Optional<String>.none
           - documentation: Optional<String>.none
+          - genericType: Optional<GenericTypeIR>.none
           - isOptional: false
           - name: "ingested_at"
           - type: FieldType.string
       - name: "audiobookChapters"
+  - imports: 0 elements
   ▿ links: 38 elements
     ▿ LinkIR
       - documentation: Optional<String>.none
@@ -1527,3 +1694,4 @@
   - rooms: 0 elements
   ▿ sourceFile: Optional<String>
     - some: "StressTestSchema.ts"
+  - typeAliases: 0 elements
