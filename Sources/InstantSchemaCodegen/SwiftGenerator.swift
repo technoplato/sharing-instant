@@ -224,19 +224,41 @@ public struct SwiftCodeGenerator {
     // Collect all generic types that need to be generated
     var generatedTypes: Set<String> = []
     
+    // Helper function to collect types recursively from a generic type
+    func collectAndGenerateTypes(from genericType: GenericTypeIR, fieldName: String, entityName: String) {
+      switch genericType {
+      case .stringUnion, .object:
+        // Generate type from field name
+        let typeName = swiftTypeForGeneric(genericType, fieldName: fieldName, entityName: entityName)
+        if !generatedTypes.contains(typeName) {
+          generatedTypes.insert(typeName)
+          output += generateTypeFromGeneric(genericType, typeName: typeName)
+          output += "\n"
+        }
+        
+      case .array(let elementType):
+        // Recursively collect the element type
+        collectAndGenerateTypes(from: elementType, fieldName: fieldName, entityName: entityName)
+        
+      case .typeAlias(let name, let definition):
+        // Use the alias name and generate the definition
+        if !generatedTypes.contains(name) {
+          generatedTypes.insert(name)
+          output += generateTypeFromGeneric(definition, typeName: name)
+          output += "\n"
+        }
+        
+      case .unresolved:
+        // Unresolved types shouldn't reach code generation
+        break
+      }
+    }
+    
     // Generate enums and structs from generic types
     for entity in schema.entities {
       for field in entity.fields {
         if let genericType = field.genericType {
-          let typeName = swiftTypeForGeneric(genericType, fieldName: field.name, entityName: entity.name)
-          // Skip array types (they wrap other types)
-          if case .array = genericType { continue }
-          
-          if !generatedTypes.contains(typeName) {
-            generatedTypes.insert(typeName)
-            output += generateTypeFromGeneric(genericType, typeName: typeName)
-            output += "\n"
-          }
+          collectAndGenerateTypes(from: genericType, fieldName: field.name, entityName: entity.name)
         }
       }
     }
@@ -363,6 +385,10 @@ public struct SwiftCodeGenerator {
       
     case .unresolved(let typeName):
       return typeName
+      
+    case .typeAlias(let name, _):
+      // Use the preserved type alias name
+      return name
     }
   }
   
@@ -385,6 +411,10 @@ public struct SwiftCodeGenerator {
     case .unresolved:
       // Unresolved types shouldn't reach code generation
       return ""
+      
+    case .typeAlias(let name, let definition):
+      // Generate the type with the alias name
+      return generateTypeFromGeneric(definition, typeName: name)
     }
   }
   
