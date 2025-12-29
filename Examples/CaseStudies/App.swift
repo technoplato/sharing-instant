@@ -46,18 +46,27 @@ struct CaseStudiesApp: App {
           }
           
           Section("Examples") {
-            NavigationLink {
-              CaseStudyView {
-                SwiftUISyncDemo()
-              }
-            } label: {
-              VStack(alignment: .leading, spacing: 4) {
-                Label("Sync Demo", systemImage: "arrow.triangle.2.circlepath")
-                Text("Bidirectional sync with optimistic updates")
-                  .font(.caption)
-                  .foregroundStyle(.secondary)
-              }
-            }
+            // NOTE: The key demo for dynamic queries with server-side filtering
+            // is the Advanced Todo demo below. It demonstrates search, sort, and
+            // filter operations all happening on the InstantDB server.
+            
+            // MARK: - Commented out demos (kept for reference)
+            // SwiftUISyncDemo - Basic bidirectional sync (simpler than AdvancedTodo)
+            // DynamicFilterDemo - Client-side filtering (less efficient than server-side)
+            // ObservableModelDemo - @Observable pattern (alternative to @Shared)
+            
+//            NavigationLink {
+//              CaseStudyView {
+//                SwiftUISyncDemo()
+//              }
+//            } label: {
+//              VStack(alignment: .leading, spacing: 4) {
+//                Label("Sync Demo", systemImage: "arrow.triangle.2.circlepath")
+//                Text("Bidirectional sync with optimistic updates")
+//                  .font(.caption)
+//                  .foregroundStyle(.secondary)
+//              }
+//            }
             
             NavigationLink {
               CaseStudyView {
@@ -79,37 +88,37 @@ struct CaseStudiesApp: App {
             } label: {
               VStack(alignment: .leading, spacing: 4) {
                 Label("Advanced Todo", systemImage: "checklist")
-                Text("Search, sort, and filter todos")
+                Text("Server-side search, sort, and filter with dynamic queries")
                   .font(.caption)
                   .foregroundStyle(.secondary)
               }
             }
             
-            NavigationLink {
-              CaseStudyView {
-                DynamicFilterDemo()
-              }
-            } label: {
-              VStack(alignment: .leading, spacing: 4) {
-                Label("Dynamic Filtering", systemImage: "line.3.horizontal.decrease.circle")
-                Text("Search and filter with dynamic keys")
-                  .font(.caption)
-                  .foregroundStyle(.secondary)
-              }
-            }
+//            NavigationLink {
+//              CaseStudyView {
+//                DynamicFilterDemo()
+//              }
+//            } label: {
+//              VStack(alignment: .leading, spacing: 4) {
+//                Label("Dynamic Filtering", systemImage: "line.3.horizontal.decrease.circle")
+//                Text("Search and filter with dynamic keys")
+//                  .font(.caption)
+//                  .foregroundStyle(.secondary)
+//              }
+//            }
             
-            NavigationLink {
-              CaseStudyView {
-                ObservableModelDemo()
-              }
-            } label: {
-              VStack(alignment: .leading, spacing: 4) {
-                Label("Observable Model", systemImage: "cube")
-                Text("Use @Shared with @Observable models")
-                  .font(.caption)
-                  .foregroundStyle(.secondary)
-              }
-            }
+//            NavigationLink {
+//              CaseStudyView {
+//                ObservableModelDemo()
+//              }
+//            } label: {
+//              VStack(alignment: .leading, spacing: 4) {
+//                Label("Observable Model", systemImage: "cube")
+//                Text("Use @Shared with @Observable models")
+//                  .font(.caption)
+//                  .foregroundStyle(.secondary)
+//              }
+//            }
             NavigationLink {
               CaseStudyView {
                 RecursiveLoaderDemo()
