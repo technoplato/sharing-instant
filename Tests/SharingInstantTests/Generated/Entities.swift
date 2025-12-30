@@ -170,8 +170,8 @@ struct FactListContentView: View {
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// Mode:            Production (full traceability)
-/// Generated:       December 22, 2025 at 6:49 AM EST
-/// Machine:         mlustig-hy7l9xrd61.local (Apple M4 Pro, macOS 26.1)
+/// Generated:       December 30, 2025 at 5:31 PM EST
+/// Machine:         mlustig-hy7l9xrd61.local (Apple M4 Pro, macOS 26.2)
 /// Generator:       Sources/instant-schema/main.swift
 /// Source Schema:   Examples/CaseStudies/instant.schema.ts
 
@@ -186,10 +186,10 @@ swift run instant-schema generate \
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// HEAD Commit:
-///   SHA:      b82e464a80e7ea977720052ab155d6a060cb7fde
-///   Date:     December 22, 2025 at 6:49 AM EST
+///   SHA:      e905e9f957497d1dddfcb310a4a74e2eb0545a67
+///   Date:     December 30, 2025 at 5:26 PM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  chore: Update generated schema for CaseStudies (no recursion)
+///   Message:  feat(codegen): Add generated Mutations.swift with type-safe mutation extensions
 ///
 /// Schema File Last Modified:
 ///   SHA:      522ffbf617207b60ecfa647b2d1dc6b9bfa3a7ff
@@ -203,7 +203,7 @@ import Foundation
 import InstantDB
 import SharingInstant
 
-public struct InstantFile: EntityIdentifiable, Codable, Sendable {
+public struct InstantFile: EntityIdentifiable, Codable, Sendable, Equatable {
   public static var namespace: String { "$files" }
   
   // MARK: - Fields
@@ -227,7 +227,7 @@ public struct InstantFile: EntityIdentifiable, Codable, Sendable {
 }
 
 
-public struct InstantUser: EntityIdentifiable, Codable, Sendable {
+public struct InstantUser: EntityIdentifiable, Codable, Sendable, Equatable {
   public static var namespace: String { "$users" }
   
   // MARK: - Fields
@@ -254,7 +254,7 @@ public struct InstantUser: EntityIdentifiable, Codable, Sendable {
 }
 
 
-public struct Fact: EntityIdentifiable, Codable, Sendable {
+public struct Fact: EntityIdentifiable, Codable, Sendable, Equatable {
   public static var namespace: String { "facts" }
   
   // MARK: - Fields
@@ -291,7 +291,7 @@ public struct Fact: EntityIdentifiable, Codable, Sendable {
 }
 
 
-public struct Log: EntityIdentifiable, Codable, Sendable {
+public struct Log: EntityIdentifiable, Codable, Sendable, Equatable {
   public static var namespace: String { "logs" }
   
   // MARK: - Fields
@@ -352,7 +352,7 @@ public struct Log: EntityIdentifiable, Codable, Sendable {
 }
 
 
-public struct Todo: EntityIdentifiable, Codable, Sendable {
+public struct Todo: EntityIdentifiable, Codable, Sendable, Equatable {
   public static var namespace: String { "todos" }
   
   // MARK: - Fields
@@ -393,7 +393,7 @@ public struct Todo: EntityIdentifiable, Codable, Sendable {
 }
 
 
-public struct Profile: EntityIdentifiable, Codable, Sendable {
+public struct Profile: EntityIdentifiable, Codable, Sendable, Equatable {
   public static var namespace: String { "profiles" }
   
   // MARK: - Fields
@@ -467,7 +467,7 @@ public struct Profile: EntityIdentifiable, Codable, Sendable {
 }
 
 
-public struct Post: EntityIdentifiable, Codable, Sendable {
+public struct Post: EntityIdentifiable, Codable, Sendable, Equatable {
   public static var namespace: String { "posts" }
   
   // MARK: - Fields
@@ -537,7 +537,7 @@ public struct Post: EntityIdentifiable, Codable, Sendable {
 }
 
 
-public struct Comment: EntityIdentifiable, Codable, Sendable {
+public struct Comment: EntityIdentifiable, Codable, Sendable, Equatable {
   public static var namespace: String { "comments" }
   
   // MARK: - Fields
@@ -592,7 +592,7 @@ public struct Comment: EntityIdentifiable, Codable, Sendable {
 }
 
 
-public struct Like: EntityIdentifiable, Codable, Sendable {
+public struct Like: EntityIdentifiable, Codable, Sendable, Equatable {
   public static var namespace: String { "likes" }
   
   // MARK: - Fields
@@ -643,7 +643,7 @@ public struct Like: EntityIdentifiable, Codable, Sendable {
 }
 
 
-public struct Tile: EntityIdentifiable, Codable, Sendable {
+public struct Tile: EntityIdentifiable, Codable, Sendable, Equatable {
   public static var namespace: String { "tiles" }
   
   // MARK: - Fields
@@ -699,7 +699,7 @@ public struct Tile: EntityIdentifiable, Codable, Sendable {
 }
 
 
-public struct Board: EntityIdentifiable, Codable, Sendable {
+public struct Board: EntityIdentifiable, Codable, Sendable, Equatable {
   public static var namespace: String { "boards" }
   
   // MARK: - Fields
@@ -745,3 +745,5 @@ public struct Board: EntityIdentifiable, Codable, Sendable {
     self.tiles = try container.decodeIfPresent([Tile].self, forKey: .tiles)
   }
 }
+
+
