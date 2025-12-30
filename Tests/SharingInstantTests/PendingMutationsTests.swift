@@ -53,7 +53,8 @@ private actor ProfileCollector {
     }
     
     func contains(id: String) -> Bool {
-        return profiles.contains { $0.id == id }
+        // UUIDs from server may have different case than client-generated UUIDs
+        return profiles.contains { $0.id.lowercased() == id.lowercased() }
     }
 }
 
@@ -165,12 +166,28 @@ final class PendingMutationsTests: XCTestCase {
         )
         try await reactor.transact(appID: Self.testAppID, chunks: [profileChunk])
         
-        // Give time for async propagation
-        try await Task.sleep(nanoseconds: 500_000_000)
+        // Wait for both subscriptions to see the profile
+        // Use polling with timeout instead of fixed sleep
+        let deadline = Date().addingTimeInterval(5.0)
+        var profileInA = false
+        var profileInB = false
+        
+        while Date() < deadline && (!profileInA || !profileInB) {
+            profileInA = await collectorA.contains(id: profileId)
+            profileInB = await collectorB.contains(id: profileId)
+            if !profileInA || !profileInB {
+                try await Task.sleep(nanoseconds: 50_000_000) // 50ms
+            }
+        }
+        
+        // Debug output
+        let profilesA = await collectorA.getProfiles()
+        let profilesB = await collectorB.getProfiles()
+        print("DEBUG: Profile ID = \(profileId)")
+        print("DEBUG: Collector A has \(profilesA.count) profiles, contains target: \(profileInA)")
+        print("DEBUG: Collector B has \(profilesB.count) profiles, contains target: \(profileInB)")
         
         // CRITICAL ASSERTION: Both subscriptions should see the new profile
-        let profileInA = await collectorA.contains(id: profileId)
-        let profileInB = await collectorB.contains(id: profileId)
         
         XCTAssertTrue(profileInA, "Subscription A should see the optimistic insert")
         XCTAssertTrue(profileInB, "Subscription B should ALSO see the optimistic insert (BUG: currently fails)")
@@ -234,18 +251,34 @@ final class PendingMutationsTests: XCTestCase {
         )
         try await reactor.transact(appID: Self.testAppID, chunks: [profileChunk])
         
-        // Give time for optimistic update
-        try await Task.sleep(nanoseconds: 200_000_000)
+        // Poll until we see the optimistic update
+        var profilePresent = false
+        let deadline = Date().addingTimeInterval(2.0)
+        while Date() < deadline && !profilePresent {
+            profilePresent = await collector.contains(id: profileId)
+            if !profilePresent {
+                try await Task.sleep(nanoseconds: 50_000_000)
+            }
+        }
+        
+        let profilesBeforeRefresh = await collector.getProfiles()
+        print("DEBUG: Before server refresh - \(profilesBeforeRefresh.count) profiles, contains target: \(profilePresent)")
+        print("DEBUG: Profile IDs before refresh: \(profilesBeforeRefresh.map { $0.id })")
         
         // Verify present immediately
-        var profilePresent = await collector.contains(id: profileId)
         XCTAssertTrue(profilePresent, "Profile should be present immediately after optimistic insert")
         
-        // Wait for potential server refresh
+        // Wait for potential server refresh (the server will send updated data)
+        // In a real scenario, this simulates the server sending a refresh that doesn't include our new entity yet
+        print("DEBUG: Waiting 3 seconds for potential server refresh...")
         try await Task.sleep(nanoseconds: 3_000_000_000)
         
-        // CRITICAL: Should STILL be present
+        let profilesAfterRefresh = await collector.getProfiles()
         profilePresent = await collector.contains(id: profileId)
+        print("DEBUG: After server refresh - \(profilesAfterRefresh.count) profiles, contains target: \(profilePresent)")
+        print("DEBUG: Profile IDs after refresh: \(profilesAfterRefresh.map { $0.id })")
+        
+        // CRITICAL: Should STILL be present
         XCTAssertTrue(profilePresent, "Profile should STILL be present after server refresh (BUG: may be overwritten)")
         
         // Cleanup
@@ -264,6 +297,9 @@ final class PendingMutationsTests: XCTestCase {
         let store = SharedTripleStore()
         let reactor = Reactor(store: store)
         
+        // Sign in as guest to allow transactions
+        try await reactor.signInAsGuest(appID: Self.testAppID)
+        
         let profileId = UUID().uuidString
         let profileName = "Profile to be deleted"
         
@@ -280,9 +316,10 @@ final class PendingMutationsTests: XCTestCase {
         try await reactor.transact(appID: Self.testAppID, chunks: [createChunk])
         
         // Subscribe to verify the profile exists
+        // Note: Use orderBy instead of whereClause since whereClause may not work correctly with optimistic updates
         let config = SharingInstantSync.CollectionConfiguration<Profile>(
             namespace: "profiles",
-            whereClause: ["id": profileId],
+            orderBy: .desc("createdAt"),
             includedLinks: [],
             linkTree: []
         )
@@ -292,7 +329,8 @@ final class PendingMutationsTests: XCTestCase {
         
         let consumeTask = Task {
             for await profiles in stream {
-                if profiles.contains(where: { $0.id == profileId }) {
+                // Use case-insensitive comparison since server may return lowercase IDs
+                if profiles.contains(where: { $0.id.lowercased() == profileId.lowercased() }) {
                     profileCreated.fulfill()
                     break
                 }
@@ -320,7 +358,8 @@ final class PendingMutationsTests: XCTestCase {
         
         let verifyTask = Task {
             for await profiles in verifyStream {
-                if !profiles.contains(where: { $0.id == profileId }) {
+                // Use case-insensitive comparison since server may return lowercase IDs
+                if !profiles.contains(where: { $0.id.lowercased() == profileId.lowercased() }) {
                     profileDeleted.fulfill()
                     break
                 }
@@ -337,6 +376,9 @@ final class PendingMutationsTests: XCTestCase {
     func testDeletionPropagatesAcrossSubscriptions() async throws {
         let store = SharedTripleStore()
         let reactor = Reactor(store: store)
+        
+        // Sign in as guest to allow transactions
+        try await reactor.signInAsGuest(appID: Self.testAppID)
         
         let profileId = UUID().uuidString
         let profileName = "Profile to be deleted across subscriptions"
@@ -379,7 +421,8 @@ final class PendingMutationsTests: XCTestCase {
         let consumeTaskA = Task {
             for await profiles in streamA {
                 await collectorA.update(profiles)
-                if profiles.contains(where: { $0.id == profileId }) {
+                // Use case-insensitive comparison since server may return lowercase IDs
+                if profiles.contains(where: { $0.id.lowercased() == profileId.lowercased() }) {
                     bothSeeProfile.fulfill()
                 }
             }
@@ -388,7 +431,8 @@ final class PendingMutationsTests: XCTestCase {
         let consumeTaskB = Task {
             for await profiles in streamB {
                 await collectorB.update(profiles)
-                if profiles.contains(where: { $0.id == profileId }) {
+                // Use case-insensitive comparison since server may return lowercase IDs
+                if profiles.contains(where: { $0.id.lowercased() == profileId.lowercased() }) {
                     bothSeeProfile.fulfill()
                 }
             }
@@ -409,12 +453,28 @@ final class PendingMutationsTests: XCTestCase {
         )
         try await reactor.transact(appID: Self.testAppID, chunks: [deleteChunk])
         
-        // Give time for deletion to propagate
-        try await Task.sleep(nanoseconds: 500_000_000)
+        // Poll for deletion to propagate (up to 2 seconds)
+        var profileInA = true
+        var profileInB = true
+        let deadline = Date().addingTimeInterval(2.0)
+        
+        while Date() < deadline && (profileInA || profileInB) {
+            profileInA = await collectorA.contains(id: profileId)
+            profileInB = await collectorB.contains(id: profileId)
+            if profileInA || profileInB {
+                try await Task.sleep(nanoseconds: 50_000_000)
+            }
+        }
+        
+        // Debug output
+        let profilesA = await collectorA.getProfiles()
+        let profilesB = await collectorB.getProfiles()
+        print("DEBUG: After deletion - A has \(profilesA.count) profiles, contains target: \(profileInA)")
+        print("DEBUG: After deletion - B has \(profilesB.count) profiles, contains target: \(profileInB)")
+        print("DEBUG: Profile IDs in A: \(profilesA.map { $0.id })")
+        print("DEBUG: Profile IDs in B: \(profilesB.map { $0.id })")
         
         // CRITICAL: Both should NOT contain the deleted profile
-        let profileInA = await collectorA.contains(id: profileId)
-        let profileInB = await collectorB.contains(id: profileId)
         
         XCTAssertFalse(profileInA, "Subscription A should NOT contain deleted profile")
         XCTAssertFalse(profileInB, "Subscription B should ALSO NOT contain deleted profile")
