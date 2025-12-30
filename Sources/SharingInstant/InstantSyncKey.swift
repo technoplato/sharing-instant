@@ -47,6 +47,95 @@ private func logError(
   }
 }
 
+// MARK: - ID Tracking for Deletion Detection
+
+/// Actor that tracks known IDs for each subscription to detect deletions.
+///
+/// ## Why This Exists
+///
+/// When a user calls `$items.withLock { $0.remove(id:) }`, the `save()` method
+/// only receives the NEW collection state - it doesn't know what was removed.
+/// This actor tracks the previous set of IDs so we can compute the difference
+/// and generate delete operations.
+///
+/// ## How It Works
+///
+/// 1. When `subscribe()` receives data from the server, it updates `knownIDs`
+/// 2. When `save()` is called, it compares current IDs with `knownIDs`
+/// 3. IDs in `knownIDs` but not in current = deleted by user → send delete ops
+/// 4. After save, `knownIDs` is updated to match current state
+///
+/// ## Thread Safety
+///
+/// This is an actor to ensure thread-safe access from multiple subscriptions.
+private actor IDTracker {
+    /// Known IDs per subscription key, keyed by the key's string ID
+    private var knownIDsByKey: [String: Set<String>] = [:]
+    
+    /// IDs that were deleted locally and should not be re-added if server sends them back
+    /// This prevents the "re-add after dashboard delete" bug
+    private var locallyDeletedIDs: [String: Set<String>] = [:]
+    
+    /// Update known IDs when server sends data
+    func updateFromServer(keyID: String, ids: Set<String>) {
+        // Remove any locally deleted IDs that the server has now confirmed as deleted
+        // (i.e., they're no longer in the server response)
+        if var deleted = locallyDeletedIDs[keyID] {
+            deleted = deleted.intersection(ids) // Keep only IDs still on server
+            if deleted.isEmpty {
+                locallyDeletedIDs.removeValue(forKey: keyID)
+            } else {
+                locallyDeletedIDs[keyID] = deleted
+            }
+        }
+        
+        knownIDsByKey[keyID] = ids
+    }
+    
+    /// Get IDs that were removed (for deletion detection)
+    /// Returns: (idsToDelete, updatedKnownIDs)
+    func computeDeletedIDs(keyID: String, currentIDs: Set<String>) -> Set<String> {
+        let knownIDs = knownIDsByKey[keyID] ?? []
+        
+        // IDs that were in known set but not in current = deleted by user
+        let deletedIDs = knownIDs.subtracting(currentIDs)
+        
+        // Update known IDs to current state
+        knownIDsByKey[keyID] = currentIDs
+        
+        // Track these as locally deleted so we don't re-add them
+        if !deletedIDs.isEmpty {
+            var existing = locallyDeletedIDs[keyID] ?? []
+            existing.formUnion(deletedIDs)
+            locallyDeletedIDs[keyID] = existing
+        }
+        
+        return deletedIDs
+    }
+    
+    /// Check if an ID was locally deleted (to prevent re-adding)
+    func wasLocallyDeleted(keyID: String, id: String) -> Bool {
+        return locallyDeletedIDs[keyID]?.contains(id) ?? false
+    }
+    
+    /// Filter out locally deleted IDs from a set of IDs
+    func filterLocallyDeleted(keyID: String, ids: [String]) -> [String] {
+        guard let deleted = locallyDeletedIDs[keyID], !deleted.isEmpty else {
+            return ids
+        }
+        return ids.filter { !deleted.contains($0.lowercased()) && !deleted.contains($0) }
+    }
+    
+    /// Clear tracking for a key (e.g., when subscription ends)
+    func clear(keyID: String) {
+        knownIDsByKey.removeValue(forKey: keyID)
+        locallyDeletedIDs.removeValue(forKey: keyID)
+    }
+}
+
+/// Shared ID tracker instance
+private let idTracker = IDTracker()
+
 extension SharedReaderKey {
   
   /// A key that can sync collection data with InstantDB.
@@ -349,11 +438,31 @@ where Value.Element: EntityIdentifiable & Sendable {
     // Capture subscriber identity for debugging - use address of the subscriber struct
     let subscriberIdentity = withUnsafePointer(to: subscriber) { String(format: "%p", $0) }
     
+    // Capture key ID for tracking
+    let keyID = "\(appID):\(configuration.namespace)"
+    
     let task = Task { @MainActor in
         let stream = await reactor.subscribe(appID: appID, configuration: configuration)
         for await data in stream {
+            // Track IDs from server for deletion detection
+            let serverIDs = Set(data.map { $0.id.lowercased() })
+            await idTracker.updateFromServer(keyID: keyID, ids: serverIDs)
+            
+            // Filter out any IDs that were locally deleted
+            // This prevents re-adding items deleted from the dashboard
+            let filteredData = await {
+                var result: [Element] = []
+                for item in data {
+                    let wasDeleted = await idTracker.wasLocallyDeleted(keyID: keyID, id: item.id.lowercased())
+                    if !wasDeleted {
+                        result.append(item)
+                    }
+                }
+                return result
+            }()
+            
             withResume {
-                subscriber.yield(Value(data))
+                subscriber.yield(Value(filteredData))
             }
         }
     }
@@ -361,6 +470,10 @@ where Value.Element: EntityIdentifiable & Sendable {
     return SharedSubscription {
       logDebug("Subscribe[\(subscriptionId)]: SharedSubscription cancelled for \(configuration.namespace)")
       task.cancel()
+      // Clear tracking when subscription ends
+      Task {
+          await idTracker.clear(keyID: keyID)
+      }
     }
   }
   
@@ -385,12 +498,45 @@ where Value.Element: EntityIdentifiable & Sendable {
     
     logInfo("Save: saving \(value.count) items to \(configuration.namespace)")
     
+    // Capture key ID for deletion tracking
+    let keyID = "\(appID):\(configuration.namespace)"
+    let namespace = configuration.namespace
+    
     Task { @MainActor in
       do {
         // Collect chunks
         // We'll collect all chunks (ops) from the entire graph here
         var allChunks: [TransactionChunk] = []
         
+        // --- DELETION DETECTION ---
+        // Compare current IDs with known IDs to find deletions
+        let currentIDs = Set(value.map { item -> String in
+            // Extract ID using Mirror since we can't easily cast to EntityIdentifiable
+            let mirror = Mirror(reflecting: item)
+            for child in mirror.children {
+                if child.label == "id", let idVal = child.value as? String {
+                    return idVal.lowercased()
+                }
+            }
+            return ""
+        }.filter { !$0.isEmpty })
+        
+        let deletedIDs = await idTracker.computeDeletedIDs(keyID: keyID, currentIDs: currentIDs)
+        
+        // Generate delete operations for removed items
+        if !deletedIDs.isEmpty {
+            logInfo("Save: detected \(deletedIDs.count) deletions: \(deletedIDs)")
+            for deletedID in deletedIDs {
+                let deleteChunk = TransactionChunk(
+                    namespace: namespace,
+                    id: deletedID,
+                    ops: [["delete", namespace, deletedID]]
+                )
+                allChunks.append(deleteChunk)
+            }
+        }
+        
+        // --- UPDATE/INSERT OPERATIONS ---
         // Helper to traverse and collect operations
         // Returns the ID of the entity processed
         func traverse(value: Any, namespace: String) throws -> String? {
@@ -566,14 +712,12 @@ where Value.Element: EntityIdentifiable & Sendable {
 
         // --- Execution ---
         
-        let namespace = configuration.namespace
-        
         for item in value {
            _ = try traverse(value: item, namespace: namespace)
         }
         
         if !allChunks.isEmpty {
-          logDebug("Save: sending \(allChunks.count) transactions (recursive) via Reactor")
+          logDebug("Save: sending \(allChunks.count) transactions (including \(deletedIDs.count) deletes) via Reactor")
           
           // Delegate to Reactor
           try await reactor.transact(appID: appID, chunks: allChunks)

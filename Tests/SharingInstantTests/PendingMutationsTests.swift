@@ -26,6 +26,7 @@
 import XCTest
 import IdentifiedCollections
 import Sharing
+import Dependencies
 @testable import SharingInstant
 import InstantDB
 
@@ -381,7 +382,7 @@ final class PendingMutationsTests: XCTestCase {
         try await reactor.signInAsGuest(appID: Self.testAppID)
         
         let profileId = UUID().uuidString
-        let profileName = "Profile to be deleted across subscriptions"
+        let profileName = "Kim Kardashian - Test Profile"
         
         // Create a profile first
         let createChunk = TransactionChunk(
@@ -389,7 +390,7 @@ final class PendingMutationsTests: XCTestCase {
             id: profileId,
             ops: [["update", "profiles", profileId, [
                 "displayName": profileName,
-                "handle": "@cross-delete-\(profileId.prefix(8))",
+                "handle": "@kimkardashian_test",
                 "createdAt": Date().timeIntervalSince1970 * 1000
             ]]]
         )
@@ -444,6 +445,10 @@ final class PendingMutationsTests: XCTestCase {
         }
         
         await fulfillment(of: [bothSeeProfile], timeout: 10)
+        
+        print("DEBUG: Kim Kardashian profile created - waiting 5 seconds before deletion...")
+        print("DEBUG: Check the InstantDB dashboard now!")
+        try await Task.sleep(nanoseconds: 5_000_000_000) // 5 seconds to observe in dashboard
         
         // Delete the profile
         let deleteChunk = TransactionChunk(
@@ -555,5 +560,147 @@ final class PendingMutationsTests: XCTestCase {
             ops: [["delete", "profiles", profileId]]
         )
         try await reactor.transact(appID: Self.testAppID, chunks: [deleteChunk])
+    }
+    
+    // MARK: - Test 6: @Shared(.instantSync) Optimistic Insert
+    
+    /// Tests that an optimistic insert via `@Shared(.instantSync(...))` survives server refresh.
+    ///
+    /// ## This is the REAL bug test
+    ///
+    /// This test uses the actual `@Shared(.instantSync(...))` API that users use,
+    /// not the lower-level Reactor API. The bug report describes:
+    /// 1. User inserts via `$profiles.withLock { $0.append(newProfile) }`
+    /// 2. Profile appears immediately (optimistic)
+    /// 3. Server refresh arrives and overwrites the local state
+    /// 4. Profile disappears from the UI
+    ///
+    /// ## Watch the InstantDB Dashboard
+    ///
+    /// When running this test, watch for "Kim Kardashian" in the profiles table.
+    /// You should see:
+    /// - Profile appears
+    /// - Profile stays for 10 seconds
+    /// - Profile is deleted
+    ///
+    /// If you see oscillation (appearing/disappearing), that's the bug!
+    @MainActor
+    func testSharedInstantSyncOptimisticInsertSurvivesRefresh() async throws {
+        let instanceID = "pending-mutations-\(UUID().uuidString.lowercased())"
+        
+        try await withDependencies {
+            $0.context = .live
+            $0.instantAppID = Self.testAppID
+            $0.instantEnableLocalPersistence = false
+            $0.instantClientInstanceID = instanceID
+        } operation: {
+            // Use the actual @Shared(.instantSync(...)) API
+            @Shared(.instantSync(Schema.profiles.orderBy(\.createdAt, .desc)))
+            var profiles: IdentifiedArrayOf<Profile> = []
+            
+            // Wait for initial subscription to connect
+            print("DEBUG: Waiting for initial subscription...")
+            try await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+            
+            let initialCount = profiles.count
+            print("DEBUG: Initial profile count: \(initialCount)")
+            
+            // Create Kim Kardashian profile
+            let kimId = UUID().uuidString.lowercased()
+            let kim = Profile(
+                id: kimId,
+                displayName: "Kim Kardashian",
+                handle: "@kimkardashian_shared_test",
+                bio: "Testing optimistic updates",
+                avatarUrl: nil,
+                createdAt: Date().timeIntervalSince1970 * 1000
+            )
+            
+            // Insert via withLock - this is how users do it
+            print("DEBUG: Inserting Kim Kardashian via withLock...")
+            $profiles.withLock { profiles in
+                profiles.insert(kim, at: 0)
+            }
+            
+            // Verify immediate optimistic update
+            print("DEBUG: Checking immediate optimistic update...")
+            XCTAssertEqual(profiles.count, initialCount + 1, "Profile count should increase immediately")
+            XCTAssertTrue(
+                profiles.contains { $0.id.lowercased() == kimId.lowercased() },
+                "Kim should be in profiles immediately after insert"
+            )
+            print("DEBUG: ✅ Kim Kardashian inserted - profile count: \(profiles.count)")
+            
+            // Wait 10 seconds to observe in dashboard and allow server refreshes
+            print("DEBUG: ========================================")
+            print("DEBUG: Kim Kardashian is now in the database!")
+            print("DEBUG: Check the InstantDB dashboard for @kimkardashian_shared_test")
+            print("DEBUG: Waiting 10 seconds...")
+            print("DEBUG: ========================================")
+            
+            for i in 1...10 {
+                try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+                let stillPresent = profiles.contains { $0.id.lowercased() == kimId.lowercased() }
+                print("DEBUG: Second \(i): Kim present = \(stillPresent), total profiles = \(profiles.count)")
+                
+                // CRITICAL ASSERTION: Kim should STILL be present after each second
+                // If this fails, the server refresh is overwriting the optimistic insert
+                XCTAssertTrue(
+                    stillPresent,
+                    "Kim should STILL be present at second \(i) (BUG: server refresh overwrote optimistic insert)"
+                )
+            }
+            
+            print("DEBUG: ========================================")
+            print("DEBUG: Test passed! Kim survived 10 seconds of server refreshes")
+            print("DEBUG: Now deleting Kim...")
+            print("DEBUG: ========================================")
+            
+            // Cleanup: Remove Kim via withLock
+            // This should now work! The fix tracks IDs and sends delete operations.
+            $profiles.withLock { profiles in
+                profiles.remove(id: kimId)
+            }
+            
+            // Verify local removal
+            XCTAssertFalse(
+                profiles.contains { $0.id.lowercased() == kimId.lowercased() },
+                "Kim should be removed from LOCAL collection"
+            )
+            print("DEBUG: Kim removed from LOCAL collection")
+            
+            // Wait for sync
+            try await Task.sleep(nanoseconds: 2_000_000_000)
+            
+            // Check if Kim is still in the server by creating a fresh subscription
+            print("DEBUG: Creating fresh subscription to check if Kim was deleted from SERVER...")
+        }
+        
+        // Create a fresh subscription outside the first one to verify server state
+        try await withDependencies {
+            $0.context = .live
+            $0.instantAppID = Self.testAppID
+            $0.instantEnableLocalPersistence = false
+            $0.instantClientInstanceID = "fresh-check-\(UUID().uuidString.lowercased())"
+        } operation: {
+            @Shared(.instantSync(Schema.profiles.orderBy(\.createdAt, .desc)))
+            var freshProfiles: IdentifiedArrayOf<Profile> = []
+            
+            try await Task.sleep(nanoseconds: 2_000_000_000)
+            
+            let kimStillOnServer = freshProfiles.contains { $0.handle == "@kimkardashian_shared_test" }
+            
+            print("DEBUG: Fresh subscription profile count: \(freshProfiles.count)")
+            print("DEBUG: Kim still on server: \(kimStillOnServer)")
+            
+            // Kim should be deleted from the server
+            // This verifies the deletion fix is working
+            XCTAssertFalse(
+                kimStillOnServer,
+                "Kim should be deleted from SERVER after withLock { remove }"
+            )
+            
+            print("DEBUG: Test complete.")
+        }
     }
 }
