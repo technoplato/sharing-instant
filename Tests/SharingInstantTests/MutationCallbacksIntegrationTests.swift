@@ -697,6 +697,182 @@ final class MutationCallbacksIntegrationTests: XCTestCase {
     }
   }
   
+  /// Test multiple rapid updates to a linked entity and verify all propagate to server.
+  ///
+  /// This test simulates a real-world scenario where a user rapidly edits a field
+  /// multiple times in quick succession (e.g., typing in a text field with debouncing,
+  /// or toggling a switch back and forth).
+  ///
+  /// It verifies that:
+  /// 1. All intermediate updates complete without error
+  /// 2. The final state is correctly reflected locally
+  /// 3. The final state is correctly persisted to the server
+  /// 4. The linked entity in queries reflects the final state
+  @MainActor
+  func testRapidUpdatesToLinkedEntity() async throws {
+    try IntegrationTestGate.requireEphemeralEnabled()
+    
+    let app = try await EphemeralAppFactory.createApp(
+      titlePrefix: "RapidUpdatesTest",
+      schema: EphemeralAppFactory.minimalMicroblogSchema(),
+      rules: EphemeralAppFactory.openRules(for: ["profiles", "posts"])
+    )
+    
+    InstantClientFactory.clearCache()
+    
+    let store = SharedTripleStore()
+    let reactor = Reactor(store: store, clientInstanceID: "mutations-test-rapid")
+    
+    // Track all updates
+    let tracker = CallbackTracker()
+    
+    try await withDependencies {
+      $0.context = .live
+      $0.instantReactor = reactor
+      $0.instantAppID = app.id
+      $0.instantEnableLocalPersistence = false
+    } operation: {
+      @Shared(.instantSync(Schema.profiles))
+      var profiles: IdentifiedArrayOf<Profile> = []
+      
+      @Shared(.instantSync(Schema.posts.with(\.author)))
+      var posts: IdentifiedArrayOf<Post> = []
+      
+      try await Task.sleep(nanoseconds: 1_000_000_000)
+      
+      // 1. Create Profile and Post, then link them
+      let profileId = UUID().uuidString.lowercased()
+      let postId = UUID().uuidString.lowercased()
+      
+      // Create profile
+      let profileExp = XCTestExpectation(description: "Profile created")
+      $profiles.createProfile(
+        id: profileId,
+        displayName: "Initial Name",
+        handle: "rapid_\(profileId.prefix(8))",
+        createdAt: Date().timeIntervalSince1970 * 1_000,
+        callbacks: MutationCallbacks(onSettled: { profileExp.fulfill() })
+      )
+      await fulfillment(of: [profileExp], timeout: 10.0)
+      try await Task.sleep(nanoseconds: 500_000_000)
+      
+      // Create post
+      let postExp = XCTestExpectation(description: "Post created")
+      $posts.createPost(
+        id: postId,
+        content: "Test post for rapid updates",
+        createdAt: Date().timeIntervalSince1970 * 1_000,
+        likesCount: 0,
+        callbacks: MutationCallbacks(onSettled: { postExp.fulfill() })
+      )
+      await fulfillment(of: [postExp], timeout: 10.0)
+      try await Task.sleep(nanoseconds: 500_000_000)
+      
+      // Link post to profile
+      let linkExp = XCTestExpectation(description: "Link completed")
+      $posts.linkAuthor(
+        postId,
+        to: profiles[id: profileId]!,
+        callbacks: MutationCallbacks(onSettled: { linkExp.fulfill() })
+      )
+      await fulfillment(of: [linkExp], timeout: 10.0)
+      try await Task.sleep(nanoseconds: 1_000_000_000)
+      
+      // Verify initial state
+      XCTAssertEqual(profiles[id: profileId]?.displayName, "Initial Name")
+      XCTAssertEqual(posts[id: postId]?.author?.displayName, "Initial Name")
+      
+      // 2. Perform multiple rapid updates to the Profile's displayName
+      // Simulates a user typing: "A" -> "Al" -> "Ali" -> "Alic" -> "Alice"
+      let updateNames = ["A", "Al", "Ali", "Alic", "Alice"]
+      var updateExpectations: [XCTestExpectation] = []
+      
+      for (index, name) in updateNames.enumerated() {
+        let exp = XCTestExpectation(description: "Update \(index + 1) completed")
+        updateExpectations.append(exp)
+        
+        $profiles.updateDisplayName(
+          profileId,
+          to: name,
+          callbacks: MutationCallbacks(
+            onMutate: { tracker.append("onMutate:\(name)") },
+            onSuccess: { _ in tracker.append("onSuccess:\(name)") },
+            onError: { error in tracker.append("onError:\(name):\(error)") },
+            onSettled: {
+              tracker.append("onSettled:\(name)")
+              exp.fulfill()
+            }
+          )
+        )
+        
+        // Small delay between updates to simulate realistic typing
+        // (but still rapid - 50ms between updates)
+        try await Task.sleep(nanoseconds: 50_000_000)
+      }
+      
+      // Wait for all updates to complete
+      await fulfillment(of: updateExpectations, timeout: 30.0)
+      
+      // Give time for sync to propagate
+      try await Task.sleep(nanoseconds: 2_000_000_000)
+      
+      // 3. Verify no errors occurred
+      let order = tracker.order
+      print("DEBUG: Callback order: \(order)")
+      
+      let errors = order.filter { $0.hasPrefix("onError") }
+      XCTAssertTrue(errors.isEmpty, "No errors should occur during rapid updates: \(errors)")
+      
+      // Verify all updates fired their callbacks
+      for name in updateNames {
+        XCTAssertTrue(order.contains("onMutate:\(name)"), "onMutate should fire for '\(name)'")
+        XCTAssertTrue(order.contains("onSuccess:\(name)"), "onSuccess should fire for '\(name)'")
+        XCTAssertTrue(order.contains("onSettled:\(name)"), "onSettled should fire for '\(name)'")
+      }
+      
+      // 4. Verify final local state
+      XCTAssertEqual(
+        profiles[id: profileId]?.displayName,
+        "Alice",
+        "Profile displayName should be 'Alice' after all updates"
+      )
+      XCTAssertEqual(
+        posts[id: postId]?.author?.displayName,
+        "Alice",
+        "Linked author in posts query should be 'Alice'"
+      )
+      
+      // 5. VERIFY WITH SERVER - the final state should be persisted
+      let client = InstantClient(appID: app.id, enableLocalPersistence: false)
+      client.connect()
+      try await Task.sleep(nanoseconds: 2_000_000_000)
+      
+      // Query the profile directly
+      let profileQuery = client.query(Profile.self)
+      let profileResult = try await client.queryOnce(profileQuery, timeout: 10.0)
+      let serverProfile = profileResult.data.first { $0.id.lowercased() == profileId.lowercased() }
+      
+      XCTAssertNotNil(serverProfile, "Profile should exist on server")
+      XCTAssertEqual(
+        serverProfile?.displayName,
+        "Alice",
+        "Server profile displayName should be 'Alice' after rapid updates"
+      )
+      
+      // Query posts with author to verify the linked entity
+      let postQuery = client.query(Post.self).including(["author"])
+      let postResult = try await client.queryOnce(postQuery, timeout: 10.0)
+      let serverPost = postResult.data.first { $0.id.lowercased() == postId.lowercased() }
+      
+      XCTAssertNotNil(serverPost?.author, "Server post should have author")
+      XCTAssertEqual(
+        serverPost?.author?.displayName,
+        "Alice",
+        "Server author displayName should be 'Alice' after rapid updates"
+      )
+    }
+  }
+  
   /// Test unlinking a Post from its author.
   ///
   /// **KNOWN ISSUE**: The unlink operation appears to succeed (onSuccess callback fires)
