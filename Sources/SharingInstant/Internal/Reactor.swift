@@ -3,6 +3,30 @@ import InstantDB
 import Dependencies
 import Sharing
 
+// #region agent log
+/// Debug endpoint for Cursor debug mode logging
+private let debugEndpointURL = URL(string: "http://192.168.68.108:17244/ingest/3fe5bb38-db92-49af-9cd2-9ee98b17811b")
+
+/// Send debug logs to Cursor debug mode
+private func debugLogReactor(_ location: String, _ message: String, _ data: [String: Any], _ hypothesisId: String) {
+    guard let url = debugEndpointURL else { return }
+    var payload: [String: Any] = [
+        "location": location,
+        "message": message,
+        "data": data,
+        "timestamp": Date().timeIntervalSince1970 * 1000,
+        "sessionId": "sharing-instant-reactor",
+        "hypothesisId": hypothesisId
+    ]
+    guard let jsonData = try? JSONSerialization.data(withJSONObject: payload) else { return }
+    var request = URLRequest(url: url)
+    request.httpMethod = "POST"
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    request.httpBody = jsonData
+    URLSession.shared.dataTask(with: request).resume()
+}
+// #endregion
+
 /// Adapted from: instant-client/src/client_db.ts (Reactor logic)
 ///
 /// The central coordinator for InstantDB data.
@@ -107,7 +131,24 @@ public actor Reactor {
   }
   
   private func notifyOptimisticUpsert(namespace: String, id: String) async {
-    for handle in activeSubscriptions.values where handle.namespace == namespace {
+    // #region agent log
+    debugLogReactor("Reactor:notifyOptimisticUpsert:START", "Broadcasting optimistic upsert to subscriptions", [
+      "namespace": namespace,
+      "entityId": id,
+      "activeSubscriptionCount": activeSubscriptions.count
+    ], "F")
+    // #endregion
+    
+    for (handleId, handle) in activeSubscriptions where handle.namespace == namespace {
+      // #region agent log
+      debugLogReactor("Reactor:notifyOptimisticUpsert:CHECKING", "Checking subscription filter", [
+        "handleId": handleId.uuidString,
+        "namespace": namespace,
+        "entityId": id,
+        "filter": String(describing: handle.filter)
+      ], "F")
+      // #endregion
+      
       switch handle.filter {
       case .matchAll:
         await handle.upsert(id)
@@ -416,6 +457,15 @@ public actor Reactor {
       namespace: namespace,
       filter: subscriptionFilter(whereClause: whereClause),
       upsert: { id in
+        // #region agent log
+        debugLogReactor("Reactor:SubscriptionHandle:UPSERT", "Optimistic upsert notification received", [
+          "handleId": handleId.uuidString,
+          "namespace": namespace,
+          "entityId": id,
+          "includedLinksCount": includedLinks.count,
+          "linkTreeCount": linkTree.count
+        ], "F")
+        // #endregion
         await subscriptionState.handleOptimisticUpsert(id: id)
       },
       delete: { id in
@@ -554,6 +604,16 @@ private actor SubscriptionState<Value: EntityIdentifiable & Codable & Sendable> 
     
     func handleDBUpdate(data: [Value]) async {
         let previousIDs = currentIDs
+        
+        // #region agent log
+        debugLogReactor("SubscriptionState:handleDBUpdate:START", "Received DB update", [
+          "namespace": namespace,
+          "previousIDsCount": previousIDs.count,
+          "newDataCount": data.count,
+          "optimisticIDsCount": optimisticIDs.count,
+          "newDataIds": data.map { $0.id }
+        ], "G")
+        // #endregion
 
         // 1. Merge data into store (Normalize Tree -> Triples)
         // Use manual dictionary merge to convert to Dict
@@ -610,6 +670,16 @@ private actor SubscriptionState<Value: EntityIdentifiable & Codable & Sendable> 
         }
 
         currentIDs = mergedIDs
+        
+        // #region agent log
+        debugLogReactor("SubscriptionState:handleDBUpdate:MERGED", "Merged IDs after DB update", [
+          "namespace": namespace,
+          "finalCurrentIDsCount": currentIDs.count,
+          "finalCurrentIDs": currentIDs,
+          "pendingOptimisticIDs": optimisticIDs,
+          "serverIDs": serverIDs
+        ], "G")
+        // #endregion
 
         // Yield from the normalized store rather than the raw DB response.
         //
@@ -635,6 +705,16 @@ private actor SubscriptionState<Value: EntityIdentifiable & Codable & Sendable> 
     }
     
     func handleOptimisticUpsert(id: String) async {
+        // #region agent log
+        debugLogReactor("SubscriptionState:handleOptimisticUpsert:START", "Processing optimistic upsert", [
+          "namespace": namespace,
+          "entityId": id,
+          "alreadyInOptimisticIDs": optimisticIDs.contains(id),
+          "alreadyInCurrentIDs": currentIDs.contains(id),
+          "currentIDsCount": currentIDs.count
+        ], "F")
+        // #endregion
+        
         if !optimisticIDs.contains(id) {
           if orderByIsDescending {
             optimisticIDs.insert(id, at: 0)

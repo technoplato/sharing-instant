@@ -213,6 +213,21 @@ struct CaseStudiesApp: App {
             }
           }
           
+          Section("Bug Reproductions") {
+            NavigationLink {
+              CaseStudyView {
+                DifferentWithClausesDemo()
+              }
+            } label: {
+              VStack(alignment: .leading, spacing: 4) {
+                Label("Different .with() Clauses", systemImage: "exclamationmark.triangle")
+                Text("Optimistic updates across different query shapes")
+                  .font(.caption)
+                  .foregroundStyle(.secondary)
+              }
+            }
+          }
+          
           Section("Authentication") {
             NavigationLink {
               CaseStudyView {
