@@ -515,9 +515,53 @@ where Value.Element: EntityIdentifiable & Sendable {
                res[k] = date.timeIntervalSince1970 * 1000 // ms
             } else if let subDict = v as? [String: Any] {
                res[k] = sanitizeData(subDict)
+            } else if let array = v as? [Any] {
+               // Handle arrays - convert any Encodable elements to dictionaries
+               res[k] = sanitizeArray(array)
+            } else if shouldConvertToJSON(v) {
+               // Convert Encodable structs to JSON-compatible dictionaries
+               if let converted = convertToJSONCompatible(v) {
+                 res[k] = converted
+               }
             }
           }
           return res
+        }
+        
+        func sanitizeArray(_ array: [Any]) -> [Any] {
+          return array.map { element in
+            if let date = element as? Date {
+              return date.timeIntervalSince1970 * 1000
+            } else if let subDict = element as? [String: Any] {
+              return sanitizeData(subDict)
+            } else if let subArray = element as? [Any] {
+              return sanitizeArray(subArray)
+            } else if shouldConvertToJSON(element) {
+              return convertToJSONCompatible(element) ?? element
+            }
+            return element
+          }
+        }
+        
+        func shouldConvertToJSON(_ value: Any) -> Bool {
+          // Check if this is a custom struct/class that needs JSON conversion
+          // Primitives and dictionaries are already handled
+          let mirror = Mirror(reflecting: value)
+          return mirror.displayStyle == .struct || mirror.displayStyle == .class
+        }
+        
+        func convertToJSONCompatible(_ value: Any) -> Any? {
+          // Try to convert Encodable values to JSON-compatible dictionaries
+          guard let encodable = value as? Encodable else { return nil }
+          
+          do {
+            let data = try JSONEncoder().encode(AnyEncodable(encodable))
+            let json = try JSONSerialization.jsonObject(with: data, options: [])
+            return json
+          } catch {
+            logDebug("Save: failed to convert \(type(of: value)) to JSON: \(error)")
+            return nil
+          }
         }
 
         // --- Execution ---
@@ -572,4 +616,20 @@ private struct SyncCollectionConfigurationRequest<
 private var isTesting: Bool {
   @Dependency(\.context) var context
   return context == .test
+}
+
+// MARK: - AnyEncodable Helper
+
+/// Type-erased wrapper for Encodable values.
+/// Used to encode arbitrary Encodable structs (like Word) to JSON dictionaries.
+private struct AnyEncodable: Encodable {
+  private let _encode: (Encoder) throws -> Void
+  
+  init<T: Encodable>(_ wrapped: T) {
+    _encode = wrapped.encode
+  }
+  
+  func encode(to encoder: Encoder) throws {
+    try _encode(encoder)
+  }
 }
