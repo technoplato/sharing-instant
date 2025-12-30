@@ -7,6 +7,7 @@
 // 1. MutationCallbacks type works correctly
 // 2. The generated mutation methods (createTodo, updateTitle, etc.) work
 // 3. Callbacks fire correctly
+// 4. Link mutations work and queries reflect linked entity updates
 
 import Dependencies
 import DependenciesTestSupport
@@ -398,6 +399,7 @@ final class MutationCallbacksIntegrationTests: XCTestCase {
       )
       
       await fulfillment(of: [markExpectation], timeout: 10.0)
+      try await Task.sleep(nanoseconds: 500_000_000)
       XCTAssertEqual(todos[id: todoId]?.done, true)
       
       // Use unmarkDone
@@ -410,6 +412,7 @@ final class MutationCallbacksIntegrationTests: XCTestCase {
       )
       
       await fulfillment(of: [unmarkExpectation], timeout: 10.0)
+      try await Task.sleep(nanoseconds: 500_000_000)
       XCTAssertEqual(todos[id: todoId]?.done, false)
     }
   }
@@ -440,5 +443,327 @@ final class MutationCallbacksIntegrationTests: XCTestCase {
     XCTAssertNil(callbacks.onSuccess)
     XCTAssertNil(callbacks.onError)
     XCTAssertNil(callbacks.onSettled)
+  }
+  
+  // MARK: - Link Mutation Tests
+  
+  /// Test that linking a Post to a Profile works and the `.with(\.author)` query
+  /// correctly reflects the linked entity.
+  @MainActor
+  func testLinkPostToAuthorAndQueryWithAuthor() async throws {
+    try IntegrationTestGate.requireEphemeralEnabled()
+    
+    let app = try await EphemeralAppFactory.createApp(
+      titlePrefix: "LinkMutationsTest",
+      schema: EphemeralAppFactory.minimalMicroblogSchema(),
+      rules: EphemeralAppFactory.openRules(for: ["profiles", "posts"])
+    )
+    
+    InstantClientFactory.clearCache()
+    
+    let store = SharedTripleStore()
+    let reactor = Reactor(store: store, clientInstanceID: "mutations-test-link")
+    
+    let tracker = CallbackTracker()
+    
+    try await withDependencies {
+      $0.context = .live
+      $0.instantReactor = reactor
+      $0.instantAppID = app.id
+      $0.instantEnableLocalPersistence = false
+    } operation: {
+      // Subscribe to profiles (flat)
+      @Shared(.instantSync(Schema.profiles))
+      var profiles: IdentifiedArrayOf<Profile> = []
+      
+      // Subscribe to posts with author link populated
+      @Shared(.instantSync(Schema.posts.with(\.author)))
+      var posts: IdentifiedArrayOf<Post> = []
+      
+      // Wait for initial sync
+      try await Task.sleep(nanoseconds: 1_000_000_000)
+      
+      // 1. Create a Profile
+      let profileId = UUID().uuidString.lowercased()
+      let createProfileExpectation = XCTestExpectation(description: "Profile created")
+      $profiles.createProfile(
+        id: profileId,
+        displayName: "Alice",
+        handle: "alice_\(profileId.prefix(8))",
+        createdAt: Date().timeIntervalSince1970 * 1_000,
+        callbacks: MutationCallbacks(
+          onSettled: { createProfileExpectation.fulfill() }
+        )
+      )
+      
+      await fulfillment(of: [createProfileExpectation], timeout: 10.0)
+      try await Task.sleep(nanoseconds: 500_000_000)
+      
+      XCTAssertEqual(profiles.count, 1)
+      XCTAssertEqual(profiles[id: profileId]?.displayName, "Alice")
+      
+      // 2. Create a Post (without author link initially)
+      let postId = UUID().uuidString.lowercased()
+      let createPostExpectation = XCTestExpectation(description: "Post created")
+      $posts.createPost(
+        id: postId,
+        content: "Hello from Alice!",
+        createdAt: Date().timeIntervalSince1970 * 1_000,
+        likesCount: 0,
+        callbacks: MutationCallbacks(
+          onSettled: { createPostExpectation.fulfill() }
+        )
+      )
+      
+      await fulfillment(of: [createPostExpectation], timeout: 10.0)
+      try await Task.sleep(nanoseconds: 500_000_000)
+      
+      XCTAssertEqual(posts.count, 1)
+      // Author should be nil since we haven't linked yet
+      XCTAssertNil(posts[id: postId]?.author)
+      
+      // 3. Link the Post to the Profile using the generated linkAuthor method
+      let linkExpectation = XCTestExpectation(description: "Link completed")
+      let profile = profiles[id: profileId]!
+      $posts.linkAuthor(
+        postId,
+        to: profile,
+        callbacks: MutationCallbacks(
+          onMutate: { tracker.append("onMutate") },
+          onSuccess: { _ in tracker.append("onSuccess") },
+          onError: { error in
+            tracker.append("onError")
+            XCTFail("Link should not error: \(error)")
+          },
+          onSettled: {
+            tracker.append("onSettled")
+            linkExpectation.fulfill()
+          }
+        )
+      )
+      
+      await fulfillment(of: [linkExpectation], timeout: 10.0)
+      
+      // Verify callback order
+      XCTAssertEqual(tracker.order, ["onMutate", "onSuccess", "onSettled"])
+      
+      // Wait for sync to propagate
+      try await Task.sleep(nanoseconds: 1_000_000_000)
+      
+      // 4. Verify the author link is now populated in the query
+      let linkedPost = posts[id: postId]
+      XCTAssertNotNil(linkedPost?.author, "Author should be populated after linking")
+      XCTAssertEqual(linkedPost?.author?.id, profileId)
+      XCTAssertEqual(linkedPost?.author?.displayName, "Alice")
+    }
+  }
+  
+  /// Test that updating a linked entity's fields is reflected in queries that include that link.
+  @MainActor
+  func testUpdateLinkedAuthorReflectsInPostQuery() async throws {
+    try IntegrationTestGate.requireEphemeralEnabled()
+    
+    let app = try await EphemeralAppFactory.createApp(
+      titlePrefix: "LinkedUpdateTest",
+      schema: EphemeralAppFactory.minimalMicroblogSchema(),
+      rules: EphemeralAppFactory.openRules(for: ["profiles", "posts"])
+    )
+    
+    InstantClientFactory.clearCache()
+    
+    let store = SharedTripleStore()
+    let reactor = Reactor(store: store, clientInstanceID: "mutations-test-linked-update")
+    
+    try await withDependencies {
+      $0.context = .live
+      $0.instantReactor = reactor
+      $0.instantAppID = app.id
+      $0.instantEnableLocalPersistence = false
+    } operation: {
+      @Shared(.instantSync(Schema.profiles))
+      var profiles: IdentifiedArrayOf<Profile> = []
+      
+      @Shared(.instantSync(Schema.posts.with(\.author)))
+      var posts: IdentifiedArrayOf<Post> = []
+      
+      try await Task.sleep(nanoseconds: 1_000_000_000)
+      
+      // 1. Create Profile and Post, then link them
+      let profileId = UUID().uuidString.lowercased()
+      let postId = UUID().uuidString.lowercased()
+      
+      // Create profile
+      let profileExp = XCTestExpectation(description: "Profile created")
+      $profiles.createProfile(
+        id: profileId,
+        displayName: "Bob",
+        handle: "bob_\(profileId.prefix(8))",
+        createdAt: Date().timeIntervalSince1970 * 1_000,
+        callbacks: MutationCallbacks(onSettled: { profileExp.fulfill() })
+      )
+      await fulfillment(of: [profileExp], timeout: 10.0)
+      try await Task.sleep(nanoseconds: 500_000_000)
+      
+      // Create post
+      let postExp = XCTestExpectation(description: "Post created")
+      $posts.createPost(
+        id: postId,
+        content: "Bob's first post",
+        createdAt: Date().timeIntervalSince1970 * 1_000,
+        likesCount: 0,
+        callbacks: MutationCallbacks(onSettled: { postExp.fulfill() })
+      )
+      await fulfillment(of: [postExp], timeout: 10.0)
+      try await Task.sleep(nanoseconds: 500_000_000)
+      
+      // Link post to profile
+      let linkExp = XCTestExpectation(description: "Link completed")
+      $posts.linkAuthor(
+        postId,
+        to: profiles[id: profileId]!,
+        callbacks: MutationCallbacks(onSettled: { linkExp.fulfill() })
+      )
+      await fulfillment(of: [linkExp], timeout: 10.0)
+      try await Task.sleep(nanoseconds: 1_000_000_000)
+      
+      // Verify initial state
+      XCTAssertEqual(posts[id: postId]?.author?.displayName, "Bob")
+      
+      // 2. Update the Profile's displayName
+      let updateExp = XCTestExpectation(description: "Update completed")
+      $profiles.updateDisplayName(
+        profileId,
+        to: "Robert",
+        callbacks: MutationCallbacks(
+          onSuccess: { updated in
+            XCTAssertEqual(updated.displayName, "Robert")
+          },
+          onSettled: { updateExp.fulfill() }
+        )
+      )
+      await fulfillment(of: [updateExp], timeout: 10.0)
+      
+      // Wait for sync to propagate
+      try await Task.sleep(nanoseconds: 1_500_000_000)
+      
+      // 3. Verify the posts query reflects the updated author name
+      let updatedPost = posts[id: postId]
+      XCTAssertNotNil(updatedPost?.author, "Author should still be linked")
+      XCTAssertEqual(
+        updatedPost?.author?.displayName,
+        "Robert",
+        "The author's displayName should be updated to 'Robert' in the posts query"
+      )
+      
+      // Also verify the profiles collection was updated
+      XCTAssertEqual(profiles[id: profileId]?.displayName, "Robert")
+    }
+  }
+  
+  /// Test unlinking a Post from its author.
+  @MainActor
+  func testUnlinkAuthorFromPost() async throws {
+    try IntegrationTestGate.requireEphemeralEnabled()
+    
+    let app = try await EphemeralAppFactory.createApp(
+      titlePrefix: "UnlinkTest",
+      schema: EphemeralAppFactory.minimalMicroblogSchema(),
+      rules: EphemeralAppFactory.openRules(for: ["profiles", "posts"])
+    )
+    
+    InstantClientFactory.clearCache()
+    
+    let store = SharedTripleStore()
+    let reactor = Reactor(store: store, clientInstanceID: "mutations-test-unlink")
+    
+    let tracker = CallbackTracker()
+    
+    try await withDependencies {
+      $0.context = .live
+      $0.instantReactor = reactor
+      $0.instantAppID = app.id
+      $0.instantEnableLocalPersistence = false
+    } operation: {
+      @Shared(.instantSync(Schema.profiles))
+      var profiles: IdentifiedArrayOf<Profile> = []
+      
+      @Shared(.instantSync(Schema.posts.with(\.author)))
+      var posts: IdentifiedArrayOf<Post> = []
+      
+      try await Task.sleep(nanoseconds: 1_000_000_000)
+      
+      // Setup: Create profile, post, and link them
+      let profileId = UUID().uuidString.lowercased()
+      let postId = UUID().uuidString.lowercased()
+      
+      let profileExp = XCTestExpectation(description: "Profile created")
+      $profiles.createProfile(
+        id: profileId,
+        displayName: "Carol",
+        handle: "carol_\(profileId.prefix(8))",
+        createdAt: Date().timeIntervalSince1970 * 1_000,
+        callbacks: MutationCallbacks(onSettled: { profileExp.fulfill() })
+      )
+      await fulfillment(of: [profileExp], timeout: 10.0)
+      try await Task.sleep(nanoseconds: 500_000_000)
+      
+      let postExp = XCTestExpectation(description: "Post created")
+      $posts.createPost(
+        id: postId,
+        content: "Carol's post",
+        createdAt: Date().timeIntervalSince1970 * 1_000,
+        likesCount: 0,
+        callbacks: MutationCallbacks(onSettled: { postExp.fulfill() })
+      )
+      await fulfillment(of: [postExp], timeout: 10.0)
+      try await Task.sleep(nanoseconds: 500_000_000)
+      
+      let linkExp = XCTestExpectation(description: "Link completed")
+      $posts.linkAuthor(
+        postId,
+        to: profiles[id: profileId]!,
+        callbacks: MutationCallbacks(onSettled: { linkExp.fulfill() })
+      )
+      await fulfillment(of: [linkExp], timeout: 10.0)
+      try await Task.sleep(nanoseconds: 1_000_000_000)
+      
+      // Verify link exists
+      XCTAssertNotNil(posts[id: postId]?.author)
+      XCTAssertEqual(posts[id: postId]?.author?.displayName, "Carol")
+      
+      // Now unlink the author
+      let unlinkExp = XCTestExpectation(description: "Unlink completed")
+      let profile = profiles[id: profileId]!
+      $posts.unlinkAuthor(
+        postId,
+        from: profile,
+        callbacks: MutationCallbacks(
+          onMutate: { tracker.append("onMutate") },
+          onSuccess: { _ in tracker.append("onSuccess") },
+          onError: { error in
+            tracker.append("onError")
+            XCTFail("Unlink should not error: \(error)")
+          },
+          onSettled: {
+            tracker.append("onSettled")
+            unlinkExp.fulfill()
+          }
+        )
+      )
+      
+      await fulfillment(of: [unlinkExp], timeout: 10.0)
+      
+      // Verify callback order
+      XCTAssertEqual(tracker.order, ["onMutate", "onSuccess", "onSettled"])
+      
+      // Wait for sync
+      try await Task.sleep(nanoseconds: 1_000_000_000)
+      
+      // Verify the author link is now nil
+      XCTAssertNil(
+        posts[id: postId]?.author,
+        "Author should be nil after unlinking"
+      )
+    }
   }
 }
