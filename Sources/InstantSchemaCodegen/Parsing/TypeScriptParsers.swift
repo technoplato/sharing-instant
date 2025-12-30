@@ -1338,4 +1338,3 @@ public struct GenericParameterParser: Parser {
     return genericType
   }
 }
-
