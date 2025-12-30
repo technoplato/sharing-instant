@@ -62,23 +62,33 @@ final class TripleStoreTests: XCTestCase {
         XCTAssertTrue(triples.isEmpty)
     }
 
-    func testLWWBehavior() async {
+    func testCardinalityOneOverwriteSemanticsAreLastAppliedWins() async {
         let store = InstantDB.TripleStore()
         let id = UUID().uuidString
         
-        // 1. Add newer value (200)
+        // InstantDB's JS core store does not use `createdAt` for conflict resolution when
+        // applying triples. It applies the latest triple it sees for a cardinality-one
+        // attribute by replacing the value map.
+        //
+        // ## Why This Matters
+        // Server messages can arrive with timestamps that are not comparable to local
+        // optimistic timestamps (`Date.now() * 10`), so we do not use LWW here. The server
+        // is treated as the source of truth, and the store should reflect the latest
+        // applied update regardless of its timestamp.
+
+        // 1. Add a value (createdAt 200)
         let t1 = Triple(entityId: id, attributeId: "score", value: .int(10), createdAt: 200)
         store.addTriple(t1, hasCardinalityOne: true)
         
-        // 2. Try to add older value (100)
-        // Should be ignored
+        // 2. Add an "older" value (createdAt 100)
+        // The store replaces cardinality-one values regardless of createdAt.
         let t2 = Triple(entityId: id, attributeId: "score", value: .int(5), createdAt: 100)
         store.addTriple(t2, hasCardinalityOne: true)
         
         let triples = store.getTriples(entity: id, attribute: "score")
         XCTAssertEqual(triples.count, 1)
-        XCTAssertEqual(triples.first?.value, .int(10))
-        XCTAssertEqual(triples.first?.createdAt, 200)
+        XCTAssertEqual(triples.first?.value, .int(5))
+        XCTAssertEqual(triples.first?.createdAt, 100)
         
         // 3. Add even newer value (300)
         // Should overwrite
