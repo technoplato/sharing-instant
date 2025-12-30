@@ -115,6 +115,12 @@ public struct SwiftCodeGenerator {
       ))
     }
     
+    // Generate mutations file
+    files.append(GeneratedFile(
+      name: "Mutations.swift",
+      content: generator.generateMutations(from: schema)
+    ))
+    
     return files
   }
   
@@ -1557,6 +1563,564 @@ public struct SwiftCodeGenerator {
     
     output += "    \(access) static let \(topic.name) = TopicKey<\(topic.payloadTypeName)>(roomType: \"\(topic.roomName)\", topic: \"\(topic.name)\")\n\n"
     
+    return output
+  }
+  
+  // MARK: - Mutations Generation
+  
+  private func generateMutations(from schema: SchemaIR) -> String {
+    let access = configuration.accessLevel.rawValue
+    
+    // Pick example entity for documentation
+    let exampleEntity = schema.entities.first { !$0.name.hasPrefix("$") } ?? schema.entities.first
+    let entityName = exampleEntity?.swiftTypeName ?? "Entity"
+    let schemaName = exampleEntity?.swiftPropertyName ?? "entities"
+    let firstField = exampleEntity?.fields.first
+    let fieldName = firstField?.name ?? "field"
+    
+    let fileDescription = """
+    This file contains type-safe mutation extensions for each entity in your
+    InstantDB schema. These methods provide explicit operations (create, update,
+    delete, link, unlink) with TanStack Query-style callbacks.
+
+    Benefits over withLock mutations:
+    • Explicit operations - no diff computation
+    • Type-safe field updates - compiler catches typos
+    • Semantic methods - toggleDone(), incrementLikes()
+    • Callbacks for success/error handling
+    """
+    
+    let howToUse = """
+    Use the generated mutation methods on your @Shared collections:
+
+      @Shared(Schema.\(schemaName))
+      private var items: IdentifiedArrayOf<\(entityName)> = []
+
+      // Create with all fields
+      $items.create\(entityName)(\(fieldName): value)
+
+      // Update specific field
+      $items.update\(fieldName.prefix(1).uppercased() + fieldName.dropFirst())(itemId, to: newValue)
+
+      // Delete by ID or entity
+      $items.delete\(entityName)(itemId)
+      $items.delete\(entityName)(item)
+    """
+    
+    let quickStart = """
+    import SwiftUI
+    import SharingInstant
+    import IdentifiedCollections
+
+    struct \(entityName)MutationsView: View {
+      @Shared(Schema.\(schemaName))
+      private var items: IdentifiedArrayOf<\(entityName)> = []
+
+      var body: some View {
+        List(items) { item in
+          Text("\\(item.id)")
+        }
+      }
+
+      private func createItem() {
+        $items.create\(entityName)(
+          \(fieldName): "value",
+          callbacks: MutationCallbacks(
+            onSuccess: { item in print("Created: \\(item.id)") },
+            onError: { error in print("Error: \\(error)") }
+          )
+        )
+      }
+    }
+    """
+    
+    // Build available mutations listing
+    var availableItems = ""
+    for entity in schema.entities {
+      availableItems += formatMutationsListing(entity, schema: schema) + "\n///\n"
+    }
+    
+    var output = fileHeader(
+      "Mutations.swift",
+      schema: schema,
+      fileDescription: fileDescription,
+      howToUse: howToUse,
+      quickStart: quickStart,
+      availableItems: availableItems
+    )
+    
+    output += """
+    import Foundation
+    import IdentifiedCollections
+    import Sharing
+    import SharingInstant
+    
+    
+    """
+    
+    // Generate mutation extensions for each entity
+    for entity in schema.entities {
+      output += generateEntityMutations(entity, schema: schema, access: access)
+      output += "\n"
+    }
+    
+    return output
+  }
+  
+  private func generateEntityMutations(_ entity: EntityIR, schema: SchemaIR, access: String) -> String {
+    var output = "// MARK: - \(entity.swiftTypeName) Mutations\n\n"
+    
+    // Generate extension for IdentifiedArray
+    output += "\(access) extension Shared where Value == IdentifiedArrayOf<\(entity.swiftTypeName)> {\n"
+    
+    // Create method
+    output += generateCreateMethod(entity, access: access)
+    
+    // Field-specific update methods
+    for field in entity.fields {
+      output += generateFieldUpdateMethod(entity, field: field, access: access)
+      
+      // Semantic methods for booleans
+      if field.type == .boolean {
+        output += generateBooleanSemanticMethods(entity, field: field, access: access)
+      }
+      
+      // Semantic methods for count fields
+      if field.type == .number && (field.name.lowercased().contains("count") || field.name.lowercased().hasSuffix("s")) {
+        output += generateCountSemanticMethods(entity, field: field, access: access)
+      }
+    }
+    
+    // Delete methods
+    output += generateDeleteMethods(entity, access: access)
+    
+    // Link/unlink methods
+    let forwardLinks = schema.links.filter { $0.forward.entityName == entity.name }
+    let reverseLinks = schema.links.filter { $0.reverse.entityName == entity.name }
+    
+    for link in forwardLinks {
+      if let targetEntity = schema.entity(named: link.reverse.entityName) {
+        output += generateLinkMethods(entity, link: link.forward, targetEntity: targetEntity, access: access)
+      }
+    }
+    
+    for link in reverseLinks {
+      if let targetEntity = schema.entity(named: link.forward.entityName) {
+        output += generateLinkMethods(entity, link: link.reverse, targetEntity: targetEntity, access: access)
+      }
+    }
+    
+    output += "}\n"
+    
+    // Also generate extension for RangeReplaceableCollection (Array)
+    output += "\n\(access) extension Shared where Value: RangeReplaceableCollection, Value.Element == \(entity.swiftTypeName) {\n"
+    
+    // Create method for arrays
+    output += generateCreateMethodForArray(entity, access: access)
+    
+    // Delete methods for arrays
+    output += generateDeleteMethodsForArray(entity, access: access)
+    
+    output += "}\n"
+    
+    return output
+  }
+  
+  private func generateCreateMethod(_ entity: EntityIR, access: String) -> String {
+    var output = "\n  // MARK: Create\n\n"
+    
+    // Build parameter list
+    var params: [(name: String, type: String, defaultValue: String?)] = []
+    params.append((name: "id", type: "String", defaultValue: "UUID().uuidString.lowercased()"))
+    
+    for field in entity.fields {
+      let type = swiftTypeForField(field, entityTypeName: entity.swiftTypeName) + (field.isOptional ? "?" : "")
+      let defaultValue = field.isOptional ? "nil" : field.defaultValue
+      params.append((name: field.name, type: type, defaultValue: defaultValue))
+    }
+    
+    // Generate method signature
+    output += "  /// Create a new \(entity.swiftTypeName) and sync to InstantDB.\n"
+    output += "  @MainActor\n"
+    output += "  \(access) func create\(entity.swiftTypeName)(\n"
+    
+    for (index, param) in params.enumerated() {
+      let comma = index < params.count - 1 ? "," : ","
+      if let defaultValue = param.defaultValue {
+        output += "    \(param.name): \(param.type) = \(defaultValue)\(comma)\n"
+      } else {
+        output += "    \(param.name): \(param.type)\(comma)\n"
+      }
+    }
+    output += "    callbacks: MutationCallbacks<\(entity.swiftTypeName)> = .init()\n"
+    output += "  ) {\n"
+    
+    // Method body
+    output += "    callbacks.onMutate?()\n"
+    output += "    let entity = \(entity.swiftTypeName)(\n"
+    for (index, param) in params.enumerated() {
+      let comma = index < params.count - 1 ? "," : ""
+      output += "      \(param.name): \(param.name)\(comma)\n"
+    }
+    output += "    )\n"
+    output += "    Task {\n"
+    output += "      do {\n"
+    output += "        try await self.create(entity)\n"
+    output += "        callbacks.onSuccess?(entity)\n"
+    output += "      } catch {\n"
+    output += "        callbacks.onError?(error)\n"
+    output += "      }\n"
+    output += "      callbacks.onSettled?()\n"
+    output += "    }\n"
+    output += "  }\n"
+    
+    return output
+  }
+  
+  private func generateCreateMethodForArray(_ entity: EntityIR, access: String) -> String {
+    var output = "\n  // MARK: Create\n\n"
+    
+    // Build parameter list
+    var params: [(name: String, type: String, defaultValue: String?)] = []
+    params.append((name: "id", type: "String", defaultValue: "UUID().uuidString.lowercased()"))
+    
+    for field in entity.fields {
+      let type = swiftTypeForField(field, entityTypeName: entity.swiftTypeName) + (field.isOptional ? "?" : "")
+      let defaultValue = field.isOptional ? "nil" : field.defaultValue
+      params.append((name: field.name, type: type, defaultValue: defaultValue))
+    }
+    
+    // Generate method signature
+    output += "  /// Create a new \(entity.swiftTypeName) and sync to InstantDB.\n"
+    output += "  @MainActor\n"
+    output += "  \(access) func create\(entity.swiftTypeName)(\n"
+    
+    for (index, param) in params.enumerated() {
+      let comma = index < params.count - 1 ? "," : ","
+      if let defaultValue = param.defaultValue {
+        output += "    \(param.name): \(param.type) = \(defaultValue)\(comma)\n"
+      } else {
+        output += "    \(param.name): \(param.type)\(comma)\n"
+      }
+    }
+    output += "    callbacks: MutationCallbacks<\(entity.swiftTypeName)> = .init()\n"
+    output += "  ) {\n"
+    
+    // Method body
+    output += "    callbacks.onMutate?()\n"
+    output += "    let entity = \(entity.swiftTypeName)(\n"
+    for (index, param) in params.enumerated() {
+      let comma = index < params.count - 1 ? "," : ""
+      output += "      \(param.name): \(param.name)\(comma)\n"
+    }
+    output += "    )\n"
+    output += "    Task {\n"
+    output += "      do {\n"
+    output += "        try await self.create(entity)\n"
+    output += "        callbacks.onSuccess?(entity)\n"
+    output += "      } catch {\n"
+    output += "        callbacks.onError?(error)\n"
+    output += "      }\n"
+    output += "      callbacks.onSettled?()\n"
+    output += "    }\n"
+    output += "  }\n"
+    
+    return output
+  }
+  
+  private func generateFieldUpdateMethod(_ entity: EntityIR, field: FieldIR, access: String) -> String {
+    let capitalizedName = field.name.prefix(1).uppercased() + field.name.dropFirst()
+    let fieldType = swiftTypeForField(field, entityTypeName: entity.swiftTypeName) + (field.isOptional ? "?" : "")
+    
+    var output = "\n"
+    output += "  /// Update the \(field.name) field of a \(entity.swiftTypeName).\n"
+    output += "  @MainActor\n"
+    output += "  \(access) func update\(capitalizedName)(\n"
+    output += "    _ id: String,\n"
+    output += "    to value: \(fieldType),\n"
+    output += "    callbacks: MutationCallbacks<\(entity.swiftTypeName)> = .init()\n"
+    output += "  ) {\n"
+    output += "    callbacks.onMutate?()\n"
+    output += "    Task {\n"
+    output += "      do {\n"
+    output += "        try await self.update(id: id) { entity in\n"
+    output += "          entity.\(field.name) = value\n"
+    output += "        }\n"
+    output += "        if let updated = self.wrappedValue[id: id] {\n"
+    output += "          callbacks.onSuccess?(updated)\n"
+    output += "        }\n"
+    output += "      } catch {\n"
+    output += "        callbacks.onError?(error)\n"
+    output += "      }\n"
+    output += "      callbacks.onSettled?()\n"
+    output += "    }\n"
+    output += "  }\n"
+    
+    return output
+  }
+  
+  private func generateBooleanSemanticMethods(_ entity: EntityIR, field: FieldIR, access: String) -> String {
+    let capitalizedName = field.name.prefix(1).uppercased() + field.name.dropFirst()
+    
+    var output = "\n"
+    
+    // Toggle method
+    output += "  /// Toggle the \(field.name) field of a \(entity.swiftTypeName).\n"
+    output += "  @MainActor\n"
+    output += "  \(access) func toggle\(capitalizedName)(\n"
+    output += "    _ id: String,\n"
+    output += "    callbacks: MutationCallbacks<\(entity.swiftTypeName)> = .init()\n"
+    output += "  ) {\n"
+    output += "    callbacks.onMutate?()\n"
+    output += "    Task {\n"
+    output += "      do {\n"
+    output += "        try await self.update(id: id) { entity in\n"
+    output += "          entity.\(field.name).toggle()\n"
+    output += "        }\n"
+    output += "        if let updated = self.wrappedValue[id: id] {\n"
+    output += "          callbacks.onSuccess?(updated)\n"
+    output += "        }\n"
+    output += "      } catch {\n"
+    output += "        callbacks.onError?(error)\n"
+    output += "      }\n"
+    output += "      callbacks.onSettled?()\n"
+    output += "    }\n"
+    output += "  }\n"
+    
+    // Mark method (set to true)
+    output += "\n"
+    output += "  /// Set \(field.name) to true for a \(entity.swiftTypeName).\n"
+    output += "  @MainActor\n"
+    output += "  \(access) func mark\(capitalizedName)(\n"
+    output += "    _ id: String,\n"
+    output += "    callbacks: MutationCallbacks<\(entity.swiftTypeName)> = .init()\n"
+    output += "  ) {\n"
+    output += "    update\(capitalizedName)(id, to: true, callbacks: callbacks)\n"
+    output += "  }\n"
+    
+    // Unmark method (set to false)
+    output += "\n"
+    output += "  /// Set \(field.name) to false for a \(entity.swiftTypeName).\n"
+    output += "  @MainActor\n"
+    output += "  \(access) func unmark\(capitalizedName)(\n"
+    output += "    _ id: String,\n"
+    output += "    callbacks: MutationCallbacks<\(entity.swiftTypeName)> = .init()\n"
+    output += "  ) {\n"
+    output += "    update\(capitalizedName)(id, to: false, callbacks: callbacks)\n"
+    output += "  }\n"
+    
+    return output
+  }
+  
+  private func generateCountSemanticMethods(_ entity: EntityIR, field: FieldIR, access: String) -> String {
+    let capitalizedName = field.name.prefix(1).uppercased() + field.name.dropFirst()
+    
+    var output = "\n"
+    
+    // Increment method
+    output += "  /// Increment the \(field.name) field of a \(entity.swiftTypeName).\n"
+    output += "  @MainActor\n"
+    output += "  \(access) func increment\(capitalizedName)(\n"
+    output += "    _ id: String,\n"
+    output += "    by amount: Double = 1,\n"
+    output += "    callbacks: MutationCallbacks<\(entity.swiftTypeName)> = .init()\n"
+    output += "  ) {\n"
+    output += "    callbacks.onMutate?()\n"
+    output += "    Task {\n"
+    output += "      do {\n"
+    output += "        try await self.update(id: id) { entity in\n"
+    output += "          entity.\(field.name) += amount\n"
+    output += "        }\n"
+    output += "        if let updated = self.wrappedValue[id: id] {\n"
+    output += "          callbacks.onSuccess?(updated)\n"
+    output += "        }\n"
+    output += "      } catch {\n"
+    output += "        callbacks.onError?(error)\n"
+    output += "      }\n"
+    output += "      callbacks.onSettled?()\n"
+    output += "    }\n"
+    output += "  }\n"
+    
+    // Decrement method
+    output += "\n"
+    output += "  /// Decrement the \(field.name) field of a \(entity.swiftTypeName).\n"
+    output += "  @MainActor\n"
+    output += "  \(access) func decrement\(capitalizedName)(\n"
+    output += "    _ id: String,\n"
+    output += "    by amount: Double = 1,\n"
+    output += "    callbacks: MutationCallbacks<\(entity.swiftTypeName)> = .init()\n"
+    output += "  ) {\n"
+    output += "    increment\(capitalizedName)(id, by: -amount, callbacks: callbacks)\n"
+    output += "  }\n"
+    
+    return output
+  }
+  
+  private func generateDeleteMethods(_ entity: EntityIR, access: String) -> String {
+    var output = "\n  // MARK: Delete\n\n"
+    
+    // Delete by ID
+    output += "  /// Delete a \(entity.swiftTypeName) by ID.\n"
+    output += "  @MainActor\n"
+    output += "  \(access) func delete\(entity.swiftTypeName)(\n"
+    output += "    _ id: String,\n"
+    output += "    callbacks: MutationCallbacks<Void> = .init()\n"
+    output += "  ) {\n"
+    output += "    callbacks.onMutate?()\n"
+    output += "    Task {\n"
+    output += "      do {\n"
+    output += "        try await self.delete(id: id) as Void\n"
+    output += "        callbacks.onSuccess?(())\n"
+    output += "      } catch {\n"
+    output += "        callbacks.onError?(error)\n"
+    output += "      }\n"
+    output += "      callbacks.onSettled?()\n"
+    output += "    }\n"
+    output += "  }\n"
+    
+    // Delete by entity
+    output += "\n"
+    output += "  /// Delete a \(entity.swiftTypeName) entity.\n"
+    output += "  @MainActor\n"
+    output += "  \(access) func delete\(entity.swiftTypeName)(\n"
+    output += "    _ entity: \(entity.swiftTypeName),\n"
+    output += "    callbacks: MutationCallbacks<Void> = .init()\n"
+    output += "  ) {\n"
+    output += "    delete\(entity.swiftTypeName)(entity.id, callbacks: callbacks)\n"
+    output += "  }\n"
+    
+    return output
+  }
+  
+  private func generateDeleteMethodsForArray(_ entity: EntityIR, access: String) -> String {
+    var output = "\n  // MARK: Delete\n\n"
+    
+    // Delete by ID
+    output += "  /// Delete a \(entity.swiftTypeName) by ID.\n"
+    output += "  @MainActor\n"
+    output += "  \(access) func delete\(entity.swiftTypeName)(\n"
+    output += "    _ id: String,\n"
+    output += "    callbacks: MutationCallbacks<Void> = .init()\n"
+    output += "  ) {\n"
+    output += "    callbacks.onMutate?()\n"
+    output += "    Task {\n"
+    output += "      do {\n"
+    output += "        try await self.delete(id: id) as Void\n"
+    output += "        callbacks.onSuccess?(())\n"
+    output += "      } catch {\n"
+    output += "        callbacks.onError?(error)\n"
+    output += "      }\n"
+    output += "      callbacks.onSettled?()\n"
+    output += "    }\n"
+    output += "  }\n"
+    
+    // Delete by entity
+    output += "\n"
+    output += "  /// Delete a \(entity.swiftTypeName) entity.\n"
+    output += "  @MainActor\n"
+    output += "  \(access) func delete\(entity.swiftTypeName)(\n"
+    output += "    _ entity: \(entity.swiftTypeName),\n"
+    output += "    callbacks: MutationCallbacks<Void> = .init()\n"
+    output += "  ) {\n"
+    output += "    delete\(entity.swiftTypeName)(entity.id, callbacks: callbacks)\n"
+    output += "  }\n"
+    
+    return output
+  }
+  
+  private func generateLinkMethods(_ entity: EntityIR, link: LinkSide, targetEntity: EntityIR, access: String) -> String {
+    let capitalizedLabel = link.label.prefix(1).uppercased() + link.label.dropFirst()
+    
+    var output = "\n  // MARK: Link/Unlink \(capitalizedLabel)\n\n"
+    
+    // Link method
+    output += "  /// Link a \(entity.swiftTypeName) to a \(targetEntity.swiftTypeName) via '\(link.label)'.\n"
+    output += "  @MainActor\n"
+    output += "  \(access) func link\(capitalizedLabel)(\n"
+    output += "    _ id: String,\n"
+    output += "    to target: \(targetEntity.swiftTypeName),\n"
+    output += "    callbacks: MutationCallbacks<Void> = .init()\n"
+    output += "  ) {\n"
+    output += "    callbacks.onMutate?()\n"
+    output += "    Task {\n"
+    output += "      do {\n"
+    output += "        try await self.link(id, \"\(link.label)\", to: target)\n"
+    output += "        callbacks.onSuccess?(())\n"
+    output += "      } catch {\n"
+    output += "        callbacks.onError?(error)\n"
+    output += "      }\n"
+    output += "      callbacks.onSettled?()\n"
+    output += "    }\n"
+    output += "  }\n"
+    
+    // Unlink method
+    output += "\n"
+    output += "  /// Unlink a \(entity.swiftTypeName) from a \(targetEntity.swiftTypeName) via '\(link.label)'.\n"
+    output += "  @MainActor\n"
+    output += "  \(access) func unlink\(capitalizedLabel)(\n"
+    output += "    _ id: String,\n"
+    output += "    from target: \(targetEntity.swiftTypeName),\n"
+    output += "    callbacks: MutationCallbacks<Void> = .init()\n"
+    output += "  ) {\n"
+    output += "    callbacks.onMutate?()\n"
+    output += "    Task {\n"
+    output += "      do {\n"
+    output += "        try await self.unlink(id, \"\(link.label)\", from: target)\n"
+    output += "        callbacks.onSuccess?(())\n"
+    output += "      } catch {\n"
+    output += "        callbacks.onError?(error)\n"
+    output += "      }\n"
+    output += "      callbacks.onSettled?()\n"
+    output += "    }\n"
+    output += "  }\n"
+    
+    return output
+  }
+  
+  private func formatMutationsListing(_ entity: EntityIR, schema: SchemaIR) -> String {
+    var output = "/// \(entity.swiftTypeName) Mutations {\n"
+    
+    // Create
+    output += "///   create\(entity.swiftTypeName)(...)\n"
+    
+    // Field updates
+    for field in entity.fields {
+      let capitalizedName = field.name.prefix(1).uppercased() + field.name.dropFirst()
+      output += "///   update\(capitalizedName)(_:to:)\n"
+      
+      if field.type == .boolean {
+        output += "///   toggle\(capitalizedName)(_:)\n"
+        output += "///   mark\(capitalizedName)(_:)\n"
+        output += "///   unmark\(capitalizedName)(_:)\n"
+      }
+      
+      if field.type == .number && (field.name.lowercased().contains("count") || field.name.lowercased().hasSuffix("s")) {
+        output += "///   increment\(capitalizedName)(_:by:)\n"
+        output += "///   decrement\(capitalizedName)(_:by:)\n"
+      }
+    }
+    
+    // Delete
+    output += "///   delete\(entity.swiftTypeName)(_:) // by ID\n"
+    output += "///   delete\(entity.swiftTypeName)(_:) // by entity\n"
+    
+    // Links
+    let forwardLinks = schema.links.filter { $0.forward.entityName == entity.name }
+    let reverseLinks = schema.links.filter { $0.reverse.entityName == entity.name }
+    
+    for link in forwardLinks {
+      let capitalizedLabel = link.forward.label.prefix(1).uppercased() + link.forward.label.dropFirst()
+      output += "///   link\(capitalizedLabel)(_:to:)\n"
+      output += "///   unlink\(capitalizedLabel)(_:from:)\n"
+    }
+    
+    for link in reverseLinks {
+      let capitalizedLabel = link.reverse.label.prefix(1).uppercased() + link.reverse.label.dropFirst()
+      output += "///   link\(capitalizedLabel)(_:to:)\n"
+      output += "///   unlink\(capitalizedLabel)(_:from:)\n"
+    }
+    
+    output += "/// }"
     return output
   }
   
