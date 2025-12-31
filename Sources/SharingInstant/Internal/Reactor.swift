@@ -468,12 +468,77 @@ public actor Reactor {
            q = q.including(options.includedLinks)
         }
         
+        // #region agent log
+        // HYPOTHESIS C: Log the query being sent to InstantDB
+        let whereClauseStr = options.whereClause.map { dict -> String in
+          let pairs = dict.map { "\($0.key): \(String(describing: $0.value))" }
+          return "[\(pairs.joined(separator: ", "))]"
+        } ?? "nil"
+        
+        // Log the actual whereClause dictionary as JSON
+        let whereClauseJson: String
+        if let wc = options.whereClause,
+           let jsonData = try? JSONSerialization.data(withJSONObject: wc, options: [.sortedKeys]),
+           let str = String(data: jsonData, encoding: .utf8) {
+          whereClauseJson = str
+        } else {
+          whereClauseJson = "nil or failed to serialize"
+        }
+        
+        let payload: [String: Any] = [
+          "location": "Reactor.swift:startSubscription",
+          "message": "HYPOTHESIS_C: Query being sent to InstantDB",
+          "data": [
+            "namespace": namespace,
+            "whereClause": whereClauseStr,
+            "whereClauseJson": whereClauseJson,
+            "hasDotNotation": (options.whereClause?.keys.contains(where: { $0.contains(".") }) ?? false),
+            "includedLinks": Array(options.includedLinks),
+            "linkTreeCount": options.linkTree.count
+          ],
+          "timestamp": Date().timeIntervalSince1970 * 1000,
+          "sessionId": "debug-session",
+          "hypothesisId": "C"
+        ]
+        if let jsonData = try? JSONSerialization.data(withJSONObject: payload) {
+          var request = URLRequest(url: URL(string: "http://127.0.0.1:7243/ingest/b61a72ba-9985-415b-9c60-d4184ed05385")!)
+          request.httpMethod = "POST"
+          request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+          request.httpBody = jsonData
+          let task = URLSession.shared.dataTask(with: request) { _, _, _ in }
+          task.resume()
+        }
+        // #endregion
+        
 	        return try? client.subscribe(q) { [weak subscriptionState] result in
               if result.isLoading {
                 return
               }
 
 	            if let error = result.error {
+                  // #region agent log
+                  // HYPOTHESIS C: Log subscription errors
+                  let payload: [String: Any] = [
+                    "location": "Reactor.swift:subscribe",
+                    "message": "HYPOTHESIS_C: Subscription error",
+                    "data": [
+                      "namespace": namespace,
+                      "error": "\(error)",
+                      "whereClause": String(describing: options.whereClause)
+                    ],
+                    "timestamp": Date().timeIntervalSince1970 * 1000,
+                    "sessionId": "debug-session",
+                    "hypothesisId": "C"
+                  ]
+                  if let jsonData = try? JSONSerialization.data(withJSONObject: payload) {
+                    var request = URLRequest(url: URL(string: "http://127.0.0.1:7243/ingest/b61a72ba-9985-415b-9c60-d4184ed05385")!)
+                    request.httpMethod = "POST"
+                    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                    request.httpBody = jsonData
+                    let task = URLSession.shared.dataTask(with: request) { _, _, _ in }
+                    task.resume()
+                  }
+                  // #endregion
 	                Task { @MainActor in
 	                  InstantLogger.error("Reactor subscription callback error.", error: error)
 	                }
@@ -483,6 +548,33 @@ public actor Reactor {
             sharedStore.updateAttributes(client.attributes)
 
             let data = result.data
+            
+            // #region agent log
+            // HYPOTHESIS C: Log subscription results
+            let dataPayload: [String: Any] = [
+              "location": "Reactor.swift:subscribe",
+              "message": "HYPOTHESIS_C: Subscription result received",
+              "data": [
+                "namespace": namespace,
+                "resultCount": data.count,
+                "resultIds": data.map { $0.id },
+                "whereClause": String(describing: options.whereClause),
+                "hasDotNotation": (options.whereClause?.keys.contains(where: { $0.contains(".") }) ?? false)
+              ],
+              "timestamp": Date().timeIntervalSince1970 * 1000,
+              "sessionId": "debug-session",
+              "hypothesisId": "C"
+            ]
+            if let jsonData = try? JSONSerialization.data(withJSONObject: dataPayload) {
+              var request = URLRequest(url: URL(string: "http://127.0.0.1:7243/ingest/b61a72ba-9985-415b-9c60-d4184ed05385")!)
+              request.httpMethod = "POST"
+              request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+              request.httpBody = jsonData
+              let task = URLSession.shared.dataTask(with: request) { _, _, _ in }
+              task.resume()
+            }
+            // #endregion
+            
             Task {
                 // 1. Merge to Store and Update Subscription State
                 // `subscriptionState` is an actor, so we can call its methods.
