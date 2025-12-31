@@ -1481,28 +1481,31 @@ public struct SwiftCodeGenerator {
     
     output += "\(access) extension Shared where Value == RoomPresence<\(typeName)> {\n\n"
     
+    // Inside a public extension, methods don't need explicit access modifiers
+    let methodAccess = ""
+    
     // Generate setUser method (replaces entire user presence)
-    output += generateSetUserMethod(room: room, presence: presence, access: access)
+    output += generateSetUserMethod(room: room, presence: presence, access: methodAccess)
     
     // Generate field-specific mutations based on type
     for field in presence.fields {
       switch field.type {
       case .boolean:
-        output += generateBooleanPresenceMethods(room: room, field: field, access: access)
+        output += generateBooleanPresenceMethods(room: room, field: field, access: methodAccess)
       case .number:
         // Check for coordinate pairs (X/Y patterns)
         if isCoordinateField(field.name, in: presence.fields) {
           // Only generate for X field to avoid duplication
           if field.name.lowercased().hasSuffix("x") {
-            output += generateCoordinatePresenceMethods(room: room, field: field, presence: presence, access: access)
+            output += generateCoordinatePresenceMethods(room: room, field: field, presence: presence, access: methodAccess)
           }
         } else {
-          output += generateNumberPresenceMethod(room: room, field: field, access: access)
+          output += generateNumberPresenceMethod(room: room, field: field, access: methodAccess)
         }
       case .string:
-        output += generateStringPresenceMethod(room: room, field: field, access: access)
+        output += generateStringPresenceMethod(room: room, field: field, access: methodAccess)
       default:
-        output += generateGenericPresenceMethod(room: room, field: field, access: access)
+        output += generateGenericPresenceMethod(room: room, field: field, access: methodAccess)
       }
     }
     
@@ -1799,8 +1802,11 @@ public struct SwiftCodeGenerator {
     
     output += "\(access) extension Shared where Value == TopicChannel<\(typeName)> {\n\n"
     
+    // Inside a public extension, methods don't need explicit access modifiers
+    let methodAccess = ""
+    
     // Generate send method with named parameters
-    output += generateSendTopicMethod(topic: topic, access: access)
+    output += generateSendTopicMethod(topic: topic, access: methodAccess)
     
     output += "}\n"
     
