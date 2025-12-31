@@ -170,7 +170,7 @@ struct FactListContentView: View {
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// Mode:            Production (full traceability)
-/// Generated:       December 30, 2025 at 9:29 PM EST
+/// Generated:       December 30, 2025 at 11:23 PM EST
 /// Machine:         mlustig-hy7l9xrd61.local (Apple M4 Pro, macOS 26.2)
 /// Generator:       Sources/instant-schema/main.swift
 /// Source Schema:   Examples/CaseStudies/instant.schema.ts
@@ -186,10 +186,10 @@ swift run instant-schema generate \
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// HEAD Commit:
-///   SHA:      f93afd10f28d772ffbb216369f3648279d0e9c25
-///   Date:     December 30, 2025 at 9:29 PM EST
+///   SHA:      1c4c66bedb72039ba775a89156a75e35561bf9e5
+///   Date:     December 30, 2025 at 11:23 PM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  fix(codegen): Remove redundant 'public' modifiers from extension methods
+///   Message:  WIP: TileGameDemo debugging and other demo updates
 ///
 /// Schema File Last Modified:
 ///   SHA:      522ffbf617207b60ecfa647b2d1dc6b9bfa3a7ff
@@ -288,6 +288,13 @@ public struct Fact: EntityIdentifiable, Codable, Sendable, Equatable {
     self.count = try container.decode(FlexibleDouble.self, forKey: .count).wrappedValue
     self.text = try container.decode(String.self, forKey: .text)
   }
+
+  public func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(id, forKey: .id)
+    try container.encode(count, forKey: .count)
+    try container.encode(text, forKey: .text)
+  }
 }
 
 
@@ -349,6 +356,19 @@ public struct Log: EntityIdentifiable, Codable, Sendable, Equatable {
     self.formattedDate = try container.decode(String.self, forKey: .formattedDate)
     self.timezone = try container.decode(String.self, forKey: .timezone)
   }
+
+  public func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(id, forKey: .id)
+    try container.encode(level, forKey: .level)
+    try container.encode(message, forKey: .message)
+    try container.encodeIfPresent(jsonPayload, forKey: .jsonPayload)
+    try container.encode(file, forKey: .file)
+    try container.encode(line, forKey: .line)
+    try container.encode(timestamp, forKey: .timestamp)
+    try container.encode(formattedDate, forKey: .formattedDate)
+    try container.encode(timezone, forKey: .timezone)
+  }
 }
 
 
@@ -389,6 +409,14 @@ public struct Todo: EntityIdentifiable, Codable, Sendable, Equatable {
     self.createdAt = try container.decode(FlexibleDouble.self, forKey: .createdAt).wrappedValue
     self.done = try container.decode(FlexibleBool.self, forKey: .done).wrappedValue
     self.title = try container.decode(String.self, forKey: .title)
+  }
+
+  public func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(id, forKey: .id)
+    try container.encode(createdAt, forKey: .createdAt)
+    try container.encode(done, forKey: .done)
+    try container.encode(title, forKey: .title)
   }
 }
 
@@ -464,6 +492,19 @@ public struct Profile: EntityIdentifiable, Codable, Sendable, Equatable {
     self.comments = try container.decodeIfPresent([Comment].self, forKey: .comments)
     self.likes = try container.decodeIfPresent([Like].self, forKey: .likes)
   }
+
+  public func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(id, forKey: .id)
+    try container.encode(displayName, forKey: .displayName)
+    try container.encode(handle, forKey: .handle)
+    try container.encodeIfPresent(bio, forKey: .bio)
+    try container.encodeIfPresent(avatarUrl, forKey: .avatarUrl)
+    try container.encode(createdAt, forKey: .createdAt)
+    try container.encodeIfPresent(posts, forKey: .posts)
+    try container.encodeIfPresent(comments, forKey: .comments)
+    try container.encodeIfPresent(likes, forKey: .likes)
+  }
 }
 
 
@@ -534,6 +575,18 @@ public struct Post: EntityIdentifiable, Codable, Sendable, Equatable {
     self.likes = try container.decodeIfPresent([Like].self, forKey: .likes)
     self.author = try container.decodeIfPresent(Profile.self, forKey: .author)
   }
+
+  public func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(id, forKey: .id)
+    try container.encode(content, forKey: .content)
+    try container.encodeIfPresent(imageUrl, forKey: .imageUrl)
+    try container.encode(createdAt, forKey: .createdAt)
+    try container.encode(likesCount, forKey: .likesCount)
+    try container.encodeIfPresent(comments, forKey: .comments)
+    try container.encodeIfPresent(likes, forKey: .likes)
+    try container.encodeIfPresent(author, forKey: .author)
+  }
 }
 
 
@@ -589,6 +642,15 @@ public struct Comment: EntityIdentifiable, Codable, Sendable, Equatable {
     self.author = try container.decodeIfPresent(Profile.self, forKey: .author)
     self.post = try container.decodeIfPresent(Post.self, forKey: .post)
   }
+
+  public func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(id, forKey: .id)
+    try container.encode(text, forKey: .text)
+    try container.encode(createdAt, forKey: .createdAt)
+    try container.encodeIfPresent(author, forKey: .author)
+    try container.encodeIfPresent(post, forKey: .post)
+  }
 }
 
 
@@ -639,6 +701,14 @@ public struct Like: EntityIdentifiable, Codable, Sendable, Equatable {
     self.createdAt = try container.decode(FlexibleDouble.self, forKey: .createdAt).wrappedValue
     self.profile = try container.decodeIfPresent(Profile.self, forKey: .profile)
     self.post = try container.decodeIfPresent(Post.self, forKey: .post)
+  }
+
+  public func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(id, forKey: .id)
+    try container.encode(createdAt, forKey: .createdAt)
+    try container.encodeIfPresent(profile, forKey: .profile)
+    try container.encodeIfPresent(post, forKey: .post)
   }
 }
 
@@ -696,6 +766,16 @@ public struct Tile: EntityIdentifiable, Codable, Sendable, Equatable {
     self.createdAt = try container.decode(FlexibleDouble.self, forKey: .createdAt).wrappedValue
     self.board = try container.decodeIfPresent(Board.self, forKey: .board)
   }
+
+  public func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(id, forKey: .id)
+    try container.encode(x, forKey: .x)
+    try container.encode(y, forKey: .y)
+    try container.encode(color, forKey: .color)
+    try container.encode(createdAt, forKey: .createdAt)
+    try container.encodeIfPresent(board, forKey: .board)
+  }
 }
 
 
@@ -743,6 +823,14 @@ public struct Board: EntityIdentifiable, Codable, Sendable, Equatable {
     self.title = try container.decode(String.self, forKey: .title)
     self.createdAt = try container.decode(FlexibleDouble.self, forKey: .createdAt).wrappedValue
     self.tiles = try container.decodeIfPresent([Tile].self, forKey: .tiles)
+  }
+
+  public func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(id, forKey: .id)
+    try container.encode(title, forKey: .title)
+    try container.encode(createdAt, forKey: .createdAt)
+    try container.encodeIfPresent(tiles, forKey: .tiles)
   }
 }
 

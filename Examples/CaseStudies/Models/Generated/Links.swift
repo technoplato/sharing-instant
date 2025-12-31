@@ -198,7 +198,7 @@ struct BoardWithLinksView: View {
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// Mode:            Production (full traceability)
-/// Generated:       December 30, 2025 at 9:29 PM EST
+/// Generated:       December 30, 2025 at 11:23 PM EST
 /// Machine:         mlustig-hy7l9xrd61.local (Apple M4 Pro, macOS 26.2)
 /// Generator:       Sources/instant-schema/main.swift
 /// Source Schema:   Examples/CaseStudies/instant.schema.ts
@@ -214,10 +214,10 @@ swift run instant-schema generate \
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// HEAD Commit:
-///   SHA:      f93afd10f28d772ffbb216369f3648279d0e9c25
-///   Date:     December 30, 2025 at 9:29 PM EST
+///   SHA:      1c4c66bedb72039ba775a89156a75e35561bf9e5
+///   Date:     December 30, 2025 at 11:23 PM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  fix(codegen): Remove redundant 'public' modifiers from extension methods
+///   Message:  WIP: TileGameDemo debugging and other demo updates
 ///
 /// Schema File Last Modified:
 ///   SHA:      522ffbf617207b60ecfa647b2d1dc6b9bfa3a7ff
