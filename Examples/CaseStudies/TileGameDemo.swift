@@ -15,7 +15,7 @@ private func debugLog(_ message: String, data: [String: Any] = [:], hypothesisId
     "hypothesisId": hypothesisId
   ]
   guard let jsonData = try? JSONSerialization.data(withJSONObject: payload) else { return }
-  var request = URLRequest(url: URL(string: "http://192.168.68.108:17244/ingest/b61a72ba-9985-415b-9c60-d4184ed05385")!)
+  var request = URLRequest(url: URL(string: "http://127.0.0.1:7243/ingest/b61a72ba-9985-415b-9c60-d4184ed05385")!)
   request.httpMethod = "POST"
   request.setValue("application/json", forHTTPHeaderField: "Content-Type")
   request.httpBody = jsonData
@@ -81,6 +81,68 @@ struct TileGameDemo: SwiftUICaseStudy {
   ))
   private var boards: IdentifiedArrayOf<Board> = []
   
+  // #region agent log
+  // ═══════════════════════════════════════════════════════════════════════════
+  // HYPOTHESIS TEST QUERIES - Testing different approaches to filter by link
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  /// HYPOTHESIS A: Dot notation "board.id" - standard approach from JS docs
+  /// Query: tiles where board.id = boardId
+  @Shared(.instantSync(
+    Schema.tiles
+      .where("board.id", .eq("a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"))
+  ))
+  private var testA_DotNotationBoardId: IdentifiedArrayOf<Tile> = []
+  
+  /// HYPOTHESIS B: Just the link name without .id
+  /// Query: tiles where board = boardId (might need the ID directly on link)
+  @Shared(.instantSync(
+    Schema.tiles
+      .where("board", .eq("a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"))
+  ))
+  private var testB_LinkNameOnly: IdentifiedArrayOf<Tile> = []
+  
+  /// HYPOTHESIS C: Using the schema link attribute name "boardTiles"
+  /// The link is defined as "boardTiles" in schema, maybe server expects that?
+  @Shared(.instantSync(
+    Schema.tiles
+      .where("boardTiles.id", .eq("a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"))
+  ))
+  private var testC_SchemaLinkName: IdentifiedArrayOf<Tile> = []
+  
+  /// HYPOTHESIS D: Query tiles with .with(\.board) to get linked board data
+  /// This tests if the link resolution works at all
+  @Shared(.instantSync(
+    Schema.tiles
+      .with(\.board)
+  ))
+  private var testD_TilesWithBoard: IdentifiedArrayOf<Tile> = []
+  
+  /// HYPOTHESIS E: Filter by a regular field (x coordinate) to verify filtering works
+  /// This is a control test - if this works, filtering infrastructure is fine
+  @Shared(.instantSync(
+    Schema.tiles
+      .where(\.x, .eq(0))
+  ))
+  private var testE_FilterByX: IdentifiedArrayOf<Tile> = []
+  
+  /// HYPOTHESIS F: Filter tiles by board.title (linked entity attribute, not ID)
+  /// This tests if the issue is specific to filtering by .id or affects all link attributes
+  @Shared(.instantSync(
+    Schema.tiles
+      .where("board.title", .eq("Collaborative Game"))
+  ))
+  private var testF_LinkAttribute: IdentifiedArrayOf<Tile> = []
+  
+  /// HYPOTHESIS G: Filter boards by tiles.x (reverse direction, filtering parent by child attribute)
+  /// This tests if the link direction matters
+  @Shared(.instantSync(
+    Schema.boards
+      .where("tiles.x", .eq(0))
+  ))
+  private var testG_ReverseLink: IdentifiedArrayOf<Board> = []
+  // #endregion
+  
   /// All tiles subscription - we subscribe to all tiles and filter client-side.
   /// Note: Link-based where clauses (e.g., where("board.id", .eq(boardId))) don't work
   /// as expected in InstantDB, so we filter client-side using the board's linked tile IDs.
@@ -99,7 +161,6 @@ struct TileGameDemo: SwiftUICaseStudy {
   }
   
   /// Ephemeral presence for who's playing.
-  /// Ephemeral presence for who's playing.
   @Shared(.instantPresence(
     Schema.Rooms.tileGame,
     roomId: "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
@@ -108,9 +169,67 @@ struct TileGameDemo: SwiftUICaseStudy {
   private var presence: RoomPresence<TileGamePresence>
   
   @State private var hoveredTile: String?
+  @State private var hasLoggedAfterDelay = false
   
   var body: some View {
     VStack(spacing: 20) {
+      // #region agent log
+      // HYPOTHESIS TESTS: Log state after data has had time to load
+      Color.clear
+        .frame(width: 0, height: 0)
+        .onAppear {
+          // Log after a delay to allow subscriptions to receive data
+          DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+            if !hasLoggedAfterDelay {
+              hasLoggedAfterDelay = true
+              
+              // Log all hypothesis test results
+              debugLog("═══ HYPOTHESIS TEST RESULTS ═══", data: [
+                "testA_DotNotationBoardId": testA_DotNotationBoardId.count,
+                "testB_LinkNameOnly": testB_LinkNameOnly.count,
+                "testC_SchemaLinkName": testC_SchemaLinkName.count,
+                "testD_TilesWithBoard": testD_TilesWithBoard.count,
+                "testE_FilterByX": testE_FilterByX.count,
+                "testF_LinkAttribute": testF_LinkAttribute.count,
+                "testG_ReverseLink": testG_ReverseLink.count,
+                "allTiles": allTiles.count,
+                "boardLinkedTiles": boards[id: boardId]?.tiles?.count ?? -1,
+                "clientFilteredTiles": tiles.count
+              ], hypothesisId: "SUMMARY")
+              
+              // Log details for testD to see if board link is populated
+              if let firstTileWithBoard = testD_TilesWithBoard.first {
+                debugLog("testD_TilesWithBoard first tile details", data: [
+                  "tileId": firstTileWithBoard.id,
+                  "hasBoard": firstTileWithBoard.board != nil,
+                  "boardId": firstTileWithBoard.board?.id ?? "nil",
+                  "boardTitle": firstTileWithBoard.board?.title ?? "nil"
+                ], hypothesisId: "D")
+              }
+              
+              // Log testE details to verify control test
+              debugLog("testE_FilterByX (x=0) details", data: [
+                "count": testE_FilterByX.count,
+                "tileIds": testE_FilterByX.map { $0.id },
+                "positions": testE_FilterByX.map { "(\($0.x), \($0.y))" }
+              ], hypothesisId: "E")
+              
+              // Log testF details - filtering by linked entity attribute
+              debugLog("testF_LinkAttribute (board.title) details", data: [
+                "count": testF_LinkAttribute.count,
+                "tileIds": testF_LinkAttribute.map { $0.id }
+              ], hypothesisId: "F")
+              
+              // Log testG details - reverse link direction
+              debugLog("testG_ReverseLink (boards with tiles.x=0) details", data: [
+                "count": testG_ReverseLink.count,
+                "boardIds": testG_ReverseLink.map { $0.id }
+              ], hypothesisId: "G")
+            }
+          }
+        }
+      // #endregion
+      
       // Players section
       VStack(alignment: .leading, spacing: 8) {
         HStack {
@@ -211,6 +330,19 @@ struct TileGameDemo: SwiftUICaseStudy {
   
   private func initializeGame() {
     let now = Date().timeIntervalSince1970 * 1_000
+
+    // #region agent log
+    // Log initial state (before data loads)
+    debugLog("initializeGame START - initial subscription states", data: [
+      "testA_DotNotationBoardId": testA_DotNotationBoardId.count,
+      "testB_LinkNameOnly": testB_LinkNameOnly.count,
+      "testC_SchemaLinkName": testC_SchemaLinkName.count,
+      "testD_TilesWithBoard": testD_TilesWithBoard.count,
+      "testE_FilterByX": testE_FilterByX.count,
+      "allTiles": allTiles.count,
+      "boards": boards.count
+    ], hypothesisId: "INIT")
+    // #endregion
 
     // Choose a color that's not taken by peers
     let takenColors = Set(presence.peers.compactMap { $0.data.color })
