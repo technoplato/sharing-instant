@@ -148,7 +148,7 @@ struct EmojiTopicView: View {
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// Mode:            Production (full traceability)
-/// Generated:       December 30, 2025 at 8:28 PM EST
+/// Generated:       December 30, 2025 at 9:29 PM EST
 /// Machine:         mlustig-hy7l9xrd61.local (Apple M4 Pro, macOS 26.2)
 /// Generator:       Sources/instant-schema/main.swift
 /// Source Schema:   Examples/CaseStudies/instant.schema.ts
@@ -164,10 +164,10 @@ swift run instant-schema generate \
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// HEAD Commit:
-///   SHA:      416732dee6d05e5fa2365697f4be835e7593629b
-///   Date:     December 30, 2025 at 8:28 PM EST
+///   SHA:      f93afd10f28d772ffbb216369f3648279d0e9c25
+///   Date:     December 30, 2025 at 9:29 PM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  chore: Regenerate test schema files with fixed topic publish
+///   Message:  fix(codegen): Remove redundant 'public' modifiers from extension methods
 ///
 /// Schema File Last Modified:
 ///   SHA:      522ffbf617207b60ecfa647b2d1dc6b9bfa3a7ff
@@ -328,7 +328,7 @@ public extension Shared where Value == RoomPresence<AvatarsPresence> {
   /// $presence.setUser(AvatarsPresence(...))
   /// ```
   @MainActor
-  public func setUser(_ user: AvatarsPresence, callbacks: MutationCallbacks<Void> = .init()) {
+   func setUser(_ user: AvatarsPresence, callbacks: MutationCallbacks<Void> = .init()) {
     callbacks.onMutate?()
     withLock { $0.user = user }
     callbacks.onSuccess?(())
@@ -345,7 +345,7 @@ public extension Shared where Value == RoomPresence<AvatarsPresence> {
   /// )
   /// ```
   @MainActor
-  public func setUser(
+   func setUser(
     name: String,
     color: String,
     callbacks: MutationCallbacks<Void> = .init()
@@ -359,7 +359,7 @@ public extension Shared where Value == RoomPresence<AvatarsPresence> {
 
   /// Set name to a specific value.
   @MainActor
-  public func setName(_ value: String, callbacks: MutationCallbacks<Void> = .init()) {
+   func setName(_ value: String, callbacks: MutationCallbacks<Void> = .init()) {
     callbacks.onMutate?()
     withLock { $0.user.name = value }
     callbacks.onSuccess?(())
@@ -369,7 +369,7 @@ public extension Shared where Value == RoomPresence<AvatarsPresence> {
 
   /// Set color to a specific value.
   @MainActor
-  public func setColor(_ value: String, callbacks: MutationCallbacks<Void> = .init()) {
+   func setColor(_ value: String, callbacks: MutationCallbacks<Void> = .init()) {
     callbacks.onMutate?()
     withLock { $0.user.color = value }
     callbacks.onSuccess?(())
@@ -391,7 +391,7 @@ public extension Shared where Value == RoomPresence<ChatPresence> {
   /// $presence.setUser(ChatPresence(...))
   /// ```
   @MainActor
-  public func setUser(_ user: ChatPresence, callbacks: MutationCallbacks<Void> = .init()) {
+   func setUser(_ user: ChatPresence, callbacks: MutationCallbacks<Void> = .init()) {
     callbacks.onMutate?()
     withLock { $0.user = user }
     callbacks.onSuccess?(())
@@ -409,7 +409,7 @@ public extension Shared where Value == RoomPresence<ChatPresence> {
   /// )
   /// ```
   @MainActor
-  public func setUser(
+   func setUser(
     name: String,
     color: String,
     isTyping: Bool,
@@ -425,7 +425,7 @@ public extension Shared where Value == RoomPresence<ChatPresence> {
 
   /// Set name to a specific value.
   @MainActor
-  public func setName(_ value: String, callbacks: MutationCallbacks<Void> = .init()) {
+   func setName(_ value: String, callbacks: MutationCallbacks<Void> = .init()) {
     callbacks.onMutate?()
     withLock { $0.user.name = value }
     callbacks.onSuccess?(())
@@ -435,7 +435,7 @@ public extension Shared where Value == RoomPresence<ChatPresence> {
 
   /// Set color to a specific value.
   @MainActor
-  public func setColor(_ value: String, callbacks: MutationCallbacks<Void> = .init()) {
+   func setColor(_ value: String, callbacks: MutationCallbacks<Void> = .init()) {
     callbacks.onMutate?()
     withLock { $0.user.color = value }
     callbacks.onSuccess?(())
@@ -445,7 +445,7 @@ public extension Shared where Value == RoomPresence<ChatPresence> {
 
   /// Set isTyping to a specific value.
   @MainActor
-  public func setIsTyping(_ value: Bool, callbacks: MutationCallbacks<Void> = .init()) {
+   func setIsTyping(_ value: Bool, callbacks: MutationCallbacks<Void> = .init()) {
     callbacks.onMutate?()
     withLock { $0.user.isTyping = value }
     callbacks.onSuccess?(())
@@ -454,7 +454,7 @@ public extension Shared where Value == RoomPresence<ChatPresence> {
 
   /// Toggle isTyping between true and false.
   @MainActor
-  public func toggleIsTyping(callbacks: MutationCallbacks<Void> = .init()) {
+   func toggleIsTyping(callbacks: MutationCallbacks<Void> = .init()) {
     callbacks.onMutate?()
     withLock { $0.user.isTyping.toggle() }
     callbacks.onSuccess?(())
@@ -463,13 +463,13 @@ public extension Shared where Value == RoomPresence<ChatPresence> {
 
   /// Set isTyping to true.
   @MainActor
-  public func startTyping(callbacks: MutationCallbacks<Void> = .init()) {
+   func startTyping(callbacks: MutationCallbacks<Void> = .init()) {
     setIsTyping(true, callbacks: callbacks)
   }
 
   /// Set isTyping to false.
   @MainActor
-  public func stopTyping(callbacks: MutationCallbacks<Void> = .init()) {
+   func stopTyping(callbacks: MutationCallbacks<Void> = .init()) {
     setIsTyping(false, callbacks: callbacks)
   }
 }
@@ -488,7 +488,7 @@ public extension Shared where Value == RoomPresence<CursorsPresence> {
   /// $presence.setUser(CursorsPresence(...))
   /// ```
   @MainActor
-  public func setUser(_ user: CursorsPresence, callbacks: MutationCallbacks<Void> = .init()) {
+   func setUser(_ user: CursorsPresence, callbacks: MutationCallbacks<Void> = .init()) {
     callbacks.onMutate?()
     withLock { $0.user = user }
     callbacks.onSuccess?(())
@@ -507,7 +507,7 @@ public extension Shared where Value == RoomPresence<CursorsPresence> {
   /// )
   /// ```
   @MainActor
-  public func setUser(
+   func setUser(
     name: String,
     color: String,
     cursorX: Double,
@@ -525,7 +525,7 @@ public extension Shared where Value == RoomPresence<CursorsPresence> {
 
   /// Set name to a specific value.
   @MainActor
-  public func setName(_ value: String, callbacks: MutationCallbacks<Void> = .init()) {
+   func setName(_ value: String, callbacks: MutationCallbacks<Void> = .init()) {
     callbacks.onMutate?()
     withLock { $0.user.name = value }
     callbacks.onSuccess?(())
@@ -535,7 +535,7 @@ public extension Shared where Value == RoomPresence<CursorsPresence> {
 
   /// Set color to a specific value.
   @MainActor
-  public func setColor(_ value: String, callbacks: MutationCallbacks<Void> = .init()) {
+   func setColor(_ value: String, callbacks: MutationCallbacks<Void> = .init()) {
     callbacks.onMutate?()
     withLock { $0.user.color = value }
     callbacks.onSuccess?(())
@@ -551,7 +551,7 @@ public extension Shared where Value == RoomPresence<CursorsPresence> {
   /// $presence.updateCursor(x: 100, y: 200)
   /// ```
   @MainActor
-  public func updateCursor(x: Double, y: Double, callbacks: MutationCallbacks<Void> = .init()) {
+   func updateCursor(x: Double, y: Double, callbacks: MutationCallbacks<Void> = .init()) {
     callbacks.onMutate?()
     withLock { state in
       state.user.cursorX = x
@@ -563,7 +563,7 @@ public extension Shared where Value == RoomPresence<CursorsPresence> {
 
   /// Clear cursor coordinates (set to 0, 0).
   @MainActor
-  public func clearCursor(callbacks: MutationCallbacks<Void> = .init()) {
+   func clearCursor(callbacks: MutationCallbacks<Void> = .init()) {
     updateCursor(x: 0, y: 0, callbacks: callbacks)
   }
 }
@@ -582,7 +582,7 @@ public extension Shared where Value == RoomPresence<ReactionsPresence> {
   /// $presence.setUser(ReactionsPresence(...))
   /// ```
   @MainActor
-  public func setUser(_ user: ReactionsPresence, callbacks: MutationCallbacks<Void> = .init()) {
+   func setUser(_ user: ReactionsPresence, callbacks: MutationCallbacks<Void> = .init()) {
     callbacks.onMutate?()
     withLock { $0.user = user }
     callbacks.onSuccess?(())
@@ -598,7 +598,7 @@ public extension Shared where Value == RoomPresence<ReactionsPresence> {
   /// )
   /// ```
   @MainActor
-  public func setUser(
+   func setUser(
     name: String,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -610,7 +610,7 @@ public extension Shared where Value == RoomPresence<ReactionsPresence> {
 
   /// Set name to a specific value.
   @MainActor
-  public func setName(_ value: String, callbacks: MutationCallbacks<Void> = .init()) {
+   func setName(_ value: String, callbacks: MutationCallbacks<Void> = .init()) {
     callbacks.onMutate?()
     withLock { $0.user.name = value }
     callbacks.onSuccess?(())
@@ -632,7 +632,7 @@ public extension Shared where Value == RoomPresence<TileGamePresence> {
   /// $presence.setUser(TileGamePresence(...))
   /// ```
   @MainActor
-  public func setUser(_ user: TileGamePresence, callbacks: MutationCallbacks<Void> = .init()) {
+   func setUser(_ user: TileGamePresence, callbacks: MutationCallbacks<Void> = .init()) {
     callbacks.onMutate?()
     withLock { $0.user = user }
     callbacks.onSuccess?(())
@@ -649,7 +649,7 @@ public extension Shared where Value == RoomPresence<TileGamePresence> {
   /// )
   /// ```
   @MainActor
-  public func setUser(
+   func setUser(
     name: String,
     color: String,
     callbacks: MutationCallbacks<Void> = .init()
@@ -663,7 +663,7 @@ public extension Shared where Value == RoomPresence<TileGamePresence> {
 
   /// Set name to a specific value.
   @MainActor
-  public func setName(_ value: String, callbacks: MutationCallbacks<Void> = .init()) {
+   func setName(_ value: String, callbacks: MutationCallbacks<Void> = .init()) {
     callbacks.onMutate?()
     withLock { $0.user.name = value }
     callbacks.onSuccess?(())
@@ -673,7 +673,7 @@ public extension Shared where Value == RoomPresence<TileGamePresence> {
 
   /// Set color to a specific value.
   @MainActor
-  public func setColor(_ value: String, callbacks: MutationCallbacks<Void> = .init()) {
+   func setColor(_ value: String, callbacks: MutationCallbacks<Void> = .init()) {
     callbacks.onMutate?()
     withLock { $0.user.color = value }
     callbacks.onSuccess?(())
@@ -699,7 +699,7 @@ public extension Shared where Value == TopicChannel<EmojiTopic> {
   /// )
   /// ```
   @MainActor
-  public func sendEmoji(
+   func sendEmoji(
     name: String,
     directionAngle: Double = 0,
     rotationAngle: Double = 0,
