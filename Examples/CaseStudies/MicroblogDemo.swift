@@ -11,6 +11,9 @@ struct MicroblogDemo: SwiftUICaseStudy {
     
     Two authors post to a shared feed. Each post shows its author's name, \
     demonstrating how links connect entities across the graph.
+    
+    **New**: Uses generated mutation methods like `createProfile()`, \
+    `createPost()`, and `linkAuthor()` for type-safe operations!
     """
   let caseStudyTitle = "Microblog (Links)"
   
@@ -167,28 +170,26 @@ private struct MicroblogView: View {
   private func ensureProfilesExist() async {
     let now = Date().timeIntervalSince1970 * 1_000
 
-    // Create Alice if she doesn't exist
+    // Create Alice if she doesn't exist using the generated createProfile method
     if profiles[id: aliceId] == nil {
-      let alice = Profile(
+      $profiles.createProfile(
         id: aliceId,
         displayName: "Alice",
         handle: "alice",
         bio: "Swift enthusiast",
         createdAt: now
       )
-      _ = $profiles.withLock { $0.append(alice) }
     }
     
     // Create Bob if he doesn't exist
     if profiles[id: bobId] == nil {
-      let bob = Profile(
+      $profiles.createProfile(
         id: bobId,
         displayName: "Bob",
         handle: "bob",
         bio: "InstantDB fan",
         createdAt: now + 1_000
       )
-      _ = $profiles.withLock { $0.append(bob) }
     }
     
     // Select Alice by default
@@ -208,16 +209,20 @@ private struct MicroblogView: View {
       return
     }
     
-    // Create post with linked author
-    let post = Post(
+    let postId = UUID().uuidString.lowercased()
+    let now = Date().timeIntervalSince1970 * 1_000
+    
+    // Create post using the generated createPost method
+    $posts.createPost(
+      id: postId,
       content: content,
-      createdAt: Date().timeIntervalSince1970 * 1_000,
-      likesCount: 0,
-      // The author link - this connects the post to its profile
-      author: author
+      createdAt: now,
+      likesCount: 0
     )
-
-    _ = $posts.withLock { $0.insert(post, at: 0) }
+    
+    // Link the post to its author using the generated linkAuthor method
+    $posts.linkAuthor(postId, to: author)
+    
     newPostContent = ""
   }
   
@@ -241,20 +246,26 @@ private struct MicroblogView: View {
     ]
     
     let randomContent = fakePosts.randomElement() ?? "Hello world!"
+    let postId = UUID().uuidString.lowercased()
+    let now = Date().timeIntervalSince1970 * 1_000
     
-    let post = Post(
+    // Create post using the generated createPost method
+    $posts.createPost(
+      id: postId,
       content: randomContent,
-      createdAt: Date().timeIntervalSince1970 * 1_000,
-      likesCount: 0,
-      author: author
+      createdAt: now,
+      likesCount: 0
     )
-
-    _ = $posts.withLock { $0.insert(post, at: 0) }
+    
+    // Link the post to its author
+    $posts.linkAuthor(postId, to: author)
   }
   
   private func deletePosts(at offsets: IndexSet) {
-    $posts.withLock { posts in
-      posts.remove(atOffsets: offsets)
+    // Delete posts using the generated deletePost method
+    for index in offsets {
+      let post = posts[index]
+      $posts.deletePost(post)
     }
   }
   

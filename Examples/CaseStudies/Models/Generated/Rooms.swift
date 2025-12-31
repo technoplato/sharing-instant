@@ -148,8 +148,8 @@ struct EmojiTopicView: View {
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// Mode:            Production (full traceability)
-/// Generated:       December 22, 2025 at 6:55 AM EST
-/// Machine:         mlustig-hy7l9xrd61.local (Apple M4 Pro, macOS 26.1)
+/// Generated:       December 30, 2025 at 8:23 PM EST
+/// Machine:         mlustig-hy7l9xrd61.local (Apple M4 Pro, macOS 26.2)
 /// Generator:       Sources/instant-schema/main.swift
 /// Source Schema:   Examples/CaseStudies/instant.schema.ts
 
@@ -157,17 +157,17 @@ struct EmojiTopicView: View {
 
 swift run instant-schema generate \
   --from Examples/CaseStudies/instant.schema.ts \
-  --to Examples/CaseStudies/Models/Generated/
+  --to Examples/CaseStudies/Models/Generated
 */
 /// ─────────────────────────────────────────────────────────────────────────────────
 /// GIT STATE AT GENERATION
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// HEAD Commit:
-///   SHA:      97d8018f07bf2c0f097060649e317f085f65968f
-///   Date:     December 22, 2025 at 6:55 AM EST
+///   SHA:      9e86d9473bf7479d459636330853fa2e4a72a1f4
+///   Date:     December 30, 2025 at 7:12 PM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  Fix remaining uncommitted changes for schema regeneration
+///   Message:  chore: Regenerate schema files with final commit hash
 ///
 /// Schema File Last Modified:
 ///   SHA:      522ffbf617207b60ecfa647b2d1dc6b9bfa3a7ff
@@ -311,3 +311,408 @@ public extension Schema {
 
   }
 }
+
+// MARK: - Presence Mutations
+
+// MARK: AvatarsPresence Mutations
+
+public extension Shared where Value == RoomPresence<AvatarsPresence> {
+
+  /// Set the entire user presence at once.
+  ///
+  /// This replaces all presence fields with the new values.
+  ///
+  /// ## Example
+  ///
+  /// ```swift
+  /// $presence.setUser(AvatarsPresence(...))
+  /// ```
+  @MainActor
+  public func setUser(_ user: AvatarsPresence, callbacks: MutationCallbacks<Void> = .init()) {
+    callbacks.onMutate?()
+    withLock { $0.user = user }
+    callbacks.onSuccess?(())
+    callbacks.onSettled?()
+  }
+  /// Set the entire user presence with named parameters.
+  ///
+  /// ## Example
+  ///
+  /// ```swift
+  /// $presence.setUser(
+  ///   name: value,
+  ///   color: value
+  /// )
+  /// ```
+  @MainActor
+  public func setUser(
+    name: String,
+    color: String,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    setUser(AvatarsPresence(
+      name: name,
+      color: color
+    ), callbacks: callbacks)
+  }
+  // MARK: Name (String)
+
+  /// Set name to a specific value.
+  @MainActor
+  public func setName(_ value: String, callbacks: MutationCallbacks<Void> = .init()) {
+    callbacks.onMutate?()
+    withLock { $0.user.name = value }
+    callbacks.onSuccess?(())
+    callbacks.onSettled?()
+  }
+  // MARK: Color (String)
+
+  /// Set color to a specific value.
+  @MainActor
+  public func setColor(_ value: String, callbacks: MutationCallbacks<Void> = .init()) {
+    callbacks.onMutate?()
+    withLock { $0.user.color = value }
+    callbacks.onSuccess?(())
+    callbacks.onSettled?()
+  }
+}
+
+// MARK: ChatPresence Mutations
+
+public extension Shared where Value == RoomPresence<ChatPresence> {
+
+  /// Set the entire user presence at once.
+  ///
+  /// This replaces all presence fields with the new values.
+  ///
+  /// ## Example
+  ///
+  /// ```swift
+  /// $presence.setUser(ChatPresence(...))
+  /// ```
+  @MainActor
+  public func setUser(_ user: ChatPresence, callbacks: MutationCallbacks<Void> = .init()) {
+    callbacks.onMutate?()
+    withLock { $0.user = user }
+    callbacks.onSuccess?(())
+    callbacks.onSettled?()
+  }
+  /// Set the entire user presence with named parameters.
+  ///
+  /// ## Example
+  ///
+  /// ```swift
+  /// $presence.setUser(
+  ///   name: value,
+  ///   color: value,
+  ///   isTyping: value
+  /// )
+  /// ```
+  @MainActor
+  public func setUser(
+    name: String,
+    color: String,
+    isTyping: Bool,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    setUser(ChatPresence(
+      name: name,
+      color: color,
+      isTyping: isTyping
+    ), callbacks: callbacks)
+  }
+  // MARK: Name (String)
+
+  /// Set name to a specific value.
+  @MainActor
+  public func setName(_ value: String, callbacks: MutationCallbacks<Void> = .init()) {
+    callbacks.onMutate?()
+    withLock { $0.user.name = value }
+    callbacks.onSuccess?(())
+    callbacks.onSettled?()
+  }
+  // MARK: Color (String)
+
+  /// Set color to a specific value.
+  @MainActor
+  public func setColor(_ value: String, callbacks: MutationCallbacks<Void> = .init()) {
+    callbacks.onMutate?()
+    withLock { $0.user.color = value }
+    callbacks.onSuccess?(())
+    callbacks.onSettled?()
+  }
+  // MARK: IsTyping (Bool)
+
+  /// Set isTyping to a specific value.
+  @MainActor
+  public func setIsTyping(_ value: Bool, callbacks: MutationCallbacks<Void> = .init()) {
+    callbacks.onMutate?()
+    withLock { $0.user.isTyping = value }
+    callbacks.onSuccess?(())
+    callbacks.onSettled?()
+  }
+
+  /// Toggle isTyping between true and false.
+  @MainActor
+  public func toggleIsTyping(callbacks: MutationCallbacks<Void> = .init()) {
+    callbacks.onMutate?()
+    withLock { $0.user.isTyping.toggle() }
+    callbacks.onSuccess?(())
+    callbacks.onSettled?()
+  }
+
+  /// Set isTyping to true.
+  @MainActor
+  public func startTyping(callbacks: MutationCallbacks<Void> = .init()) {
+    setIsTyping(true, callbacks: callbacks)
+  }
+
+  /// Set isTyping to false.
+  @MainActor
+  public func stopTyping(callbacks: MutationCallbacks<Void> = .init()) {
+    setIsTyping(false, callbacks: callbacks)
+  }
+}
+
+// MARK: CursorsPresence Mutations
+
+public extension Shared where Value == RoomPresence<CursorsPresence> {
+
+  /// Set the entire user presence at once.
+  ///
+  /// This replaces all presence fields with the new values.
+  ///
+  /// ## Example
+  ///
+  /// ```swift
+  /// $presence.setUser(CursorsPresence(...))
+  /// ```
+  @MainActor
+  public func setUser(_ user: CursorsPresence, callbacks: MutationCallbacks<Void> = .init()) {
+    callbacks.onMutate?()
+    withLock { $0.user = user }
+    callbacks.onSuccess?(())
+    callbacks.onSettled?()
+  }
+  /// Set the entire user presence with named parameters.
+  ///
+  /// ## Example
+  ///
+  /// ```swift
+  /// $presence.setUser(
+  ///   name: value,
+  ///   color: value,
+  ///   cursorX: value,
+  ///   cursorY: value
+  /// )
+  /// ```
+  @MainActor
+  public func setUser(
+    name: String,
+    color: String,
+    cursorX: Double,
+    cursorY: Double,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    setUser(CursorsPresence(
+      name: name,
+      color: color,
+      cursorX: cursorX,
+      cursorY: cursorY
+    ), callbacks: callbacks)
+  }
+  // MARK: Name (String)
+
+  /// Set name to a specific value.
+  @MainActor
+  public func setName(_ value: String, callbacks: MutationCallbacks<Void> = .init()) {
+    callbacks.onMutate?()
+    withLock { $0.user.name = value }
+    callbacks.onSuccess?(())
+    callbacks.onSettled?()
+  }
+  // MARK: Color (String)
+
+  /// Set color to a specific value.
+  @MainActor
+  public func setColor(_ value: String, callbacks: MutationCallbacks<Void> = .init()) {
+    callbacks.onMutate?()
+    withLock { $0.user.color = value }
+    callbacks.onSuccess?(())
+    callbacks.onSettled?()
+  }
+  // MARK: Cursor Coordinates
+
+  /// Update cursor coordinates.
+  ///
+  /// ## Example
+  ///
+  /// ```swift
+  /// $presence.updateCursor(x: 100, y: 200)
+  /// ```
+  @MainActor
+  public func updateCursor(x: Double, y: Double, callbacks: MutationCallbacks<Void> = .init()) {
+    callbacks.onMutate?()
+    withLock { state in
+      state.user.cursorX = x
+      state.user.cursorY = y
+    }
+    callbacks.onSuccess?(())
+    callbacks.onSettled?()
+  }
+
+  /// Clear cursor coordinates (set to 0, 0).
+  @MainActor
+  public func clearCursor(callbacks: MutationCallbacks<Void> = .init()) {
+    updateCursor(x: 0, y: 0, callbacks: callbacks)
+  }
+}
+
+// MARK: ReactionsPresence Mutations
+
+public extension Shared where Value == RoomPresence<ReactionsPresence> {
+
+  /// Set the entire user presence at once.
+  ///
+  /// This replaces all presence fields with the new values.
+  ///
+  /// ## Example
+  ///
+  /// ```swift
+  /// $presence.setUser(ReactionsPresence(...))
+  /// ```
+  @MainActor
+  public func setUser(_ user: ReactionsPresence, callbacks: MutationCallbacks<Void> = .init()) {
+    callbacks.onMutate?()
+    withLock { $0.user = user }
+    callbacks.onSuccess?(())
+    callbacks.onSettled?()
+  }
+  /// Set the entire user presence with named parameters.
+  ///
+  /// ## Example
+  ///
+  /// ```swift
+  /// $presence.setUser(
+  ///   name: value
+  /// )
+  /// ```
+  @MainActor
+  public func setUser(
+    name: String,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    setUser(ReactionsPresence(
+      name: name
+    ), callbacks: callbacks)
+  }
+  // MARK: Name (String)
+
+  /// Set name to a specific value.
+  @MainActor
+  public func setName(_ value: String, callbacks: MutationCallbacks<Void> = .init()) {
+    callbacks.onMutate?()
+    withLock { $0.user.name = value }
+    callbacks.onSuccess?(())
+    callbacks.onSettled?()
+  }
+}
+
+// MARK: TileGamePresence Mutations
+
+public extension Shared where Value == RoomPresence<TileGamePresence> {
+
+  /// Set the entire user presence at once.
+  ///
+  /// This replaces all presence fields with the new values.
+  ///
+  /// ## Example
+  ///
+  /// ```swift
+  /// $presence.setUser(TileGamePresence(...))
+  /// ```
+  @MainActor
+  public func setUser(_ user: TileGamePresence, callbacks: MutationCallbacks<Void> = .init()) {
+    callbacks.onMutate?()
+    withLock { $0.user = user }
+    callbacks.onSuccess?(())
+    callbacks.onSettled?()
+  }
+  /// Set the entire user presence with named parameters.
+  ///
+  /// ## Example
+  ///
+  /// ```swift
+  /// $presence.setUser(
+  ///   name: value,
+  ///   color: value
+  /// )
+  /// ```
+  @MainActor
+  public func setUser(
+    name: String,
+    color: String,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    setUser(TileGamePresence(
+      name: name,
+      color: color
+    ), callbacks: callbacks)
+  }
+  // MARK: Name (String)
+
+  /// Set name to a specific value.
+  @MainActor
+  public func setName(_ value: String, callbacks: MutationCallbacks<Void> = .init()) {
+    callbacks.onMutate?()
+    withLock { $0.user.name = value }
+    callbacks.onSuccess?(())
+    callbacks.onSettled?()
+  }
+  // MARK: Color (String)
+
+  /// Set color to a specific value.
+  @MainActor
+  public func setColor(_ value: String, callbacks: MutationCallbacks<Void> = .init()) {
+    callbacks.onMutate?()
+    withLock { $0.user.color = value }
+    callbacks.onSuccess?(())
+    callbacks.onSettled?()
+  }
+}
+
+// MARK: - Topic Mutations
+
+// MARK: EmojiTopic Mutations
+
+public extension Shared where Value == TopicChannel<EmojiTopic> {
+
+  /// Send a emoji event with named parameters.
+  ///
+  /// ## Example
+  ///
+  /// ```swift
+  /// $channel.sendEmoji(
+  ///   name: value,
+  ///   directionAngle: value,
+  ///   rotationAngle: value
+  /// )
+  /// ```
+  @MainActor
+  public func sendEmoji(
+    name: String,
+    directionAngle: Double = 0,
+    rotationAngle: Double = 0,
+    onAttempt: ((EmojiTopic) -> Void)? = nil,
+    onError: ((Error) -> Void)? = nil,
+    onSettled: (() -> Void)? = nil
+  ) {
+    let payload = EmojiTopic(
+      name: name,
+      directionAngle: directionAngle,
+      rotationAngle: rotationAngle
+    )
+    wrappedValue.publish(payload, onAttempt: onAttempt, onError: onError, onSettled: onSettled)
+  }
+}
+

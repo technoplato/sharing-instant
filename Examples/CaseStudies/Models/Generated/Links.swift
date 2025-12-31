@@ -198,8 +198,8 @@ struct BoardWithLinksView: View {
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// Mode:            Production (full traceability)
-/// Generated:       December 22, 2025 at 6:55 AM EST
-/// Machine:         mlustig-hy7l9xrd61.local (Apple M4 Pro, macOS 26.1)
+/// Generated:       December 30, 2025 at 8:23 PM EST
+/// Machine:         mlustig-hy7l9xrd61.local (Apple M4 Pro, macOS 26.2)
 /// Generator:       Sources/instant-schema/main.swift
 /// Source Schema:   Examples/CaseStudies/instant.schema.ts
 
@@ -207,17 +207,17 @@ struct BoardWithLinksView: View {
 
 swift run instant-schema generate \
   --from Examples/CaseStudies/instant.schema.ts \
-  --to Examples/CaseStudies/Models/Generated/
+  --to Examples/CaseStudies/Models/Generated
 */
 /// ─────────────────────────────────────────────────────────────────────────────────
 /// GIT STATE AT GENERATION
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// HEAD Commit:
-///   SHA:      97d8018f07bf2c0f097060649e317f085f65968f
-///   Date:     December 22, 2025 at 6:55 AM EST
+///   SHA:      9e86d9473bf7479d459636330853fa2e4a72a1f4
+///   Date:     December 30, 2025 at 7:12 PM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  Fix remaining uncommitted changes for schema regeneration
+///   Message:  chore: Regenerate schema files with final commit hash
 ///
 /// Schema File Last Modified:
 ///   SHA:      522ffbf617207b60ecfa647b2d1dc6b9bfa3a7ff
