@@ -47,7 +47,7 @@ public final class SharedTripleStore: @unchecked Sendable {
     
     public func deleteEntity(id: String) {
         let triples = inner.getTriples(entity: id)
-        var idsChanged: Set<String> = [id]
+        let idsChanged: Set<String> = [id]
         
         for triple in triples {
              let attr = attrsStore.getAttr(triple.attributeId)
