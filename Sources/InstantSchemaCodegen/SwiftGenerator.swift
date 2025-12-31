@@ -1857,7 +1857,7 @@ public struct SwiftCodeGenerator {
     output += """
 
         )
-        wrappedValue.publish(payload, onAttempt: onAttempt, onError: onError, onSettled: onSettled)
+        self.publish(payload, onAttempt: onAttempt, onError: onError, onSettled: onSettled)
       }
 
     """

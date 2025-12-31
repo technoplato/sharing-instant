@@ -7,10 +7,12 @@ import SwiftUI
 /// This example shows how to build a typing indicator that shows
 /// when other users are actively typing in a shared input.
 ///
-/// ## Declarative API
+/// ## Generated Presence Mutations
 ///
-/// This demo uses the type-safe `@Shared(.instantPresence(...))` API.
-/// Typing state is updated via `$presence.withLock { $0.user.isTyping = true }`.
+/// This demo uses the type-safe generated presence mutations from `Rooms.swift`:
+/// - `$presence.startTyping()` - Set isTyping to true
+/// - `$presence.stopTyping()` - Set isTyping to false
+/// - `$presence.setUser(name:color:isTyping:)` - Set all presence fields at once
 struct TypingIndicatorDemo: SwiftUICaseStudy {
   var caseStudyTitle: String { "Typing Indicator" }
   
@@ -21,7 +23,7 @@ struct TypingIndicatorDemo: SwiftUICaseStudy {
     **Features:**
     • Shows when other users are actively typing
     • Uses `@Shared(.instantPresence(...))` for declarative presence
-    • Typing state via `$presence.withLock { $0.user.isTyping = true }`
+    • Type-safe mutations via generated `$presence.startTyping()` / `stopTyping()`
     
     Open this demo in multiple windows and start typing to see the indicators!
     """
@@ -131,10 +133,12 @@ struct TypingIndicatorDemo: SwiftUICaseStudy {
       InstantLogger.viewAppeared("TypingIndicatorDemo")
       InstantLogger.info("Joining chat room", json: ["userId": userId, "roomId": "typing-demo"])
       
-      // Set initial presence with actual values
-      $presence.withLock { state in
-        state.user = ChatPresence(name: userId, color: userColor.hexString, isTyping: false)
-      }
+      // Set initial presence using generated setUser method
+      $presence.setUser(
+        name: userId,
+        color: userColor.hexString,
+        isTyping: false
+      )
     }
     .onDisappear {
       InstantLogger.viewDisappeared("TypingIndicatorDemo")
@@ -195,8 +199,11 @@ struct TypingIndicatorDemo: SwiftUICaseStudy {
       details: ["userId": userId]
     )
     
-    $presence.withLock { state in
-      state.user.isTyping = typing
+    // Use generated semantic methods for type-safe typing state updates
+    if typing {
+      $presence.startTyping()
+    } else {
+      $presence.stopTyping()
     }
   }
   
