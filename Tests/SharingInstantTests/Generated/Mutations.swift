@@ -211,7 +211,7 @@ struct FactMutationsView: View {
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// Mode:            Production (full traceability)
-/// Generated:       December 30, 2025 at 5:31 PM EST
+/// Generated:       December 30, 2025 at 7:09 PM EST
 /// Machine:         mlustig-hy7l9xrd61.local (Apple M4 Pro, macOS 26.2)
 /// Generator:       Sources/instant-schema/main.swift
 /// Source Schema:   Examples/CaseStudies/instant.schema.ts
@@ -227,10 +227,10 @@ swift run instant-schema generate \
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// HEAD Commit:
-///   SHA:      e905e9f957497d1dddfcb310a4a74e2eb0545a67
-///   Date:     December 30, 2025 at 5:26 PM EST
+///   SHA:      77229f5771ac57a127e6a559959f03aea20380c3
+///   Date:     December 30, 2025 at 7:09 PM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  feat(codegen): Add generated Mutations.swift with type-safe mutation extensions
+///   Message:  docs: Add mutation API design documents and sync architecture analysis
 ///
 /// Schema File Last Modified:
 ///   SHA:      522ffbf617207b60ecfa647b2d1dc6b9bfa3a7ff
