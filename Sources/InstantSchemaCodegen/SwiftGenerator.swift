@@ -1446,10 +1446,339 @@ public struct SwiftCodeGenerator {
         output += generateTopicKeyProperty(for: topic)
       }
       
-      output += "  }\n}\n"
+      output += "  }\n}\n\n"
+    }
+    
+    // Generate presence mutations
+    if !roomsWithPresence.isEmpty {
+      output += "// MARK: - Presence Mutations\n\n"
+      for room in roomsWithPresence {
+        if let presence = room.presence {
+          output += generatePresenceMutations(for: room, presence: presence, access: access)
+          output += "\n"
+        }
+      }
     }
     
     return output
+  }
+  
+  // MARK: - Presence Mutation Generation
+  
+  private func generatePresenceMutations(for room: RoomIR, presence: EntityIR, access: String) -> String {
+    let typeName = room.presenceTypeName
+    
+    var output = "// MARK: \(typeName) Mutations\n\n"
+    
+    output += "\(access) extension Shared where Value == RoomPresence<\(typeName)> {\n\n"
+    
+    // Generate setUser method (replaces entire user presence)
+    output += generateSetUserMethod(room: room, presence: presence, access: access)
+    
+    // Generate field-specific mutations based on type
+    for field in presence.fields {
+      switch field.type {
+      case .boolean:
+        output += generateBooleanPresenceMethods(room: room, field: field, access: access)
+      case .number:
+        // Check for coordinate pairs (X/Y patterns)
+        if isCoordinateField(field.name, in: presence.fields) {
+          // Only generate for X field to avoid duplication
+          if field.name.lowercased().hasSuffix("x") {
+            output += generateCoordinatePresenceMethods(room: room, field: field, presence: presence, access: access)
+          }
+        } else {
+          output += generateNumberPresenceMethod(room: room, field: field, access: access)
+        }
+      case .string:
+        output += generateStringPresenceMethod(room: room, field: field, access: access)
+      default:
+        output += generateGenericPresenceMethod(room: room, field: field, access: access)
+      }
+    }
+    
+    output += "}\n"
+    
+    return output
+  }
+  
+  private func generateSetUserMethod(room: RoomIR, presence: EntityIR, access: String) -> String {
+    let typeName = room.presenceTypeName
+    
+    var output = """
+      /// Set the entire user presence at once.
+      ///
+      /// This replaces all presence fields with the new values.
+      ///
+      /// ## Example
+      ///
+      /// ```swift
+      /// $presence.setUser(\(typeName)(...))
+      /// ```
+      @MainActor
+      \(access) func setUser(_ user: \(typeName), callbacks: MutationCallbacks<Void> = .init()) {
+        callbacks.onMutate?()
+        withLock { $0.user = user }
+        callbacks.onSuccess?(())
+        callbacks.onSettled?()
+      }
+
+    """
+    
+    // Also generate convenience method with named parameters
+    output += """
+      /// Set the entire user presence with named parameters.
+      ///
+      /// ## Example
+      ///
+      /// ```swift
+      /// $presence.setUser(
+    """
+    
+    for (index, field) in presence.fields.enumerated() {
+      let comma = index < presence.fields.count - 1 ? "," : ""
+      output += "\n  ///   \(field.name): value\(comma)"
+    }
+    
+    output += """
+
+      /// )
+      /// ```
+      @MainActor
+      \(access) func setUser(
+    
+    """
+    
+    for (index, field) in presence.fields.enumerated() {
+      let comma = index < presence.fields.count - 1 ? "," : ""
+      let optionalMark = field.isOptional ? "?" : ""
+      let defaultValue = field.isOptional ? " = nil" : ""
+      output += "    \(field.name): \(field.type.swiftType)\(optionalMark)\(defaultValue)\(comma)\n"
+    }
+    
+    output += """
+        callbacks: MutationCallbacks<Void> = .init()
+      ) {
+        setUser(\(typeName)(
+    """
+    
+    for (index, field) in presence.fields.enumerated() {
+      let comma = index < presence.fields.count - 1 ? "," : ""
+      output += "\n      \(field.name): \(field.name)\(comma)"
+    }
+    
+    output += """
+
+        ), callbacks: callbacks)
+      }
+
+    """
+    
+    return output
+  }
+  
+  private func generateBooleanPresenceMethods(room: RoomIR, field: FieldIR, access: String) -> String {
+    let fieldName = field.name
+    let capitalizedField = fieldName.prefix(1).uppercased() + fieldName.dropFirst()
+    
+    // Determine semantic names based on field name
+    let (startVerb, stopVerb) = semanticVerbsForBoolField(fieldName)
+    
+    let output = """
+      // MARK: \(capitalizedField) (Bool)
+    
+      /// Set \(fieldName) to a specific value.
+      @MainActor
+      \(access) func set\(capitalizedField)(_ value: Bool, callbacks: MutationCallbacks<Void> = .init()) {
+        callbacks.onMutate?()
+        withLock { $0.user.\(fieldName) = value }
+        callbacks.onSuccess?(())
+        callbacks.onSettled?()
+      }
+    
+      /// Toggle \(fieldName) between true and false.
+      @MainActor
+      \(access) func toggle\(capitalizedField)(callbacks: MutationCallbacks<Void> = .init()) {
+        callbacks.onMutate?()
+        withLock { $0.user.\(fieldName).toggle() }
+        callbacks.onSuccess?(())
+        callbacks.onSettled?()
+      }
+    
+      /// Set \(fieldName) to true.
+      @MainActor
+      \(access) func \(startVerb)(callbacks: MutationCallbacks<Void> = .init()) {
+        set\(capitalizedField)(true, callbacks: callbacks)
+      }
+    
+      /// Set \(fieldName) to false.
+      @MainActor
+      \(access) func \(stopVerb)(callbacks: MutationCallbacks<Void> = .init()) {
+        set\(capitalizedField)(false, callbacks: callbacks)
+      }
+
+    """
+    
+    return output
+  }
+  
+  private func semanticVerbsForBoolField(_ fieldName: String) -> (start: String, stop: String) {
+    let lowered = fieldName.lowercased()
+    
+    // Handle common patterns
+    if lowered.hasPrefix("is") {
+      // isTyping → startTyping/stopTyping
+      let action = String(fieldName.dropFirst(2))
+      return ("start\(action)", "stop\(action)")
+    } else if lowered.contains("typing") {
+      return ("startTyping", "stopTyping")
+    } else if lowered.contains("active") {
+      return ("activate", "deactivate")
+    } else if lowered.contains("visible") {
+      return ("show", "hide")
+    } else if lowered.contains("enabled") {
+      return ("enable", "disable")
+    } else if lowered.contains("online") {
+      return ("goOnline", "goOffline")
+    } else if lowered.contains("ready") {
+      return ("markReady", "markNotReady")
+    } else if lowered.contains("done") {
+      return ("markDone", "unmarkDone")
+    }
+    
+    // Default: mark/unmark pattern
+    let capitalized = fieldName.prefix(1).uppercased() + fieldName.dropFirst()
+    return ("mark\(capitalized)", "unmark\(capitalized)")
+  }
+  
+  private func isCoordinateField(_ fieldName: String, in fields: [FieldIR]) -> Bool {
+    let lowered = fieldName.lowercased()
+    
+    // Check if this is an X field with a matching Y field
+    if lowered.hasSuffix("x") {
+      let baseName = String(fieldName.dropLast())
+      let yFieldName = baseName + (fieldName.last?.isUppercase == true ? "Y" : "y")
+      return fields.contains { $0.name == yFieldName && $0.type == .number }
+    }
+    
+    // Check if this is a Y field with a matching X field
+    if lowered.hasSuffix("y") {
+      let baseName = String(fieldName.dropLast())
+      let xFieldName = baseName + (fieldName.last?.isUppercase == true ? "X" : "x")
+      return fields.contains { $0.name == xFieldName && $0.type == .number }
+    }
+    
+    return false
+  }
+  
+  private func generateCoordinatePresenceMethods(room: RoomIR, field: FieldIR, presence: EntityIR, access: String) -> String {
+    let xFieldName = field.name
+    let baseName = String(xFieldName.dropLast())
+    let yFieldName = baseName + (xFieldName.last?.isUppercase == true ? "Y" : "y")
+    let capitalizedBase = baseName.prefix(1).uppercased() + baseName.dropFirst()
+    
+    return """
+      // MARK: \(capitalizedBase) Coordinates
+    
+      /// Update \(baseName) coordinates.
+      ///
+      /// ## Example
+      ///
+      /// ```swift
+      /// $presence.update\(capitalizedBase)(x: 100, y: 200)
+      /// ```
+      @MainActor
+      \(access) func update\(capitalizedBase)(x: Double, y: Double, callbacks: MutationCallbacks<Void> = .init()) {
+        callbacks.onMutate?()
+        withLock { state in
+          state.user.\(xFieldName) = x
+          state.user.\(yFieldName) = y
+        }
+        callbacks.onSuccess?(())
+        callbacks.onSettled?()
+      }
+    
+      /// Clear \(baseName) coordinates (set to 0, 0).
+      @MainActor
+      \(access) func clear\(capitalizedBase)(callbacks: MutationCallbacks<Void> = .init()) {
+        update\(capitalizedBase)(x: 0, y: 0, callbacks: callbacks)
+      }
+
+    """
+  }
+  
+  private func generateNumberPresenceMethod(room: RoomIR, field: FieldIR, access: String) -> String {
+    let fieldName = field.name
+    let capitalizedField = fieldName.prefix(1).uppercased() + fieldName.dropFirst()
+    
+    return """
+      // MARK: \(capitalizedField) (Double)
+    
+      /// Set \(fieldName) to a specific value.
+      @MainActor
+      \(access) func set\(capitalizedField)(_ value: Double, callbacks: MutationCallbacks<Void> = .init()) {
+        callbacks.onMutate?()
+        withLock { $0.user.\(fieldName) = value }
+        callbacks.onSuccess?(())
+        callbacks.onSettled?()
+      }
+
+    """
+  }
+  
+  private func generateStringPresenceMethod(room: RoomIR, field: FieldIR, access: String) -> String {
+    let fieldName = field.name
+    let capitalizedField = fieldName.prefix(1).uppercased() + fieldName.dropFirst()
+    let optionalMark = field.isOptional ? "?" : ""
+    
+    var output = """
+      // MARK: \(capitalizedField) (String)
+    
+      /// Set \(fieldName) to a specific value.
+      @MainActor
+      \(access) func set\(capitalizedField)(_ value: String\(optionalMark), callbacks: MutationCallbacks<Void> = .init()) {
+        callbacks.onMutate?()
+        withLock { $0.user.\(fieldName) = value }
+        callbacks.onSuccess?(())
+        callbacks.onSettled?()
+      }
+
+    """
+    
+    // Add clear method for optional strings
+    if field.isOptional {
+      output += """
+
+        /// Clear \(fieldName) (set to nil).
+        @MainActor
+        \(access) func clear\(capitalizedField)(callbacks: MutationCallbacks<Void> = .init()) {
+          set\(capitalizedField)(nil, callbacks: callbacks)
+        }
+
+      """
+    }
+    
+    return output
+  }
+  
+  private func generateGenericPresenceMethod(room: RoomIR, field: FieldIR, access: String) -> String {
+    let fieldName = field.name
+    let capitalizedField = fieldName.prefix(1).uppercased() + fieldName.dropFirst()
+    let optionalMark = field.isOptional ? "?" : ""
+    
+    return """
+      // MARK: \(capitalizedField)
+    
+      /// Set \(fieldName) to a specific value.
+      @MainActor
+      \(access) func set\(capitalizedField)(_ value: \(field.type.swiftType)\(optionalMark), callbacks: MutationCallbacks<Void> = .init()) {
+        callbacks.onMutate?()
+        withLock { $0.user.\(fieldName) = value }
+        callbacks.onSuccess?(())
+        callbacks.onSettled?()
+      }
+
+    """
   }
   
   private func generatePresenceType(for room: RoomIR, presence: EntityIR) -> String {
