@@ -177,7 +177,7 @@ struct FactContentView: View {
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// Mode:            Production (full traceability)
-/// Generated:       December 30, 2025 at 7:12 PM EST
+/// Generated:       December 30, 2025 at 8:28 PM EST
 /// Machine:         mlustig-hy7l9xrd61.local (Apple M4 Pro, macOS 26.2)
 /// Generator:       Sources/instant-schema/main.swift
 /// Source Schema:   Examples/CaseStudies/instant.schema.ts
@@ -193,10 +193,10 @@ swift run instant-schema generate \
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// HEAD Commit:
-///   SHA:      d65d2aaee354ea7d75c361eae743dc07d9ad8937
-///   Date:     December 30, 2025 at 7:12 PM EST
+///   SHA:      9b3d50c5de8220c183fd1e35578f08096bff88b0
+///   Date:     December 30, 2025 at 8:28 PM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  fix: Remove unused variables and regenerate schema files
+///   Message:  chore: Minor cleanup in InstantSyncKey files
 ///
 /// Schema File Last Modified:
 ///   SHA:      522ffbf617207b60ecfa647b2d1dc6b9bfa3a7ff
