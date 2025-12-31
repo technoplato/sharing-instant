@@ -786,6 +786,8 @@ public struct SwiftCodeGenerator {
     
     for field in entity.fields {
       let fieldName = field.name
+      // Use swiftTypeForField to get the correct type (handles generic types like i.json<Word[]>())
+      let swiftType = swiftTypeForField(field, entityTypeName: entity.swiftTypeName)
       if field.isOptional {
         switch field.type {
         case .boolean:
@@ -801,7 +803,7 @@ public struct SwiftCodeGenerator {
           output += "      self.\(fieldName) = nil\n"
           output += "    }\n"
         default:
-          output += "    self.\(fieldName) = try container.decodeIfPresent(\(field.type.swiftType).self, forKey: .\(fieldName))\n"
+          output += "    self.\(fieldName) = try container.decodeIfPresent(\(swiftType).self, forKey: .\(fieldName))\n"
         }
       } else {
         switch field.type {
@@ -810,7 +812,7 @@ public struct SwiftCodeGenerator {
         case .number:
           output += "    self.\(fieldName) = try container.decode(FlexibleDouble.self, forKey: .\(fieldName)).wrappedValue\n"
         default:
-          output += "    self.\(fieldName) = try container.decode(\(field.type.swiftType).self, forKey: .\(fieldName))\n"
+          output += "    self.\(fieldName) = try container.decode(\(swiftType).self, forKey: .\(fieldName))\n"
         }
       }
     }
@@ -2338,7 +2340,12 @@ public struct SwiftCodeGenerator {
     output += "    Task {\n"
     output += "      do {\n"
     output += "        try await self.update(id: id) { entity in\n"
-    output += "          entity.\(field.name).toggle()\n"
+    // Handle optional Bool fields - can't call .toggle() on Bool?
+    if field.isOptional {
+      output += "          entity.\(field.name) = !(entity.\(field.name) ?? false)\n"
+    } else {
+      output += "          entity.\(field.name).toggle()\n"
+    }
     output += "        }\n"
     output += "        if let updated = self.wrappedValue[id: id] {\n"
     output += "          callbacks.onSuccess?(updated)\n"
@@ -2392,7 +2399,12 @@ public struct SwiftCodeGenerator {
     output += "    Task {\n"
     output += "      do {\n"
     output += "        try await self.update(id: id) { entity in\n"
-    output += "          entity.\(field.name) += amount\n"
+    // Handle optional Double fields - can't use += on Double?
+    if field.isOptional {
+      output += "          entity.\(field.name) = (entity.\(field.name) ?? 0) + amount\n"
+    } else {
+      output += "          entity.\(field.name) += amount\n"
+    }
     output += "        }\n"
     output += "        if let updated = self.wrappedValue[id: id] {\n"
     output += "          callbacks.onSuccess?(updated)\n"

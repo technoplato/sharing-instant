@@ -416,9 +416,15 @@ public enum GitUtilities {
       throw GitError.notAGitRepository
     }
     
+    // Filter out git warning messages (e.g., "warning: could not open directory")
+    // and empty lines. Only look at actual status lines (start with status codes).
     let dirtyFiles = output.split(separator: "\n")
       .map { String($0) }
-      .filter { !$0.isEmpty }
+      .filter { line in
+        !line.isEmpty &&
+        !line.hasPrefix("warning:") &&
+        !line.hasPrefix("error:")
+      }
     
     if !dirtyFiles.isEmpty {
       throw GitError.dirtyOutputFiles(files: dirtyFiles)
