@@ -1460,6 +1460,15 @@ public struct SwiftCodeGenerator {
       }
     }
     
+    // Generate topic mutations
+    if !allTopics.isEmpty {
+      output += "// MARK: - Topic Mutations\n\n"
+      for topic in allTopics {
+        output += generateTopicMutations(for: topic, access: access)
+        output += "\n"
+      }
+    }
+    
     return output
   }
   
@@ -1779,6 +1788,95 @@ public struct SwiftCodeGenerator {
       }
 
     """
+  }
+  
+  // MARK: - Topic Mutation Generation
+  
+  private func generateTopicMutations(for topic: TopicIR, access: String) -> String {
+    let typeName = topic.payloadTypeName
+    let capitalizedTopic = topic.name.prefix(1).uppercased() + topic.name.dropFirst()
+    
+    var output = "// MARK: \(typeName) Mutations\n\n"
+    
+    output += "\(access) extension Shared where Value == TopicChannel<\(typeName)> {\n\n"
+    
+    // Generate send method with named parameters
+    output += generateSendTopicMethod(topic: topic, access: access)
+    
+    output += "}\n"
+    
+    return output
+  }
+  
+  private func generateSendTopicMethod(topic: TopicIR, access: String) -> String {
+    let typeName = topic.payloadTypeName
+    let methodName = "send\(topic.name.prefix(1).uppercased() + topic.name.dropFirst())"
+    
+    var output = """
+      /// Send a \(topic.name) event with named parameters.
+      ///
+      /// ## Example
+      ///
+      /// ```swift
+      /// $channel.\(methodName)(
+    """
+    
+    for (index, field) in topic.payload.fields.enumerated() {
+      let comma = index < topic.payload.fields.count - 1 ? "," : ""
+      output += "\n  ///   \(field.name): value\(comma)"
+    }
+    
+    output += """
+
+      /// )
+      /// ```
+      @MainActor
+      \(access) func \(methodName)(
+    
+    """
+    
+    for (index, field) in topic.payload.fields.enumerated() {
+      let comma = ","
+      let optionalMark = field.isOptional ? "?" : ""
+      let defaultValue = field.isOptional ? " = nil" : (field.defaultValue ?? defaultValueForType(field.type)).map { " = \($0)" } ?? ""
+      output += "    \(field.name): \(field.type.swiftType)\(optionalMark)\(defaultValue)\(comma)\n"
+    }
+    
+    output += """
+        onAttempt: ((\(typeName)) -> Void)? = nil,
+        onError: ((Error) -> Void)? = nil,
+        onSettled: (() -> Void)? = nil
+      ) {
+        let payload = \(typeName)(
+    """
+    
+    for (index, field) in topic.payload.fields.enumerated() {
+      let comma = index < topic.payload.fields.count - 1 ? "," : ""
+      output += "\n      \(field.name): \(field.name)\(comma)"
+    }
+    
+    output += """
+
+        )
+        wrappedValue.publish(payload, onAttempt: onAttempt, onError: onError, onSettled: onSettled)
+      }
+
+    """
+    
+    return output
+  }
+  
+  private func defaultValueForType(_ type: FieldType) -> String? {
+    switch type {
+    case .number:
+      return "0"
+    case .string:
+      return nil
+    case .boolean:
+      return "false"
+    default:
+      return nil
+    }
   }
   
   private func generatePresenceType(for room: RoomIR, presence: EntityIR) -> String {
