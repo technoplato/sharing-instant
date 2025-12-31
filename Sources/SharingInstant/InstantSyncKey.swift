@@ -14,6 +14,34 @@ import Sharing
 
 private let logger = Logger(subsystem: "SharingInstant", category: "Sync")
 
+// #region agent log
+/// Debug logging helper for Cursor debug mode
+private func debugLog(location: String, message: String, data: [String: Any], hypothesisId: String) {
+    let logPath = "/Users/mlustig/Development/personal/instantdb/.cursor/debug.log"
+    let payload: [String: Any] = [
+        "location": location,
+        "message": message,
+        "data": data,
+        "timestamp": Date().timeIntervalSince1970 * 1000,
+        "sessionId": "debug-session",
+        "hypothesisId": hypothesisId
+    ]
+    if let jsonData = try? JSONSerialization.data(withJSONObject: payload),
+       let jsonString = String(data: jsonData, encoding: .utf8) {
+        let line = jsonString + "\n"
+        if let fileHandle = FileHandle(forWritingAtPath: logPath) {
+            fileHandle.seekToEndOfFile()
+            if let data = line.data(using: .utf8) {
+                fileHandle.write(data)
+            }
+            fileHandle.closeFile()
+        } else {
+            FileManager.default.createFile(atPath: logPath, contents: line.data(using: .utf8))
+        }
+    }
+}
+// #endregion
+
 /// Helper to log with file/line info
 private func logDebug(
   _ message: String,
@@ -47,94 +75,204 @@ private func logError(
   }
 }
 
-// MARK: - ID Tracking for Deletion Detection
+// MARK: - State Tracking for Option A (Only Send Changes)
 
-/// Actor that tracks known IDs for each subscription to detect deletions.
+/// Actor that tracks state for each subscription to implement Option A.
 ///
-/// ## Why This Exists
+/// ## Why This Exists (Option A Architecture)
 ///
-/// When a user calls `$items.withLock { $0.remove(id:) }`, the `save()` method
-/// only receives the NEW collection state - it doesn't know what was removed.
-/// This actor tracks the previous set of IDs so we can compute the difference
-/// and generate delete operations.
+/// The TypeScript client only sends CHANGES to the server, not the entire state.
+/// When you call `$posts.withLock { $0.insert(newPost) }`, it should only send
+/// the mutation for `newPost`, not re-send all existing posts.
+///
+/// The problem is that `save()` only receives the NEW value - it doesn't know
+/// what changed. This actor tracks the previous state so we can compute the diff.
 ///
 /// ## How It Works
 ///
-/// 1. When `subscribe()` receives data from the server, it updates `knownIDs`
-/// 2. When `save()` is called, it compares current IDs with `knownIDs`
-/// 3. IDs in `knownIDs` but not in current = deleted by user → send delete ops
-/// 4. After save, `knownIDs` is updated to match current state
+/// 1. **Server data is source of truth**: When `subscribe()` receives data from
+///    the server, we store it as `serverState`.
+///
+/// 2. **Compute diff in save()**: When `save()` is called, we compare the new
+///    value with `serverState` to find:
+///    - Added items: in new value but not in serverState
+///    - Removed items: in serverState but not in new value
+///    - Modified items: in both but with different data (TODO: implement)
+///
+/// 3. **Only send changes**: We only generate operations for the diff, not for
+///    unchanged items that already exist on the server.
+///
+/// ## Key Insight
+///
+/// Items that exist in `serverState` should NOT be re-sent unless they were
+/// actually modified locally. This prevents the "server deletion re-sync" bug.
 ///
 /// ## Thread Safety
 ///
 /// This is an actor to ensure thread-safe access from multiple subscriptions.
-private actor IDTracker {
-    /// Known IDs per subscription key, keyed by the key's string ID
-    private var knownIDsByKey: [String: Set<String>] = [:]
+private actor StateTracker {
+    /// Server-confirmed state per subscription key
+    /// Key: "\(appID):\(namespace)"
+    /// Value: Set of entity IDs that the server has confirmed
+    private var serverStateByKey: [String: Set<String>] = [:]
     
-    /// IDs that were deleted locally and should not be re-added if server sends them back
-    /// This prevents the "re-add after dashboard delete" bug
-    private var locallyDeletedIDs: [String: Set<String>] = [:]
+    /// IDs that were added locally (pending confirmation)
+    /// These should be sent to the server
+    private var locallyAddedByKey: [String: Set<String>] = [:]
     
-    /// Update known IDs when server sends data
-    func updateFromServer(keyID: String, ids: Set<String>) {
-        // Remove any locally deleted IDs that the server has now confirmed as deleted
-        // (i.e., they're no longer in the server response)
-        if var deleted = locallyDeletedIDs[keyID] {
-            deleted = deleted.intersection(ids) // Keep only IDs still on server
-            if deleted.isEmpty {
-                locallyDeletedIDs.removeValue(forKey: keyID)
+    /// IDs that were deleted locally (pending confirmation)
+    /// These should be sent as delete operations
+    private var locallyDeletedByKey: [String: Set<String>] = [:]
+    
+    // MARK: - Server State Updates
+    
+    /// Update server state when subscription receives data
+    func updateServerState(keyID: String, ids: Set<String>) {
+        let previousServerState = serverStateByKey[keyID] ?? []
+        serverStateByKey[keyID] = ids
+        
+        // #region agent log
+        debugLog(location: "StateTracker.updateServerState", message: "Server state updated", data: ["keyID": keyID, "idCount": ids.count, "previousCount": previousServerState.count, "ids": Array(ids.prefix(5))], hypothesisId: "H1")
+        // #endregion
+        
+        // Clear locally added IDs that the server now has
+        if var locallyAdded = locallyAddedByKey[keyID] {
+            locallyAdded.subtract(ids)
+            if locallyAdded.isEmpty {
+                locallyAddedByKey.removeValue(forKey: keyID)
             } else {
-                locallyDeletedIDs[keyID] = deleted
+                locallyAddedByKey[keyID] = locallyAdded
             }
         }
         
-        knownIDsByKey[keyID] = ids
-    }
-    
-    /// Get IDs that were removed (for deletion detection)
-    /// Returns: (idsToDelete, updatedKnownIDs)
-    func computeDeletedIDs(keyID: String, currentIDs: Set<String>) -> Set<String> {
-        let knownIDs = knownIDsByKey[keyID] ?? []
-        
-        // IDs that were in known set but not in current = deleted by user
-        let deletedIDs = knownIDs.subtracting(currentIDs)
-        
-        // Update known IDs to current state
-        knownIDsByKey[keyID] = currentIDs
-        
-        // Track these as locally deleted so we don't re-add them
-        if !deletedIDs.isEmpty {
-            var existing = locallyDeletedIDs[keyID] ?? []
-            existing.formUnion(deletedIDs)
-            locallyDeletedIDs[keyID] = existing
+        // Clear locally deleted IDs that the server has confirmed deleted
+        // (they're no longer in the server response)
+        if var locallyDeleted = locallyDeletedByKey[keyID] {
+            locallyDeleted = locallyDeleted.intersection(ids) // Keep only IDs still on server
+            if locallyDeleted.isEmpty {
+                locallyDeletedByKey.removeValue(forKey: keyID)
+            } else {
+                locallyDeletedByKey[keyID] = locallyDeleted
+            }
         }
         
-        return deletedIDs
+        logDebug("StateTracker: Server state updated for \(keyID): \(ids.count) IDs")
     }
     
-    /// Check if an ID was locally deleted (to prevent re-adding)
+    // MARK: - Diff Computation
+    
+    /// Compute what changed between server state and current local state.
+    ///
+    /// ## Race Condition Mitigation
+    ///
+    /// Multiple `@Shared` properties can have different views of the same namespace.
+    /// To prevent incorrect deletion detection, we use a conservative approach:
+    ///
+    /// 1. **Additions:** Items not in server state are considered new
+    /// 2. **Deletions:** Only items that were EXPLICITLY in server state AND are now
+    ///    missing from the current collection are considered deleted.
+    ///    We also require that the current collection size is SMALLER than server state
+    ///    to prevent race conditions where a subscription hasn't received all data yet.
+    ///
+    /// Returns: (idsToAdd, idsToDelete)
+    /// - idsToAdd: Items in currentIDs but not in serverState (new local items)
+    /// - idsToDelete: Items removed from a complete view of the data
+    func computeDiff(keyID: String, currentIDs: Set<String>) -> (added: Set<String>, deleted: Set<String>) {
+        let serverState = serverStateByKey[keyID] ?? []
+        let previousLocallyAdded = locallyAddedByKey[keyID] ?? []
+        let previousLocallyDeleted = locallyDeletedByKey[keyID] ?? []
+        
+        // #region agent log
+        debugLog(location: "StateTracker.computeDiff", message: "Computing diff", data: ["keyID": keyID, "currentIDsCount": currentIDs.count, "serverStateCount": serverState.count, "currentIDs": Array(currentIDs.prefix(5)), "serverIDs": Array(serverState.prefix(5))], hypothesisId: "H2")
+        // #endregion
+        
+        // Items in current but not in server state = potentially new
+        // But we need to check if they were already pending
+        let potentiallyNew = currentIDs.subtracting(serverState)
+        
+        // New items = in current, not in server, not already tracked as locally added
+        let newlyAdded = potentiallyNew.subtracting(previousLocallyAdded)
+        
+        // CONSERVATIVE DELETION DETECTION:
+        // Only detect deletions if:
+        // 1. Server state is not empty (we have received data)
+        // 2. Current IDs is a SUBSET of server state (no new items mixed in)
+        //    OR current IDs contains all server items except the deleted ones
+        // 3. The deleted items were actually in server state
+        //
+        // This prevents race conditions where:
+        // - A subscription hasn't received all data yet
+        // - Multiple subscriptions have different views
+        var newlyDeleted: Set<String> = []
+        
+        if !serverState.isEmpty {
+            // Items that were in server state but not in current = potentially deleted
+            let potentiallyDeleted = serverState.subtracting(currentIDs)
+            
+            // Only consider it a real deletion if:
+            // 1. There are items to delete
+            // 2. The current collection contains MOST of the server state
+            //    (at least 50% to handle partial views, but this is a heuristic)
+            // 3. The items weren't already tracked as deleted
+            if !potentiallyDeleted.isEmpty {
+                let overlapWithServer = currentIDs.intersection(serverState)
+                let overlapRatio = serverState.isEmpty ? 0.0 : Double(overlapWithServer.count) / Double(serverState.count)
+                
+                // Only detect deletions if we have a significant overlap with server state
+                // This prevents a subscription with 1 item from deleting everything else
+                if overlapRatio >= 0.5 || currentIDs.count >= serverState.count - potentiallyDeleted.count {
+                    newlyDeleted = potentiallyDeleted.subtracting(previousLocallyDeleted)
+                }
+            }
+        }
+        
+        // Update tracking
+        if !newlyAdded.isEmpty {
+            var existing = locallyAddedByKey[keyID] ?? []
+            existing.formUnion(newlyAdded)
+            locallyAddedByKey[keyID] = existing
+        }
+        
+        if !newlyDeleted.isEmpty {
+            var existing = locallyDeletedByKey[keyID] ?? []
+            existing.formUnion(newlyDeleted)
+            locallyDeletedByKey[keyID] = existing
+        }
+        
+        // #region agent log
+        debugLog(location: "StateTracker.computeDiff", message: "Diff result", data: ["keyID": keyID, "newlyAddedCount": newlyAdded.count, "newlyDeletedCount": newlyDeleted.count, "newlyAddedIDs": Array(newlyAdded.prefix(5))], hypothesisId: "H2")
+        // #endregion
+        
+        logDebug("StateTracker: Diff for \(keyID) - added: \(newlyAdded.count), deleted: \(newlyDeleted.count)")
+        
+        return (added: newlyAdded, deleted: newlyDeleted)
+    }
+    
+    /// Check if an ID is from the server (not locally added)
+    func isServerConfirmed(keyID: String, id: String) -> Bool {
+        return serverStateByKey[keyID]?.contains(id) ?? false
+    }
+    
+    /// Check if an ID was locally deleted
     func wasLocallyDeleted(keyID: String, id: String) -> Bool {
-        return locallyDeletedIDs[keyID]?.contains(id) ?? false
+        return locallyDeletedByKey[keyID]?.contains(id) ?? false
     }
     
-    /// Filter out locally deleted IDs from a set of IDs
-    func filterLocallyDeleted(keyID: String, ids: [String]) -> [String] {
-        guard let deleted = locallyDeletedIDs[keyID], !deleted.isEmpty else {
-            return ids
-        }
-        return ids.filter { !deleted.contains($0.lowercased()) && !deleted.contains($0) }
+    /// Get all locally added IDs that need to be sent
+    func getLocallyAddedIDs(keyID: String) -> Set<String> {
+        return locallyAddedByKey[keyID] ?? []
     }
     
     /// Clear tracking for a key (e.g., when subscription ends)
     func clear(keyID: String) {
-        knownIDsByKey.removeValue(forKey: keyID)
-        locallyDeletedIDs.removeValue(forKey: keyID)
+        serverStateByKey.removeValue(forKey: keyID)
+        locallyAddedByKey.removeValue(forKey: keyID)
+        locallyDeletedByKey.removeValue(forKey: keyID)
     }
 }
 
-/// Shared ID tracker instance
-private let idTracker = IDTracker()
+/// Shared state tracker instance
+private let stateTracker = StateTracker()
 
 extension SharedReaderKey {
   
@@ -444,16 +582,16 @@ where Value.Element: EntityIdentifiable & Sendable {
     let task = Task { @MainActor in
         let stream = await reactor.subscribe(appID: appID, configuration: configuration)
         for await data in stream {
-            // Track IDs from server for deletion detection
+            // Track server state for Option A (only send changes)
             let serverIDs = Set(data.map { $0.id.lowercased() })
-            await idTracker.updateFromServer(keyID: keyID, ids: serverIDs)
+            await stateTracker.updateServerState(keyID: keyID, ids: serverIDs)
             
             // Filter out any IDs that were locally deleted
             // This prevents re-adding items deleted from the dashboard
             let filteredData = await {
                 var result: [Element] = []
                 for item in data {
-                    let wasDeleted = await idTracker.wasLocallyDeleted(keyID: keyID, id: item.id.lowercased())
+                    let wasDeleted = await stateTracker.wasLocallyDeleted(keyID: keyID, id: item.id.lowercased())
                     if !wasDeleted {
                         result.append(item)
                     }
@@ -472,7 +610,7 @@ where Value.Element: EntityIdentifiable & Sendable {
       task.cancel()
       // Clear tracking when subscription ends
       Task {
-          await idTracker.clear(keyID: keyID)
+          await stateTracker.clear(keyID: keyID)
       }
     }
   }
@@ -498,20 +636,22 @@ where Value.Element: EntityIdentifiable & Sendable {
     
     logInfo("Save: saving \(value.count) items to \(configuration.namespace)")
     
-    // Capture key ID for deletion tracking
+    // Capture key ID for state tracking
     let keyID = "\(appID):\(configuration.namespace)"
     let namespace = configuration.namespace
     
+    // #region agent log
+    debugLog(location: "save.entry", message: "Save called", data: ["keyID": keyID, "namespace": namespace, "itemCount": value.count], hypothesisId: "H3")
+    // #endregion
+    
     Task { @MainActor in
       do {
-        // Collect chunks
-        // We'll collect all chunks (ops) from the entire graph here
+        // Collect chunks - ONLY for items that changed (Option A)
         var allChunks: [TransactionChunk] = []
         
-        // --- DELETION DETECTION ---
-        // Compare current IDs with known IDs to find deletions
+        // --- COMPUTE DIFF (Option A) ---
+        // Extract current IDs from the value
         let currentIDs = Set(value.map { item -> String in
-            // Extract ID using Mirror since we can't easily cast to EntityIdentifiable
             let mirror = Mirror(reflecting: item)
             for child in mirror.children {
                 if child.label == "id", let idVal = child.value as? String {
@@ -521,11 +661,18 @@ where Value.Element: EntityIdentifiable & Sendable {
             return ""
         }.filter { !$0.isEmpty })
         
-        let deletedIDs = await idTracker.computeDeletedIDs(keyID: keyID, currentIDs: currentIDs)
+        // Get the diff: what was added vs what was deleted
+        let (addedIDs, deletedIDs) = await stateTracker.computeDiff(keyID: keyID, currentIDs: currentIDs)
         
-        // Generate delete operations for removed items
+        // #region agent log
+        debugLog(location: "save.afterDiff", message: "After diff computation", data: ["keyID": keyID, "addedCount": addedIDs.count, "deletedCount": deletedIDs.count, "addedIDs": Array(addedIDs), "currentIDs": Array(currentIDs)], hypothesisId: "H3")
+        // #endregion
+        
+        logInfo("Save: Option A diff - added: \(addedIDs.count), deleted: \(deletedIDs.count), unchanged: \(currentIDs.count - addedIDs.count)")
+        
+        // --- GENERATE DELETE OPERATIONS ---
         if !deletedIDs.isEmpty {
-            logInfo("Save: detected \(deletedIDs.count) deletions: \(deletedIDs)")
+            logInfo("Save: generating \(deletedIDs.count) delete operations")
             for deletedID in deletedIDs {
                 let deleteChunk = TransactionChunk(
                     namespace: namespace,
@@ -536,17 +683,26 @@ where Value.Element: EntityIdentifiable & Sendable {
             }
         }
         
-        // --- UPDATE/INSERT OPERATIONS ---
+        // --- GENERATE UPDATE/INSERT OPERATIONS (ONLY FOR NEW ITEMS) ---
+        // Helper to extract just the ID from an entity (no chunk creation)
+        // Used for linked entities - we only need their ID for the link operation
+        func extractId(from value: Any) -> String? {
+          let mirror = Mirror(reflecting: value)
+          for child in mirror.children {
+            if child.label == "id", let idVal = child.value as? String {
+              return idVal
+            }
+          }
+          return nil
+        }
+        
         // Helper to traverse and collect operations
-        // Returns the ID of the entity processed
-        func traverse(value: Any, namespace: String) throws -> String? {
-          // Identify the entity ID and properties
-          // We use Mirror to inspect properties
+        // IMPORTANT: Only top-level items should generate chunks.
+        // Linked entities (reached via relationships) should only provide their ID.
+        func traverse(value: Any, namespace: String, isTopLevel: Bool = false) throws -> String? {
           let mirror = Mirror(reflecting: value)
           
-          // Must identify 'id' property
-          // We can't rely on EntityIdentifiable casting easily for `Any` value without existential opening,
-          // so we look for "id" property via Mirror.
+          // Extract ID
           var id: String?
           for child in mirror.children {
             if child.label == "id", let idVal = child.value as? String {
@@ -560,6 +716,26 @@ where Value.Element: EntityIdentifiable & Sendable {
             return nil
           }
           
+          // KEY FIX: Only top-level items should generate transaction chunks.
+          // Linked entities (isTopLevel=false) should NOT generate chunks -
+          // they're only traversed to extract their ID for the link operation.
+          // This matches TypeScript behavior where link() only takes IDs.
+          if !isTopLevel {
+            // #region agent log
+            debugLog(location: "traverse.linkedEntitySkip", message: "Skipping chunk for linked entity (only extracting ID)", data: ["entityId": entityId, "namespace": namespace], hypothesisId: "H3")
+            // #endregion
+            return entityId // Just return ID, don't create chunk
+          }
+          
+          // OPTION A: For top-level items, only process if they were added locally
+          // Items that exist on server should NOT be re-sent
+          let isNewItem = addedIDs.contains(entityId.lowercased())
+          if !isNewItem {
+            logDebug("Save: skipping server-confirmed item \(entityId) (Option A)")
+            return entityId // Return ID but don't generate ops
+          }
+          logDebug("Save: processing NEW item \(entityId)")
+          
           var dataFields: [String: Any] = [:]
           var linkFields: [String: Any] = [:]
           
@@ -571,55 +747,42 @@ where Value.Element: EntityIdentifiable & Sendable {
             
             // Unwrap Optional
             let actualValue: Any
-            let isOptional: Bool
             if childMirror.displayStyle == .optional {
-              isOptional = true
               if childMirror.children.isEmpty {
-                // nil value
-                continue 
+                continue // nil value
               } else {
                 actualValue = childMirror.children.first!.value
               }
             } else {
-              isOptional = false
               actualValue = childValue
             }
             
-            // Check if it's an Entity (nested object)
-            // We use getNamespace as the primary check for Entity-ness
-            if let namespace = getNamespace(for: actualValue),
-               let nestedId = try? traverse(value: actualValue, namespace: namespace) {
-              // It's a single link
-              linkFields[label] = ["id": nestedId, "namespace": namespace]
+            // Check if it's an Entity (nested object) - extract ID only, don't traverse
+            if let nestedNamespace = getNamespace(for: actualValue),
+               let nestedId = extractId(from: actualValue) {
+              linkFields[label] = ["id": nestedId, "namespace": nestedNamespace]
+              // #region agent log
+              debugLog(location: "traverse.linkedEntity", message: "Adding link (ID only, no recursive traverse)", data: ["parentId": entityId, "linkLabel": label, "linkedId": nestedId, "linkedNamespace": nestedNamespace], hypothesisId: "H3")
+              // #endregion
             }
-            // Check if it's a Collection of Entities
+            // Check if it's a Collection of Entities - extract IDs only
             else if let collection = actualValue as? [Any], !collection.isEmpty {
-               // Try to traverse first element to see if it's an entity
-               // If yes, traverse all and link many
-               var ids: [String] = []
-               var isEntityCollection = false
-               
-               // Check first item to determine if this is a collection of entities
                if let firstItem = collection.first, let _ = getNamespace(for: firstItem) {
-                 isEntityCollection = true
                  var linkDicts: [[String: String]] = []
                  for item in collection {
-                   if let namespace = getNamespace(for: item),
-                      let nestedId = try? traverse(value: item, namespace: namespace) {
-                     linkDicts.append(["id": nestedId, "namespace": namespace])
+                   if let itemNamespace = getNamespace(for: item),
+                      let nestedId = extractId(from: item) {
+                     linkDicts.append(["id": nestedId, "namespace": itemNamespace])
                    }
                  }
-                 if isEntityCollection {
+                 if !linkDicts.isEmpty {
                    linkFields[label] = linkDicts
                  }
                } else {
-                  // Regular array data
                   dataFields[label] = actualValue
                }
             }
             else {
-              // Regular property
-              // Check for encodable? For now we trust JSONSerialization will handle or fail
                dataFields[label] = actualValue
             }
           }
@@ -627,7 +790,6 @@ where Value.Element: EntityIdentifiable & Sendable {
            // Create ops for this entity
            var ops: [[Any]] = []
            
-           // 1. Update (create/update)
            if !dataFields.isEmpty {
              let safeData = sanitizeData(dataFields)
              ops.append(["update", namespace, entityId, safeData])
@@ -635,13 +797,16 @@ where Value.Element: EntityIdentifiable & Sendable {
              ops.append(["update", namespace, entityId, [:] as [String: Any]])
            }
            
-           // 2. Links
            if !linkFields.isEmpty {
              ops.append(["link", namespace, entityId, linkFields])
            }
            
            let chunk = TransactionChunk(namespace: namespace, id: entityId, ops: ops)
            allChunks.append(chunk)
+           
+           // #region agent log
+           debugLog(location: "traverse.chunkCreated", message: "Created transaction chunk", data: ["entityId": entityId, "namespace": namespace, "isTopLevel": isTopLevel, "hasLinks": !linkFields.isEmpty, "linkLabels": Array(linkFields.keys)], hypothesisId: "H5")
+           // #endregion
            
            return entityId
         }
@@ -658,14 +823,12 @@ where Value.Element: EntityIdentifiable & Sendable {
           var res = dict
           for (k, v) in dict {
             if let date = v as? Date {
-               res[k] = date.timeIntervalSince1970 * 1000 // ms
+               res[k] = date.timeIntervalSince1970 * 1000
             } else if let subDict = v as? [String: Any] {
                res[k] = sanitizeData(subDict)
             } else if let array = v as? [Any] {
-               // Handle arrays - convert any Encodable elements to dictionaries
                res[k] = sanitizeArray(array)
             } else if shouldConvertToJSON(v) {
-               // Convert Encodable structs to JSON-compatible dictionaries
                if let converted = convertToJSONCompatible(v) {
                  res[k] = converted
                }
@@ -690,14 +853,11 @@ where Value.Element: EntityIdentifiable & Sendable {
         }
         
         func shouldConvertToJSON(_ value: Any) -> Bool {
-          // Check if this is a custom struct/class that needs JSON conversion
-          // Primitives and dictionaries are already handled
           let mirror = Mirror(reflecting: value)
           return mirror.displayStyle == .struct || mirror.displayStyle == .class
         }
         
         func convertToJSONCompatible(_ value: Any) -> Any? {
-          // Try to convert Encodable values to JSON-compatible dictionaries
           guard let encodable = value as? Encodable else { return nil }
           
           do {
@@ -710,21 +870,21 @@ where Value.Element: EntityIdentifiable & Sendable {
           }
         }
 
-        // --- Execution ---
-        
+        // --- Process items (only new ones will generate ops) ---
         for item in value {
-           _ = try traverse(value: item, namespace: namespace)
+           _ = try traverse(value: item, namespace: namespace, isTopLevel: true)
         }
         
+        // #region agent log
+        debugLog(location: "save.beforeSend", message: "About to send transaction", data: ["chunkCount": allChunks.count, "namespaces": Array(Set(allChunks.map { $0.namespace })), "chunkIDs": allChunks.map { $0.id }], hypothesisId: "H4")
+        // #endregion
+        
         if !allChunks.isEmpty {
-          logDebug("Save: sending \(allChunks.count) transactions (including \(deletedIDs.count) deletes) via Reactor")
-          
-          // Delegate to Reactor
+          logDebug("Save: sending \(allChunks.count) transactions (Option A - only changes)")
           try await reactor.transact(appID: appID, chunks: allChunks)
-          
           logInfo("Save: transaction sent successfully")
         } else {
-          logDebug("Save: no transactions to send")
+          logDebug("Save: no changes to send (Option A)")
         }
         
         withResume {

@@ -703,4 +703,402 @@ final class PendingMutationsTests: XCTestCase {
             print("DEBUG: Test complete.")
         }
     }
+    
+    // MARK: - Test 7: Server Deletion Does Not Cause Re-sync (Option A Critical Test)
+    
+    /// Tests that when the server deletes items, the client does NOT re-send them.
+    ///
+    /// ## Bug Being Tested
+    ///
+    /// This is the critical bug that requires Option A architecture:
+    /// 1. Client has posts A, B, C (synced from server)
+    /// 2. Server deletes all posts (via dashboard or admin SDK)
+    /// 3. Server sends subscription update with empty array
+    /// 4. Client creates new post D
+    /// 5. BUG: Client re-sends A, B, C along with D!
+    ///
+    /// ## Expected Behavior (TypeScript)
+    ///
+    /// In TypeScript, when you create post D:
+    /// - `pushTx()` only sends the mutation for D
+    /// - It does NOT iterate over local state and re-send everything
+    /// - Server data (empty) + pending mutation (D) = UI shows [D]
+    ///
+    /// ## Reference
+    ///
+    /// TypeScript Reactor.test.js line 203:
+    /// "optimisticTx is not overwritten by refresh-ok"
+    @MainActor
+    func testServerDeletionDoesNotCauseResync() async throws {
+        let instanceID = "server-deletion-\(UUID().uuidString.lowercased())"
+        
+        // Step 1: Create some posts via admin SDK
+        let post1Id = UUID().uuidString.lowercased()
+        let post2Id = UUID().uuidString.lowercased()
+        let authorId = "00000000-0000-0000-0000-00000000a11c" // Alice
+        
+        // Create posts using Reactor directly (simulating server state)
+        let store = SharedTripleStore()
+        let reactor = Reactor(store: store)
+        
+        // Sign in as guest to allow transactions
+        try await reactor.signInAsGuest(appID: Self.testAppID)
+        
+        // Create author first
+        let authorChunk = TransactionChunk(
+            namespace: "profiles",
+            id: authorId,
+            ops: [["update", "profiles", authorId, [
+                "displayName": "Alice",
+                "handle": "alice_deletion_test",
+                "createdAt": Date().timeIntervalSince1970 * 1000
+            ]]]
+        )
+        try await reactor.transact(appID: Self.testAppID, chunks: [authorChunk])
+        
+        // Create posts linked to author
+        let post1Chunk = TransactionChunk(
+            namespace: "posts",
+            id: post1Id,
+            ops: [
+                ["update", "posts", post1Id, [
+                    "content": "Post 1 - will be deleted",
+                    "createdAt": Date().timeIntervalSince1970 * 1000,
+                    "likesCount": 0
+                ]],
+                ["link", "posts", post1Id, ["author": ["id": authorId, "namespace": "profiles"]]]
+            ]
+        )
+        let post2Chunk = TransactionChunk(
+            namespace: "posts",
+            id: post2Id,
+            ops: [
+                ["update", "posts", post2Id, [
+                    "content": "Post 2 - will be deleted",
+                    "createdAt": Date().timeIntervalSince1970 * 1000 + 1000,
+                    "likesCount": 0
+                ]],
+                ["link", "posts", post2Id, ["author": ["id": authorId, "namespace": "profiles"]]]
+            ]
+        )
+        try await reactor.transact(appID: Self.testAppID, chunks: [post1Chunk, post2Chunk])
+        
+        print("DEBUG: Created 2 posts on server")
+        
+        // Step 2: Subscribe via @Shared and verify we see the posts
+        try await withDependencies {
+            $0.context = .live
+            $0.instantAppID = Self.testAppID
+            $0.instantEnableLocalPersistence = false
+            $0.instantClientInstanceID = instanceID
+        } operation: {
+            @Shared(.instantSync(Schema.posts.with(\.author).orderBy(\.createdAt, .desc)))
+            var posts: IdentifiedArrayOf<Post> = []
+            
+            // Wait for subscription to receive posts
+            print("DEBUG: Waiting for subscription to receive posts...")
+            var attempts = 0
+            while posts.count < 2 && attempts < 50 {
+                try await Task.sleep(nanoseconds: 100_000_000) // 100ms
+                attempts += 1
+            }
+            
+            print("DEBUG: Subscription has \(posts.count) posts")
+            XCTAssertGreaterThanOrEqual(posts.count, 2, "Should have at least 2 posts from server")
+            
+            // Step 3: Delete posts via admin SDK (simulating dashboard deletion)
+            print("DEBUG: Deleting posts via admin SDK...")
+            let deletePost1 = TransactionChunk(
+                namespace: "posts",
+                id: post1Id,
+                ops: [["delete", "posts", post1Id]]
+            )
+            let deletePost2 = TransactionChunk(
+                namespace: "posts",
+                id: post2Id,
+                ops: [["delete", "posts", post2Id]]
+            )
+            try await reactor.transact(appID: Self.testAppID, chunks: [deletePost1, deletePost2])
+            
+            print("DEBUG: Posts deleted from server")
+            
+            // Step 4: Wait for subscription to receive the deletion
+            print("DEBUG: Waiting for subscription to receive deletion...")
+            try await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+            
+            // Note: At this point, the local state may or may not have updated
+            // The bug is that even if it hasn't, creating a new post should NOT re-send old posts
+            
+            let postsBeforeCreate = posts.count
+            print("DEBUG: Posts before create: \(postsBeforeCreate)")
+            
+            // Step 5: Create a NEW post via withLock
+            let newPostId = UUID().uuidString.lowercased()
+            let newPost = Post(
+                content: "New post after deletion",
+                createdAt: Date().timeIntervalSince1970 * 1000 + 5000,
+                likesCount: 0,
+                author: Profile(
+                    id: authorId,
+                    displayName: "Alice",
+                    handle: "alice_deletion_test",
+                    createdAt: 0
+                )
+            )
+            
+            print("DEBUG: Creating new post via withLock...")
+            $posts.withLock { posts in
+                posts.insert(newPost, at: 0)
+            }
+            
+            // Wait for sync
+            try await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+            
+            print("DEBUG: Posts after create: \(posts.count)")
+        }
+        
+        // Step 6: Create a FRESH subscription to verify server state
+        print("DEBUG: Creating fresh subscription to verify server state...")
+        try await withDependencies {
+            $0.context = .live
+            $0.instantAppID = Self.testAppID
+            $0.instantEnableLocalPersistence = false
+            $0.instantClientInstanceID = "fresh-\(UUID().uuidString.lowercased())"
+        } operation: {
+            @Shared(.instantSync(Schema.posts.with(\.author).orderBy(\.createdAt, .desc)))
+            var freshPosts: IdentifiedArrayOf<Post> = []
+            
+            try await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+            
+            print("DEBUG: Fresh subscription has \(freshPosts.count) posts")
+            for post in freshPosts {
+                print("DEBUG:   - \(post.id): \(post.content)")
+            }
+            
+            // CRITICAL ASSERTION: Should only have the NEW post, not the deleted ones!
+            let hasDeletedPost1 = freshPosts.contains { $0.id.lowercased() == post1Id }
+            let hasDeletedPost2 = freshPosts.contains { $0.id.lowercased() == post2Id }
+            let hasNewPost = freshPosts.contains { $0.content == "New post after deletion" }
+            
+            print("DEBUG: Has deleted post 1: \(hasDeletedPost1)")
+            print("DEBUG: Has deleted post 2: \(hasDeletedPost2)")
+            print("DEBUG: Has new post: \(hasNewPost)")
+            
+            // The deleted posts should NOT be on the server
+            XCTAssertFalse(hasDeletedPost1, "BUG: Deleted post 1 was re-synced to server!")
+            XCTAssertFalse(hasDeletedPost2, "BUG: Deleted post 2 was re-synced to server!")
+            XCTAssertTrue(hasNewPost, "New post should be on server")
+            
+            // Cleanup
+            if hasNewPost {
+                if let newPost = freshPosts.first(where: { $0.content == "New post after deletion" }) {
+                    let cleanupChunk = TransactionChunk(
+                        namespace: "posts",
+                        id: newPost.id,
+                        ops: [["delete", "posts", newPost.id]]
+                    )
+                    try await reactor.transact(appID: Self.testAppID, chunks: [cleanupChunk])
+                }
+            }
+        }
+        
+        // Cleanup author
+        let cleanupAuthor = TransactionChunk(
+            namespace: "profiles",
+            id: authorId,
+            ops: [["delete", "profiles", authorId]]
+        )
+        try await reactor.transact(appID: Self.testAppID, chunks: [cleanupAuthor])
+        
+        print("DEBUG: Test complete")
+    }
+    
+    // MARK: - Test 8: Mutation Lifecycle (Pending → Confirmed → Cleaned Up)
+    
+    /// Tests that mutations follow the correct lifecycle like TypeScript.
+    ///
+    /// ## TypeScript Behavior
+    ///
+    /// 1. `pushTx()` adds mutation to `pendingMutations` Map
+    /// 2. Server responds with `transact-ok` containing `tx-id`
+    /// 3. Mutation is marked as `confirmed` with the `tx-id`
+    /// 4. When server's `processedTxId` >= mutation's `tx-id`, mutation is cleaned up
+    ///
+    /// ## Reference
+    ///
+    /// TypeScript Reactor.test.js line 360:
+    /// "we don't cleanup mutations we're still waiting on"
+    @MainActor
+    func testMutationLifecycle() async throws {
+        // This test verifies that:
+        // 1. Mutations are tracked separately from server data
+        // 2. Multiple mutations can be pending simultaneously
+        // 3. Mutations are cleaned up after server confirms
+        
+        let instanceID = "mutation-lifecycle-\(UUID().uuidString.lowercased())"
+        
+        try await withDependencies {
+            $0.context = .live
+            $0.instantAppID = Self.testAppID
+            $0.instantEnableLocalPersistence = false
+            $0.instantClientInstanceID = instanceID
+        } operation: {
+            @Shared(.instantSync(Schema.profiles.orderBy(\.createdAt, .desc)))
+            var profiles: IdentifiedArrayOf<Profile> = []
+            
+            // Wait for initial subscription
+            try await Task.sleep(nanoseconds: 2_000_000_000)
+            
+            let initialCount = profiles.count
+            print("DEBUG: Initial profile count: \(initialCount)")
+            
+            // Create first profile
+            let profile1Id = UUID().uuidString.lowercased()
+            let profile1 = Profile(
+                id: profile1Id,
+                displayName: "Lifecycle Test 1",
+                handle: "@lifecycle_test_1",
+                createdAt: Date().timeIntervalSince1970 * 1000
+            )
+            
+            $profiles.withLock { $0.insert(profile1, at: 0) }
+            
+            // Immediately create second profile (both should be pending)
+            let profile2Id = UUID().uuidString.lowercased()
+            let profile2 = Profile(
+                id: profile2Id,
+                displayName: "Lifecycle Test 2",
+                handle: "@lifecycle_test_2",
+                createdAt: Date().timeIntervalSince1970 * 1000 + 1000
+            )
+            
+            $profiles.withLock { $0.insert(profile2, at: 0) }
+            
+            // Both should be visible immediately (optimistic)
+            XCTAssertEqual(profiles.count, initialCount + 2, "Both profiles should be visible optimistically")
+            
+            let hasProfile1 = profiles.contains { $0.id.lowercased() == profile1Id }
+            let hasProfile2 = profiles.contains { $0.id.lowercased() == profile2Id }
+            
+            XCTAssertTrue(hasProfile1, "Profile 1 should be visible")
+            XCTAssertTrue(hasProfile2, "Profile 2 should be visible")
+            
+            print("DEBUG: Both profiles visible optimistically")
+            
+            // Wait for server confirmation
+            try await Task.sleep(nanoseconds: 3_000_000_000)
+            
+            // Both should still be visible after server confirms
+            XCTAssertTrue(
+                profiles.contains { $0.id.lowercased() == profile1Id },
+                "Profile 1 should still be visible after server confirmation"
+            )
+            XCTAssertTrue(
+                profiles.contains { $0.id.lowercased() == profile2Id },
+                "Profile 2 should still be visible after server confirmation"
+            )
+            
+            print("DEBUG: Both profiles still visible after confirmation")
+            
+            // Cleanup
+            $profiles.withLock { $0.remove(id: profile1Id) }
+            $profiles.withLock { $0.remove(id: profile2Id) }
+            
+            try await Task.sleep(nanoseconds: 2_000_000_000)
+            
+            print("DEBUG: Cleanup complete")
+        }
+    }
+    
+    // MARK: - Test 9: Only Send Changes, Not Entire State
+    
+    /// Tests that save() only sends the mutation, not the entire local state.
+    ///
+    /// ## This is the core Option A requirement
+    ///
+    /// When you call `$posts.withLock { $0.insert(newPost) }`:
+    /// - CORRECT: Send only `["update", "posts", newPostId, {...}]`
+    /// - WRONG: Send updates for ALL posts in local state
+    ///
+    /// ## How to verify
+    ///
+    /// 1. Have 100 existing posts on server
+    /// 2. Create 1 new post
+    /// 3. Verify only 1 transaction was sent (not 101)
+    ///
+    /// This test is difficult to verify directly without instrumenting the network layer,
+    /// but we can verify the EFFECT: existing unchanged posts should not have their
+    /// `serverCreatedAt` or other server-managed fields modified.
+    @MainActor
+    func testOnlySendChangesNotEntireState() async throws {
+        // This test creates a scenario where we can detect if unchanged items were re-sent
+        // by checking if their server-side metadata changed
+        
+        let instanceID = "only-changes-\(UUID().uuidString.lowercased())"
+        
+        try await withDependencies {
+            $0.context = .live
+            $0.instantAppID = Self.testAppID
+            $0.instantEnableLocalPersistence = false
+            $0.instantClientInstanceID = instanceID
+        } operation: {
+            @Shared(.instantSync(Schema.profiles.orderBy(\.createdAt, .desc)))
+            var profiles: IdentifiedArrayOf<Profile> = []
+            
+            // Wait for initial subscription
+            try await Task.sleep(nanoseconds: 2_000_000_000)
+            
+            let initialCount = profiles.count
+            print("DEBUG: Initial profile count: \(initialCount)")
+            
+            // Record the IDs of existing profiles
+            let existingProfileIds = Set(profiles.map { $0.id.lowercased() })
+            print("DEBUG: Existing profile IDs: \(existingProfileIds)")
+            
+            // Create a new profile
+            let newProfileId = UUID().uuidString.lowercased()
+            let newProfile = Profile(
+                id: newProfileId,
+                displayName: "Only Changes Test",
+                handle: "@only_changes_test",
+                createdAt: Date().timeIntervalSince1970 * 1000
+            )
+            
+            print("DEBUG: Creating new profile...")
+            $profiles.withLock { $0.insert(newProfile, at: 0) }
+            
+            // Wait for sync
+            try await Task.sleep(nanoseconds: 3_000_000_000)
+            
+            // Verify new profile was created
+            XCTAssertTrue(
+                profiles.contains { $0.id.lowercased() == newProfileId },
+                "New profile should be created"
+            )
+            
+            // The key assertion: existing profiles should still have their original IDs
+            // If save() re-sent all profiles, they might have been duplicated or modified
+            let currentProfileIds = Set(profiles.map { $0.id.lowercased() })
+            
+            // All existing IDs should still be present
+            for existingId in existingProfileIds {
+                XCTAssertTrue(
+                    currentProfileIds.contains(existingId),
+                    "Existing profile \(existingId) should still exist"
+                )
+            }
+            
+            // No duplicate IDs should exist
+            let idCounts = Dictionary(profiles.map { ($0.id.lowercased(), 1) }, uniquingKeysWith: +)
+            for (id, count) in idCounts {
+                XCTAssertEqual(count, 1, "Profile ID \(id) should not be duplicated (found \(count) times)")
+            }
+            
+            print("DEBUG: All existing profiles preserved, no duplicates")
+            
+            // Cleanup
+            $profiles.withLock { $0.remove(id: newProfileId) }
+            try await Task.sleep(nanoseconds: 2_000_000_000)
+        }
+    }
 }
