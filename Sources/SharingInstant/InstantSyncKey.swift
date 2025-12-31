@@ -573,9 +573,6 @@ where Value.Element: EntityIdentifiable & Sendable {
     let subscriptionId = UUID().uuidString.prefix(8)
     logDebug("Subscribe[\(subscriptionId)]: creating new subscription task via Reactor")
     
-    // Capture subscriber identity for debugging - use address of the subscriber struct
-    let subscriberIdentity = withUnsafePointer(to: subscriber) { String(format: "%p", $0) }
-    
     // Capture key ID for tracking
     let keyID = "\(appID):\(configuration.namespace)"
     

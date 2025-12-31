@@ -6,11 +6,11 @@
     
     for node in tree {
       switch node {
-      case let .link(name, limit, orderBy, orderDirection, whereClauses, children):
+      case let .link(name, limit, _, _, _, children):
         var linkDef: [String: Any] = [:]
         
         // Handle options
-        if let limit = limit {
+        if limit != nil {
           // map "$limit" -> limit ? No, InstaQL object syntax usually is:
           // "posts": { "$limit": 10, "comments": { ... } }
           // Actually, let's verify exact InstaQL syntax for swift client.
