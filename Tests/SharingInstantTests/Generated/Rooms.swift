@@ -148,7 +148,7 @@ struct EmojiTopicView: View {
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// Mode:            Production (full traceability)
-/// Generated:       December 30, 2025 at 7:09 PM EST
+/// Generated:       December 30, 2025 at 7:12 PM EST
 /// Machine:         mlustig-hy7l9xrd61.local (Apple M4 Pro, macOS 26.2)
 /// Generator:       Sources/instant-schema/main.swift
 /// Source Schema:   Examples/CaseStudies/instant.schema.ts
@@ -164,10 +164,10 @@ swift run instant-schema generate \
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// HEAD Commit:
-///   SHA:      cb55a630be06e98d0e1ad8e1a9e7c264aa83bca4
-///   Date:     December 30, 2025 at 7:09 PM EST
+///   SHA:      b983854f913fc7815aecd9e12eca3b159b7ecb83
+///   Date:     December 30, 2025 at 7:11 PM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  chore: Regenerate schema files with presence mutations
+///   Message:  feat(codegen): Add topic mutation generation to Rooms.swift
 ///
 /// Schema File Last Modified:
 ///   SHA:      522ffbf617207b60ecfa647b2d1dc6b9bfa3a7ff
@@ -678,6 +678,41 @@ public extension Shared where Value == RoomPresence<TileGamePresence> {
     withLock { $0.user.color = value }
     callbacks.onSuccess?(())
     callbacks.onSettled?()
+  }
+}
+
+// MARK: - Topic Mutations
+
+// MARK: EmojiTopic Mutations
+
+public extension Shared where Value == TopicChannel<EmojiTopic> {
+
+  /// Send a emoji event with named parameters.
+  ///
+  /// ## Example
+  ///
+  /// ```swift
+  /// $channel.sendEmoji(
+  ///   name: value,
+  ///   directionAngle: value,
+  ///   rotationAngle: value
+  /// )
+  /// ```
+  @MainActor
+  public func sendEmoji(
+    name: String,
+    directionAngle: Double = 0,
+    rotationAngle: Double = 0,
+    onAttempt: ((EmojiTopic) -> Void)? = nil,
+    onError: ((Error) -> Void)? = nil,
+    onSettled: (() -> Void)? = nil
+  ) {
+    let payload = EmojiTopic(
+      name: name,
+      directionAngle: directionAngle,
+      rotationAngle: rotationAngle
+    )
+    wrappedValue.publish(payload, onAttempt: onAttempt, onError: onError, onSettled: onSettled)
   }
 }
 

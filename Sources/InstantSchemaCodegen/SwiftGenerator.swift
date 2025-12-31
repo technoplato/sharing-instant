@@ -1794,7 +1794,6 @@ public struct SwiftCodeGenerator {
   
   private func generateTopicMutations(for topic: TopicIR, access: String) -> String {
     let typeName = topic.payloadTypeName
-    let capitalizedTopic = topic.name.prefix(1).uppercased() + topic.name.dropFirst()
     
     var output = "// MARK: \(typeName) Mutations\n\n"
     
@@ -1835,7 +1834,7 @@ public struct SwiftCodeGenerator {
     
     """
     
-    for (index, field) in topic.payload.fields.enumerated() {
+    for field in topic.payload.fields {
       let comma = ","
       let optionalMark = field.isOptional ? "?" : ""
       let defaultValue = field.isOptional ? " = nil" : (field.defaultValue ?? defaultValueForType(field.type)).map { " = \($0)" } ?? ""
