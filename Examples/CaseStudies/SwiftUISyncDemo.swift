@@ -45,6 +45,7 @@ private struct TodoListView: View {
   
   @State private var newTodoTitle = ""
   @FocusState private var isInputFocused: Bool
+  @State private var toast: Toast?
   
   /// Track previous count to detect data received from server
   @State private var previousTodoCount: Int = 0
@@ -89,6 +90,7 @@ private struct TodoListView: View {
         }
       }
     }
+    .toast($toast)
     .onChange(of: todos.count) { oldCount, newCount in
       // Log when data is received from server (count changes without user action)
       if oldCount != previousTodoCount {
@@ -110,19 +112,27 @@ private struct TodoListView: View {
     let title = newTodoTitle.trimmingCharacters(in: .whitespaces)
     guard !title.isEmpty else { return }
     
-    // Generated Todo uses Double for createdAt (epoch milliseconds).
-    let todo = Todo(
+    // Log user action
+    InstantLogger.userAction("Add todo", details: ["title": title])
+    
+    // Use generated mutation with callbacks for toast feedback
+    $todos.createTodo(
       createdAt: Date().timeIntervalSince1970 * 1_000,
       done: false,
-      title: title
+      title: title,
+      callbacks: .init(
+        onSuccess: { _ in
+          withAnimation {
+            toast = Toast(type: .success, message: "Todo created!")
+          }
+        },
+        onError: { error in
+          withAnimation {
+            toast = Toast(type: .error, message: "Failed: \(error.localizedDescription)")
+          }
+        }
+      )
     )
-    
-    // Log user action
-    InstantLogger.userAction("Add todo", details: ["title": title, "id": todo.id])
-    
-    _ = $todos.withLock { todos in
-      todos.insert(todo, at: 0)
-    }
     
     newTodoTitle = ""
     isInputFocused = false

@@ -1,6 +1,26 @@
 import SharingInstant
 import SwiftUI
 
+// #region agent log
+private func debugLog(location: String, message: String, data: [String: Any], hypothesisId: String) {
+  let payload: [String: Any] = [
+    "location": location,
+    "message": message,
+    "data": data,
+    "timestamp": Date().timeIntervalSince1970 * 1000,
+    "sessionId": "debug-session",
+    "hypothesisId": hypothesisId
+  ]
+  guard let jsonData = try? JSONSerialization.data(withJSONObject: payload) else { return }
+  var request = URLRequest(url: URL(string: "http://127.0.0.1:7243/ingest/b61a72ba-9985-415b-9c60-d4184ed05385")!)
+  request.httpMethod = "POST"
+  request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+  request.httpBody = jsonData
+  let task = URLSession.shared.dataTask(with: request) { _, _, _ in }
+  task.resume()
+}
+// #endregion
+
 struct MicroblogDemo: SwiftUICaseStudy {
   let readMe = """
     This demo shows **entity links** (relationships) in InstantDB:
@@ -35,6 +55,7 @@ private struct MicroblogView: View {
   
   @State private var newPostContent = ""
   @State private var selectedAuthorId: String?
+  @State private var toast: Toast?
   
   // Deterministic UUIDs so all clients share the same profiles
   // Generated from consistent namespace + name using UUID v5 style
@@ -59,7 +80,11 @@ private struct MicroblogView: View {
         feedList(scrollProxy: scrollProxy)
       }
     }
+    .toast($toast)
     .task {
+      // #region agent log
+      debugLog(location: "MicroblogDemo.task", message: "Task started - about to ensureProfilesExist", data: ["profilesCount": profiles.count, "profileIDs": profiles.map { $0.id }, "aliceId": aliceId, "bobId": bobId], hypothesisId: "H1")
+      // #endregion
       await ensureProfilesExist()
     }
     .onChange(of: profiles.first?.id) { _, firstProfileId in
@@ -170,8 +195,22 @@ private struct MicroblogView: View {
   private func ensureProfilesExist() async {
     let now = Date().timeIntervalSince1970 * 1_000
 
+    // #region agent log
+    debugLog(location: "ensureProfilesExist.start", message: "Starting ensureProfilesExist", data: [
+      "profilesCount": profiles.count,
+      "profileIDs": profiles.map { $0.id },
+      "aliceExists": profiles[id: aliceId] != nil,
+      "bobExists": profiles[id: bobId] != nil,
+      "aliceId": aliceId,
+      "bobId": bobId
+    ], hypothesisId: "H1")
+    // #endregion
+
     // Create Alice if she doesn't exist using the generated createProfile method
     if profiles[id: aliceId] == nil {
+      // #region agent log
+      debugLog(location: "ensureProfilesExist.createAlice", message: "Creating Alice - she doesn't exist locally", data: ["aliceId": aliceId], hypothesisId: "H1")
+      // #endregion
       $profiles.createProfile(
         id: aliceId,
         displayName: "Alice",
@@ -183,6 +222,9 @@ private struct MicroblogView: View {
     
     // Create Bob if he doesn't exist
     if profiles[id: bobId] == nil {
+      // #region agent log
+      debugLog(location: "ensureProfilesExist.createBob", message: "Creating Bob - he doesn't exist locally", data: ["bobId": bobId, "profilesAfterAlice": profiles.map { $0.id }], hypothesisId: "H1")
+      // #endregion
       $profiles.createProfile(
         id: bobId,
         displayName: "Bob",
@@ -190,7 +232,18 @@ private struct MicroblogView: View {
         bio: "InstantDB fan",
         createdAt: now + 1_000
       )
+    } else {
+      // #region agent log
+      debugLog(location: "ensureProfilesExist.bobExists", message: "Bob already exists - NOT creating", data: ["bobId": bobId, "profileIDs": profiles.map { $0.id }], hypothesisId: "H1")
+      // #endregion
     }
+    
+    // #region agent log
+    debugLog(location: "ensureProfilesExist.end", message: "Finished ensureProfilesExist", data: [
+      "profilesCount": profiles.count,
+      "profileIDs": profiles.map { $0.id }
+    ], hypothesisId: "H1")
+    // #endregion
     
     // Select Alice by default
     if selectedAuthorId == nil {
@@ -212,12 +265,24 @@ private struct MicroblogView: View {
     let postId = UUID().uuidString.lowercased()
     let now = Date().timeIntervalSince1970 * 1_000
     
-    // Create post using the generated createPost method
+    // Create post using the generated createPost method with callbacks
     $posts.createPost(
       id: postId,
       content: content,
       createdAt: now,
-      likesCount: 0
+      likesCount: 0,
+      callbacks: .init(
+        onSuccess: { _ in
+          withAnimation {
+            toast = Toast(type: .success, message: "Posted!")
+          }
+        },
+        onError: { error in
+          withAnimation {
+            toast = Toast(type: .error, message: "Failed: \(error.localizedDescription)")
+          }
+        }
+      )
     )
     
     // Link the post to its author using the generated linkAuthor method
@@ -249,6 +314,15 @@ private struct MicroblogView: View {
     let postId = UUID().uuidString.lowercased()
     let now = Date().timeIntervalSince1970 * 1_000
     
+    // #region agent log
+    debugLog(location: "createFakePost.beforeCreate", message: "About to create post", data: [
+      "postId": postId,
+      "authorId": authorId,
+      "authorNamespace": Profile.namespace,
+      "postNamespace": Post.namespace
+    ], hypothesisId: "H2")
+    // #endregion
+    
     // Create post using the generated createPost method
     $posts.createPost(
       id: postId,
@@ -257,15 +331,37 @@ private struct MicroblogView: View {
       likesCount: 0
     )
     
+    // #region agent log
+    debugLog(location: "createFakePost.beforeLink", message: "About to link post to author", data: [
+      "postId": postId,
+      "authorId": author.id,
+      "linkLabel": "author"
+    ], hypothesisId: "H2")
+    // #endregion
+    
     // Link the post to its author
     $posts.linkAuthor(postId, to: author)
   }
   
   private func deletePosts(at offsets: IndexSet) {
-    // Delete posts using the generated deletePost method
+    // Delete posts using the generated deletePost method with callbacks
     for index in offsets {
       let post = posts[index]
-      $posts.deletePost(post)
+      $posts.deletePost(
+        post,
+        callbacks: .init(
+          onSuccess: { _ in
+            withAnimation {
+              toast = Toast(type: .success, message: "Post deleted!")
+            }
+          },
+          onError: { error in
+            withAnimation {
+              toast = Toast(type: .error, message: "Failed: \(error.localizedDescription)")
+            }
+          }
+        )
+      )
     }
   }
   

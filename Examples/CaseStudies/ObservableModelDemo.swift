@@ -67,11 +67,13 @@ struct ObservableModelDemo: SwiftUICaseStudy {
         LabeledContent("Remaining", value: "\(model.remainingCount)")
       }
     }
+    .toast($model.toast)
     .onAppear {
     }
   }
 }
 
+@MainActor
 @Observable
 final class TodoListModel {
   @ObservationIgnored
@@ -79,6 +81,7 @@ final class TodoListModel {
   var todos: IdentifiedArrayOf<Todo> = []
   
   var newTodoTitle = ""
+  var toast: Toast?
   
   var totalCount: Int { todos.count }
   var completedCount: Int { todos.filter(\.done).count }
@@ -88,37 +91,56 @@ final class TodoListModel {
     let title = newTodoTitle.trimmingCharacters(in: .whitespaces)
     guard !title.isEmpty else { return }
     
-    // Generated Todo uses Double for createdAt (epoch milliseconds).
-    let todo = Todo(
+    $todos.createTodo(
       createdAt: Date().timeIntervalSince1970 * 1_000,
       done: false,
-      title: title
+      title: title,
+      callbacks: .init(
+        onSuccess: { _ in
+          print("[ObservableModelDemo] Todo added successfully")
+        },
+        onError: { error in
+          print("[ObservableModelDemo] Failed to add todo: \(error)")
+        }
+      )
     )
-    _ = $todos.withLock { todos in
-      todos.insert(todo, at: 0)
-    }
     
     newTodoTitle = ""
   }
   
   func toggleTodo(_ todo: Todo) {
-    $todos.withLock { todos in
-      if let index = todos.firstIndex(where: { $0.id == todo.id }) {
-        todos[index].done.toggle()
-      }
-    }
+    $todos.toggleDone(
+      todo.id,
+      callbacks: .init(
+        onSuccess: { updated in
+          print("[ObservableModelDemo] Toggled todo: \(updated.done ? "done" : "active")")
+        },
+        onError: { error in
+          print("[ObservableModelDemo] Failed to toggle: \(error)")
+        }
+      )
+    )
   }
   
   func deleteTodos(at offsets: IndexSet) {
-    $todos.withLock { todos in
-      todos.remove(atOffsets: offsets)
+    for index in offsets {
+      let todo = todos[index]
+      deleteTodo(todo)
     }
   }
   
   func deleteTodo(_ todo: Todo) {
-    _ = $todos.withLock { todos in
-      todos.remove(id: todo.id)
-    }
+    $todos.deleteTodo(
+      todo.id,
+      callbacks: .init(
+        onSuccess: { _ in
+          print("[ObservableModelDemo] Deleted todo")
+        },
+        onError: { error in
+          print("[ObservableModelDemo] Failed to delete: \(error)")
+        }
+      )
+    )
   }
 }
 

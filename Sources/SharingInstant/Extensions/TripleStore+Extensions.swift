@@ -99,8 +99,21 @@ extension InstantDB.TripleStore {
                         depth: depth + 1,
                         maxDepth: maxDepth
                     )
+                    
+                    // Skip entities that have been deleted (only have "id" field)
+                    // This happens when a linked entity is deleted from the store but
+                    // the reverse reference triple still exists in VAE index.
+                    // Including such "ghost" entities would cause decode failures.
+                    if parentObj.count <= 1 {
+                        continue
+                    }
+                    
                     resolvedParents.append(parentObj)
                 }
+                
+                // Don't add empty arrays - this prevents decode issues when all
+                // reverse-linked entities have been deleted
+                guard !resolvedParents.isEmpty else { continue }
 
                 let isReverseMany: Bool
                 if attr.unique == true {

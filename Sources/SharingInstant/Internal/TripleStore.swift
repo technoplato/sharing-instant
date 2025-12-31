@@ -46,14 +46,29 @@ public final class SharedTripleStore: @unchecked Sendable {
     }
     
     public func deleteEntity(id: String) {
-        let triples = inner.getTriples(entity: id)
-        let idsChanged: Set<String> = [id]
+        var idsChanged: Set<String> = [id]
         
+        // 1. Delete forward attributes and links (triples where this entity is the subject)
+        let triples = inner.getTriples(entity: id)
         for triple in triples {
              let attr = attrsStore.getAttr(triple.attributeId)
              let isRef = attr?.valueType == .ref
              inner.retractTriple(triple, isRef: isRef)
         }
+        
+        // 2. Delete reverse links (triples where this entity is the VALUE/target of a ref)
+        // This matches the TypeScript SDK behavior in store.ts deleteEntity()
+        // Without this, the VAE index retains stale references to the deleted entity,
+        // causing "ghost" entities to appear when resolving reverse links.
+        let reverseTriples = inner.getReverseRefs(entityId: id)
+        for triple in reverseTriples {
+            let attr = attrsStore.getAttr(triple.attributeId)
+            let isRef = attr?.valueType == .ref
+            inner.retractTriple(triple, isRef: isRef)
+            // Also notify the entity that had the forward link
+            idsChanged.insert(triple.entityId)
+        }
+        
         notifyObservers(for: idsChanged)
     }
     

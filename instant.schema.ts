@@ -42,7 +42,6 @@ const _schema = i.schema({
       content: i.string(),
       createdAt: i.number().indexed(),
       imageUrl: i.string().optional(),
-      likesCount: i.number(),
     }),
     profiles: i.entity({
       avatarUrl: i.string().optional(),
