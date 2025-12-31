@@ -1550,7 +1550,7 @@ public struct SwiftCodeGenerator {
     """
     
     for (index, field) in presence.fields.enumerated() {
-      let comma = index < presence.fields.count - 1 ? "," : ""
+      let comma = index < presence.fields.count - 1 ? "," : ","
       let optionalMark = field.isOptional ? "?" : ""
       let defaultValue = field.isOptional ? " = nil" : ""
       output += "    \(field.name): \(field.type.swiftType)\(optionalMark)\(defaultValue)\(comma)\n"
