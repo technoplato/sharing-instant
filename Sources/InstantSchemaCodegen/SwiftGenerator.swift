@@ -840,6 +840,37 @@ public struct SwiftCodeGenerator {
     
     output += "  }\n"
     
+    // Custom encode(to encoder:) to ensure numbers are always encoded as numbers
+    // This is needed because JSONSerialization can interpret 0/1 as false/true
+    // when round-tripping through JSON
+    output += "\n  \(access) func encode(to encoder: Encoder) throws {\n"
+    output += "    var container = encoder.container(keyedBy: CodingKeys.self)\n"
+    output += "    try container.encode(id, forKey: .id)\n"
+    
+    for field in entity.fields {
+      let fieldName = field.name
+      if field.isOptional {
+        // For optional fields, use encodeIfPresent
+        output += "    try container.encodeIfPresent(\(fieldName), forKey: .\(fieldName))\n"
+      } else {
+        // For required fields, use encode
+        output += "    try container.encode(\(fieldName), forKey: .\(fieldName))\n"
+      }
+    }
+    
+    // Encode links (optional, so use encodeIfPresent)
+    for link in forwardLinks {
+      let label = link.forward.label
+      output += "    try container.encodeIfPresent(\(label), forKey: .\(label))\n"
+    }
+    
+    for link in reverseLinks {
+      let label = link.reverse.label
+      output += "    try container.encodeIfPresent(\(label), forKey: .\(label))\n"
+    }
+    
+    output += "  }\n"
+    
     return output
   }
   
