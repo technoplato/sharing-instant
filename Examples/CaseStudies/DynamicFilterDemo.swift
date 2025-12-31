@@ -38,6 +38,7 @@ private struct DynamicFilterView: View {
   
   @State private var searchText = ""
   @State private var selectedFilter: TodoFilter = .all
+  @State private var toast: Toast?
   
   /// Filtered todos based on search text and filter selection
   private var filteredTodos: [Todo] {
@@ -114,6 +115,7 @@ private struct DynamicFilterView: View {
     }
     .searchable(text: $searchText, prompt: "Search todos...")
     .animation(.default, value: filteredTodos.count)
+    .toast($toast)
   }
   
   private var emptyStateTitle: String {
@@ -150,11 +152,21 @@ private struct DynamicFilterView: View {
   }
   
   private func toggleTodo(_ todo: Todo) {
-    $todos.withLock { todos in
-      if let index = todos.firstIndex(where: { $0.id == todo.id }) {
-        todos[index].done.toggle()
-      }
-    }
+    $todos.toggleDone(
+      todo.id,
+      callbacks: .init(
+        onSuccess: { updated in
+          withAnimation {
+            toast = Toast(type: .success, message: updated.done ? "Marked done!" : "Marked active!")
+          }
+        },
+        onError: { error in
+          withAnimation {
+            toast = Toast(type: .error, message: "Failed: \(error.localizedDescription)")
+          }
+        }
+      )
+    )
   }
 }
 

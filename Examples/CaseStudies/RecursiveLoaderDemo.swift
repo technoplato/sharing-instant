@@ -33,6 +33,10 @@ struct RecursiveLoaderDemo: SwiftUICaseStudy {
     )
   )
   private var profiles: IdentifiedArrayOf<Profile> = []
+  
+  // Separate subscriptions for creating entities
+  @Shared(.instantSync(Schema.posts)) private var posts: IdentifiedArrayOf<Post> = []
+  @Shared(.instantSync(Schema.comments)) private var comments: IdentifiedArrayOf<Comment> = []
 
   var body: some View {
     List {
@@ -86,37 +90,37 @@ struct RecursiveLoaderDemo: SwiftUICaseStudy {
 
   private func generateData() {
     let now = Date().timeIntervalSince1970 * 1_000
-
-    let profile = Profile(
+    let profileId = UUID().uuidString.lowercased()
+    let postId = UUID().uuidString.lowercased()
+    let commentId = UUID().uuidString.lowercased()
+    
+    // Create profile using generated mutation
+    $profiles.createProfile(
+      id: profileId,
       displayName: "User \(Int.random(in: 1...100))",
       handle: "@user\(Int.random(in: 1...100))",
       createdAt: now
     )
     
-    // Create nested data
-    let post = Post(
+    // Create post using generated mutation (via posts subscription)
+    $posts.createPost(
+      id: postId,
       content: "Recursive queries are powerful! 🚀",
       createdAt: now,
       likesCount: 0
     )
     
-    let comment = Comment(
-      text: "Totally agree! simple and effective.",
+    // Link post to profile
+    $profiles.linkPosts(profileId, to: Post(id: postId, content: "", createdAt: now, likesCount: 0))
+    
+    // Create comment using generated mutation (via comments subscription)
+    $comments.createComment(
+      id: commentId,
+      text: "Totally agree! Simple and effective.",
       createdAt: now
     )
     
-    // Link them up
-    // Note: We need to set relationships manually if our library doesn't link them automatically on read?
-    // Actually, for saving, we construct the graph.
-    var fullPost = post
-    fullPost.comments = [comment]
-    
-    var fullProfile = profile
-    fullProfile.posts = [fullPost]
-    
-    // Optimistic update
-    _ = $profiles.withLock {
-      $0.append(fullProfile)
-    }
+    // Link comment to post
+    $posts.linkComments(postId, to: Comment(id: commentId, text: "", createdAt: now))
   }
 }

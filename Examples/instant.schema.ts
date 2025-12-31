@@ -65,7 +65,6 @@ const _schema = i.schema({
       content: i.string(),
       imageUrl: i.string().optional(),
       createdAt: i.number().indexed(),
-      likesCount: i.number(),
     }),
 
     // Comments on posts

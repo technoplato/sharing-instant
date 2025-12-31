@@ -1,7 +1,28 @@
+import Dependencies
 import IdentifiedCollections
 import Sharing
 import SharingInstant
 import SwiftUI
+
+// #region agent log
+private func debugLog(_ message: String, data: [String: Any] = [:], hypothesisId: String = "TILE_GAME") {
+  let payload: [String: Any] = [
+    "location": "TileGameDemo.swift",
+    "message": message,
+    "data": data,
+    "timestamp": Date().timeIntervalSince1970 * 1000,
+    "sessionId": "debug-session",
+    "hypothesisId": hypothesisId
+  ]
+  guard let jsonData = try? JSONSerialization.data(withJSONObject: payload) else { return }
+  var request = URLRequest(url: URL(string: "http://192.168.68.108:17244/ingest/b61a72ba-9985-415b-9c60-d4184ed05385")!)
+  request.httpMethod = "POST"
+  request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+  request.httpBody = jsonData
+  let task = URLSession.shared.dataTask(with: request) { _, _, _ in }
+  task.resume()
+}
+// #endregion
 
 // MARK: - Cross-Platform Color Helper
 
@@ -52,12 +73,30 @@ struct TileGameDemo: SwiftUICaseStudy {
   private let boardSize = 4
   
   /// Persisted board state using data sync.
+  /// The `.with(\.tiles)` clause fetches the linked tiles for each board.
   @Shared(.instantSync(
     Schema.boards
       .where(\.id, .eq("a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"))
       .with(\.tiles)
   ))
   private var boards: IdentifiedArrayOf<Board> = []
+  
+  /// All tiles subscription - we subscribe to all tiles and filter client-side.
+  /// Note: Link-based where clauses (e.g., where("board.id", .eq(boardId))) don't work
+  /// as expected in InstantDB, so we filter client-side using the board's linked tile IDs.
+  @Shared(.instantSync(Schema.tiles))
+  private var allTiles: IdentifiedArrayOf<Tile> = []
+  
+  /// Computed property to get tiles for this board.
+  /// Uses the board's linked tiles (from .with(\.tiles)) to determine which tile IDs belong to this board,
+  /// then returns matching tiles from allTiles for mutation support.
+  private var tiles: [Tile] {
+    guard let board = boards[id: boardId], let linkedTiles = board.tiles else {
+      return []
+    }
+    let linkedTileIds = Set(linkedTiles.map { $0.id })
+    return allTiles.filter { linkedTileIds.contains($0.id) }
+  }
   
   /// Ephemeral presence for who's playing.
   /// Ephemeral presence for who's playing.
@@ -163,9 +202,8 @@ struct TileGameDemo: SwiftUICaseStudy {
   }
   
   private func tileColor(row: Int, col: Int) -> Color {
-    guard let board = boards.first,
-          let tiles = board.tiles,
-          let tile = tiles.first(where: { Int($0.x) == row && Int($0.y) == col }) else {
+    // Use the tiles subscription which is filtered by board
+    guard let tile = tiles.first(where: { Int($0.x) == row && Int($0.y) == col }) else {
       return .white
     }
     return Color(hex: tile.color) ?? .white
@@ -201,60 +239,118 @@ struct TileGameDemo: SwiftUICaseStudy {
   // MARK: - Board Initialization & Repair
 
   private func ensureBoardHasTiles(now: Double) {
+    @Dependency(\.instantReactor) var reactor
+    @Dependency(\.instantAppID) var appID
+    
     let expectedTileCount = boardSize * boardSize
-
-    $boards.withLock { boards in
-      let existingBoard = boards[id: boardId]
-
-      var board = existingBoard ?? Board(id: boardId, title: "Collaborative Game", createdAt: now)
-
-      let existingTiles = board.tiles ?? []
-      var existingTilesByPosition: [String: Tile] = [:]
-      for tile in existingTiles {
-        let key = "\(Int(tile.x))-\(Int(tile.y))"
-
-        // Prefer the first tile we see for each position. If the backend has
-        // duplicates for a coordinate, we still want the UI to be functional.
-        if existingTilesByPosition[key] == nil {
-          existingTilesByPosition[key] = tile
-        }
-      }
-
-      if existingTilesByPosition.count == expectedTileCount {
-        if existingBoard == nil {
-          boards.append(board)
-        }
-        return
-      }
-
-      var repairedTiles: [Tile] = []
-      repairedTiles.reserveCapacity(expectedTileCount)
-
-      for row in 0..<boardSize {
-        for col in 0..<boardSize {
-          let key = "\(row)-\(col)"
-          if let existing = existingTilesByPosition[key] {
-            repairedTiles.append(existing)
-          } else {
-            repairedTiles.append(
-              Tile(
-                x: Double(row),
-                y: Double(col),
-                color: "#FFFFFF",
-                createdAt: now
-              )
-            )
-          }
-        }
-      }
-
-      board.tiles = repairedTiles
-      if existingBoard == nil {
-        boards.append(board)
-      } else {
-        boards[id: boardId] = board
+    
+    // #region agent log
+    debugLog("ensureBoardHasTiles START", data: [
+      "boardsCount": boards.count,
+      "boardExists": boards[id: boardId] != nil,
+      "boardLinkedTilesCount": boards[id: boardId]?.tiles?.count ?? -1,
+      "allTilesCount": allTiles.count,
+      "filteredTilesCount": tiles.count
+    ])
+    // #endregion
+    
+    let existingBoard = boards[id: boardId]
+    
+    // Build a map of existing tiles by position using the tiles subscription
+    var existingTilesByPosition: [String: Tile] = [:]
+    for tile in tiles {
+      let key = "\(Int(tile.x))-\(Int(tile.y))"
+      if existingTilesByPosition[key] == nil {
+        existingTilesByPosition[key] = tile
       }
     }
+    
+    // If board exists with all tiles, nothing to do
+    if existingBoard != nil && existingTilesByPosition.count == expectedTileCount {
+      // #region agent log
+      debugLog("ensureBoardHasTiles COMPLETE - board already has all tiles", data: [
+        "tileCount": existingTilesByPosition.count
+      ])
+      // #endregion
+      return
+    }
+    
+    // Collect all transaction chunks
+    var chunks: [TransactionChunk] = []
+    
+    // Create board if it doesn't exist
+    if existingBoard == nil {
+      // #region agent log
+      debugLog("ensureBoardHasTiles CREATING BOARD", data: ["boardId": boardId])
+      // #endregion
+      
+      chunks.append(TransactionChunk(
+        namespace: "boards",
+        id: boardId,
+        ops: [["update", "boards", boardId, ["title": "Collaborative Game", "createdAt": now]]]
+      ))
+    }
+    
+    // Create missing tiles and link them to the board
+    for row in 0..<boardSize {
+      for col in 0..<boardSize {
+        let key = "\(row)-\(col)"
+        if existingTilesByPosition[key] == nil {
+          // InstantDB requires valid lowercase UUIDs for entity IDs
+          let tileId = UUID().uuidString.lowercased()
+          
+          // #region agent log
+          debugLog("ensureBoardHasTiles CREATING TILE", data: [
+            "tileId": tileId,
+            "row": row,
+            "col": col
+          ])
+          // #endregion
+          
+          // Create the tile
+          chunks.append(TransactionChunk(
+            namespace: "tiles",
+            id: tileId,
+            ops: [["update", "tiles", tileId, ["x": Double(row), "y": Double(col), "color": "#FFFFFF", "createdAt": now]]]
+          ))
+          
+          // Link tile to board
+          chunks.append(TransactionChunk(
+            namespace: "boards",
+            id: boardId,
+            ops: [["link", "boards", boardId, ["tiles": ["id": tileId, "namespace": "tiles"]]]]
+          ))
+        }
+      }
+    }
+    
+    // #region agent log
+    debugLog("ensureBoardHasTiles SENDING TRANSACTION", data: [
+      "chunkCount": chunks.count
+    ])
+    // #endregion
+    
+    // Send all chunks in a single transaction
+    if !chunks.isEmpty {
+      Task {
+        do {
+          try await reactor.transact(appID: appID, chunks: chunks)
+          // #region agent log
+          debugLog("ensureBoardHasTiles TRANSACTION SUCCESS", data: ["chunkCount": chunks.count])
+          // #endregion
+        } catch {
+          // #region agent log
+          debugLog("ensureBoardHasTiles TRANSACTION FAILED", data: ["error": "\(error)"])
+          // #endregion
+        }
+      }
+    }
+    
+    // #region agent log
+    debugLog("ensureBoardHasTiles END", data: [
+      "createdTileCount": expectedTileCount - existingTilesByPosition.count
+    ])
+    // #endregion
   }
   
   private func setTileColor(row: Int, col: Int) {
@@ -262,14 +358,30 @@ struct TileGameDemo: SwiftUICaseStudy {
 
     ensureBoardHasTiles(now: now)
 
-    $boards.withLock { boards in
-      guard var board = boards[id: boardId], var tiles = board.tiles else { return }
-      guard let index = tiles.firstIndex(where: { Int($0.x) == row && Int($0.y) == col }) else { return }
-
-      tiles[index].color = myColor.hexString
-      board.tiles = tiles
-      boards[id: boardId] = board
+    // Find the tile at this position from the tiles subscription
+    guard let tile = tiles.first(where: { Int($0.x) == row && Int($0.y) == col }) else {
+      // #region agent log
+      debugLog("setTileColor TILE NOT FOUND", data: [
+        "row": row,
+        "col": col,
+        "tilesCount": tiles.count,
+        "tileIds": tiles.map { $0.id }
+      ])
+      // #endregion
+      return
     }
+    
+    // #region agent log
+    debugLog("setTileColor UPDATING", data: [
+      "tileId": tile.id,
+      "row": row,
+      "col": col,
+      "newColor": myColor.hexString
+    ])
+    // #endregion
+    
+    // Use the generated mutation on allTiles to update the tile color
+    $allTiles.updateColor(tile.id, to: myColor.hexString)
   }
   
   private func resetBoard() {
@@ -277,15 +389,24 @@ struct TileGameDemo: SwiftUICaseStudy {
 
     ensureBoardHasTiles(now: now)
 
-    $boards.withLock { boards in
-      guard var board = boards[id: boardId], var tiles = board.tiles else { return }
+    guard !tiles.isEmpty else {
+      // #region agent log
+      debugLog("resetBoard NO TILES", data: [
+        "tilesCount": tiles.count
+      ])
+      // #endregion
+      return
+    }
+    
+    // #region agent log
+    debugLog("resetBoard RESETTING", data: [
+      "tileCount": tiles.count
+    ])
+    // #endregion
 
-      for index in tiles.indices {
-        tiles[index].color = "#FFFFFF"
-      }
-
-      board.tiles = tiles
-      boards[id: boardId] = board
+    // Reset each tile to white using the generated mutation on allTiles
+    for tile in tiles {
+      $allTiles.updateColor(tile.id, to: "#FFFFFF")
     }
   }
 }

@@ -173,25 +173,11 @@ private struct PostComposerView: View {
     let now = Date().timeIntervalSince1970 * 1_000
     
     if profiles[id: aliceId] == nil {
-      let alice = Profile(
-        id: aliceId,
-        displayName: "Alice",
-        handle: "alice",
-        bio: "Swift enthusiast",
-        createdAt: now
-      )
-      _ = $profiles.withLock { $0.append(alice) }
+      $profiles.createProfile(id: aliceId, displayName: "Alice", handle: "alice", bio: "Swift Enthusiast", createdAt: now)
     }
     
     if profiles[id: bobId] == nil {
-      let bob = Profile(
-        id: bobId,
-        displayName: "Bob",
-        handle: "bob",
-        bio: "InstantDB fan",
-        createdAt: now + 1_000
-      )
-      _ = $profiles.withLock { $0.append(bob) }
+      $profiles.createProfile(id: bobId, displayName: "Bob", handle: "bob", bio: "InstantDB fan", createdAt: now + 1_000)
     }
     
     if selectedAuthorId == nil {
@@ -211,8 +197,7 @@ private struct PostComposerView: View {
     let post = Post(
       content: content,
       createdAt: Date().timeIntervalSince1970 * 1_000,
-      likesCount: 0,
-      author: author
+      likesCount: 42, author: author
     )
     
     // Insert into THIS subscription (with author only)

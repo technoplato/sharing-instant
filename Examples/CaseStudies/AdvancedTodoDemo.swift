@@ -72,6 +72,7 @@ private struct AdvancedTodoView: View {
   @State private var sortOption: TodoSortOption = .dateDesc
   @State private var filterOption: TodoFilterOption = .all
   @State private var newTodoTitle = ""
+  @State private var toast: Toast?
   
   // Build dynamic query based on current filters
   private var currentQuery: EntityKey<Todo> {
@@ -155,6 +156,7 @@ private struct AdvancedTodoView: View {
       }
     }
     .searchable(text: $searchText, prompt: "Search todos...")
+    .toast($toast)
     .task(id: queryKey) {
       // Reassign the projected value to create a NEW subscription
       // Using load() only does a one-shot fetch and doesn't maintain real-time updates
@@ -184,27 +186,65 @@ private struct AdvancedTodoView: View {
     let title = newTodoTitle.trimmingCharacters(in: .whitespaces)
     guard !title.isEmpty else { return }
     
-    // Generated Todo uses Double for createdAt (epoch milliseconds).
-    let todo = Todo(
+    // Use generated mutation method with callbacks for toast feedback
+    $todos.createTodo(
       createdAt: Date().timeIntervalSince1970 * 1_000,
       done: false,
-      title: title
+      title: title,
+      callbacks: .init(
+        onSuccess: { _ in
+          withAnimation {
+            toast = Toast(type: .success, message: "Todo added!")
+          }
+        },
+        onError: { error in
+          withAnimation {
+            toast = Toast(type: .error, message: "Failed: \(error.localizedDescription)")
+          }
+        }
+      )
     )
-    _ = $todos.withLock { $0.insert(todo, at: 0) }
     newTodoTitle = ""
   }
   
   private func toggleTodo(_ todo: Todo) {
-    $todos.withLock { todos in
-      if let index = todos.firstIndex(where: { $0.id == todo.id }) {
-        todos[index].done.toggle()
-      }
-    }
+    // Use generated toggle method with callbacks
+    $todos.toggleDone(
+      todo.id,
+      callbacks: .init(
+        onSuccess: { updated in
+          withAnimation {
+            toast = Toast(type: .success, message: updated.done ? "Done!" : "Active!")
+          }
+        },
+        onError: { error in
+          withAnimation {
+            toast = Toast(type: .error, message: "Failed: \(error.localizedDescription)")
+          }
+        }
+      )
+    )
   }
   
   private func deleteTodos(at offsets: IndexSet) {
-    $todos.withLock { todos in
-      todos.remove(atOffsets: offsets)
+    // Use generated delete method for each todo with callbacks
+    for index in offsets {
+      let todo = todos[index]
+      $todos.deleteTodo(
+        todo.id,
+        callbacks: .init(
+          onSuccess: { _ in
+            withAnimation {
+              toast = Toast(type: .success, message: "Deleted!")
+            }
+          },
+          onError: { error in
+            withAnimation {
+              toast = Toast(type: .error, message: "Failed: \(error.localizedDescription)")
+            }
+          }
+        )
+      )
     }
   }
 }

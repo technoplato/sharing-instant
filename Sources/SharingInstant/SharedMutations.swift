@@ -122,9 +122,10 @@ extension Shared {
   
   /// Create a new entity and sync to InstantDB.
   ///
-  /// This method:
-  /// 1. Adds the entity to the local collection optimistically
-  /// 2. Sends an explicit "update" transaction to the server
+  /// This method follows the TypeScript InstantDB SDK pattern:
+  /// 1. Sends transaction to Reactor which applies optimistic update
+  /// 2. Reactor notifies subscriptions to update @Shared value
+  /// 3. Server transaction is sent
   ///
   /// Unlike `withLock { $0.append(entity) }`, this does NOT compute diffs.
   /// It sends exactly one transaction for the new entity.
@@ -147,14 +148,7 @@ extension Shared {
     @Dependency(\.instantReactor) var reactor
     @Dependency(\.instantAppID) var appID
     
-    // 1. Apply optimistically to local state
-    withLock { collection in
-      var mutableCollection = collection
-      mutableCollection.append(entity)
-      collection = mutableCollection
-    }
-    
-    // 2. Generate explicit transaction chunk
+    // Generate explicit transaction chunk
     let namespace = Element.namespace
     let attrs = try encodeEntityAttributes(entity)
     
@@ -164,7 +158,7 @@ extension Shared {
       ops: [["update", namespace, entity.id, attrs]]
     )
     
-    // 3. Send directly to server (bypasses save() diff logic)
+    // Send to Reactor which handles optimistic update + server transaction
     try await reactor.transact(appID: appID, chunks: [chunk])
   }
   
@@ -172,9 +166,10 @@ extension Shared {
   
   /// Delete an entity by ID and sync to InstantDB.
   ///
-  /// This method:
-  /// 1. Removes the entity from the local collection optimistically
-  /// 2. Sends an explicit "delete" transaction to the server
+  /// This method follows the TypeScript InstantDB SDK pattern:
+  /// 1. Sends transaction to Reactor which applies optimistic update
+  /// 2. Reactor notifies subscriptions to update @Shared value
+  /// 3. Server transaction is sent
   ///
   /// Unlike `withLock { $0.remove(id:) }`, this does NOT compute diffs.
   /// It sends exactly one delete transaction.
@@ -196,14 +191,7 @@ extension Shared {
     @Dependency(\.instantReactor) var reactor
     @Dependency(\.instantAppID) var appID
     
-    // 1. Apply optimistically to local state
-    withLock { collection in
-      var mutableCollection = collection
-      mutableCollection.removeAll { $0.id == id }
-      collection = mutableCollection
-    }
-    
-    // 2. Generate explicit delete chunk
+    // Generate explicit delete chunk
     let namespace = Element.namespace
     
     let chunk = TransactionChunk(
@@ -212,7 +200,7 @@ extension Shared {
       ops: [["delete", namespace, id]]
     )
     
-    // 3. Send directly to server
+    // Send to Reactor which handles optimistic update + server transaction
     try await reactor.transact(appID: appID, chunks: [chunk])
   }
   
@@ -220,9 +208,11 @@ extension Shared {
   
   /// Update an entity's fields and sync to InstantDB.
   ///
-  /// This method:
-  /// 1. Updates the entity in the local collection optimistically
-  /// 2. Sends an explicit "update" transaction with only the changed fields
+  /// This method follows the TypeScript InstantDB SDK pattern:
+  /// 1. Reads current entity, applies modification
+  /// 2. Sends transaction to Reactor which applies optimistic update
+  /// 3. Reactor notifies subscriptions to update @Shared value
+  /// 4. Server transaction is sent
   ///
   /// Unlike `withLock { $0[id].field = value }`, this does NOT compute diffs.
   /// It sends exactly one update transaction.
@@ -250,23 +240,15 @@ extension Shared {
     @Dependency(\.instantReactor) var reactor
     @Dependency(\.instantAppID) var appID
     
-    var updatedEntity: Element?
-    
-    // 1. Apply optimistically to local state
-    withLock { collection in
-      var mutableCollection = Array(collection)
-      if let index = mutableCollection.firstIndex(where: { $0.id == id }) {
-        modify(&mutableCollection[index])
-        updatedEntity = mutableCollection[index]
-        collection = Value(mutableCollection)
-      }
-    }
-    
-    guard let entity = updatedEntity else {
+    // Read current entity (without triggering save)
+    guard var entity = wrappedValue.first(where: { $0.id == id }) else {
       throw InstantMutationError.entityNotFound(id: id, namespace: Element.namespace)
     }
     
-    // 2. Generate explicit update chunk
+    // Apply modification locally
+    modify(&entity)
+    
+    // Generate explicit update chunk
     let namespace = Element.namespace
     let attrs = try encodeEntityAttributes(entity)
     
@@ -276,7 +258,7 @@ extension Shared {
       ops: [["update", namespace, id, attrs]]
     )
     
-    // 3. Send directly to server
+    // Send to Reactor which handles optimistic update + server transaction
     try await reactor.transact(appID: appID, chunks: [chunk])
   }
   
@@ -426,6 +408,22 @@ extension Shared {
 extension Shared {
   
   /// Create a new entity and sync to InstantDB (IdentifiedArray version).
+  ///
+  /// ## How This Works (TypeScript SDK Pattern)
+  ///
+  /// Following the TypeScript InstantDB SDK architecture:
+  /// 1. Generate a transaction chunk with the entity data
+  /// 2. Send to Reactor.transact() which:
+  ///    - Applies optimistic update to triple store
+  ///    - Notifies subscriptions via handleOptimisticUpsert()
+  ///    - Sends transaction to server
+  /// 3. The subscription's AsyncStream yields the new value
+  /// 4. InstantSyncKey.subscribe() updates the @Shared value
+  ///
+  /// We do NOT use withLock here because:
+  /// - withLock triggers save() which computes diffs
+  /// - Diff computation can race with other mutations and generate incorrect deletes
+  /// - The TypeScript SDK never uses diff-based saves for explicit mutations
   @MainActor
   public func create<Element: EntityIdentifiable & Encodable & Sendable>(
     _ entity: Element
@@ -433,10 +431,7 @@ extension Shared {
     @Dependency(\.instantReactor) var reactor
     @Dependency(\.instantAppID) var appID
     
-    // 1. Apply optimistically
-    _ = withLock { $0.append(entity) }
-    
-    // 2. Generate explicit transaction chunk
+    // 1. Generate explicit transaction chunk
     let namespace = Element.namespace
     let attrs = try encodeEntityAttributes(entity)
     
@@ -446,11 +441,16 @@ extension Shared {
       ops: [["update", namespace, entity.id, attrs]]
     )
     
-    // 3. Send directly to server
+    // 2. Send to Reactor which handles:
+    //    - Optimistic update to triple store
+    //    - Subscription notification (updates @Shared value)
+    //    - Server transaction
     try await reactor.transact(appID: appID, chunks: [chunk])
   }
   
   /// Delete an entity by ID and sync to InstantDB (IdentifiedArray version).
+  ///
+  /// Following TypeScript SDK pattern - no withLock to avoid triggering diff-based save.
   @MainActor
   public func delete<Element: EntityIdentifiable & Sendable>(
     id: String
@@ -458,10 +458,7 @@ extension Shared {
     @Dependency(\.instantReactor) var reactor
     @Dependency(\.instantAppID) var appID
     
-    // 1. Apply optimistically
-    _ = withLock { $0.remove(id: id) }
-    
-    // 2. Generate explicit delete chunk
+    // Generate explicit delete chunk
     let namespace = Element.namespace
     
     let chunk = TransactionChunk(
@@ -470,11 +467,14 @@ extension Shared {
       ops: [["delete", namespace, id]]
     )
     
-    // 3. Send directly to server
+    // Send to Reactor which handles optimistic update + server transaction
     try await reactor.transact(appID: appID, chunks: [chunk])
   }
   
   /// Update an entity's fields and sync to InstantDB (IdentifiedArray version).
+  ///
+  /// Following TypeScript SDK pattern - we need to read the current entity to apply
+  /// the modification, but we don't use withLock to avoid triggering diff-based save.
   @MainActor
   public func update<Element: EntityIdentifiable & Encodable & Sendable>(
     id: String,
@@ -483,22 +483,15 @@ extension Shared {
     @Dependency(\.instantReactor) var reactor
     @Dependency(\.instantAppID) var appID
     
-    var updatedEntity: Element?
-    
-    // 1. Apply optimistically
-    withLock { collection in
-      if var entity = collection[id: id] {
-        modify(&entity)
-        collection[id: id] = entity
-        updatedEntity = entity
-      }
-    }
-    
-    guard let entity = updatedEntity else {
+    // Read current entity (without triggering save)
+    guard var entity = wrappedValue[id: id] else {
       throw InstantMutationError.entityNotFound(id: id, namespace: Element.namespace)
     }
     
-    // 2. Generate explicit update chunk
+    // Apply modification locally
+    modify(&entity)
+    
+    // Generate explicit update chunk
     let namespace = Element.namespace
     let attrs = try encodeEntityAttributes(entity)
     
@@ -508,7 +501,7 @@ extension Shared {
       ops: [["update", namespace, id, attrs]]
     )
     
-    // 3. Send directly to server
+    // Send to Reactor which handles optimistic update + server transaction
     try await reactor.transact(appID: appID, chunks: [chunk])
   }
   
@@ -524,6 +517,13 @@ extension Shared {
     @Dependency(\.instantAppID) var appID
     
     let namespace = Element.namespace
+    
+    // #region agent log
+    let linkPayload: [String: Any] = [label: ["id": targetId, "namespace": targetNamespace]]
+    let ops: [[Any]] = [["link", namespace, id, linkPayload]]
+    print("[SharedMutations] Link operation - namespace: \(namespace), id: \(id), label: \(label), targetId: \(targetId), targetNamespace: \(targetNamespace)")
+    print("[SharedMutations] Link ops: \(ops)")
+    // #endregion
     
     let chunk = TransactionChunk(
       namespace: namespace,
