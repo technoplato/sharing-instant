@@ -216,8 +216,9 @@ npx instant-cli@latest push schema --app YOUR_APP_ID
 `sharing-instant` includes a schema codegen tool that generates type-safe Swift structs from your 
 TypeScript schema.
 
-> **Important:** The generator requires a **clean git workspace** so that generated changes can 
-> always be traced back to a specific commit.
+> **Important:** The generator requires the **input schema file to be committed** and the 
+> **output directory to be clean** so that generated changes can be traced back to a specific 
+> version of the schema.
 
 ```bash
 # Generate Swift types
@@ -561,7 +562,7 @@ This creates a sample `instant.schema.ts` and generates Swift types you can use 
 ### CLI usage
 
 ```bash
-# Generate Swift types from a schema file (requires clean git workspace)
+# Generate Swift types from a schema file (schema must be committed, output dir must be clean)
 swift run instant-schema generate \
   --from path/to/instant.schema.ts \
   --to Sources/Generated
@@ -572,8 +573,9 @@ swift run instant-schema generate \
   --to Sources/Generated
 ```
 
-> **Note:** The `generate` command requires a **clean git workspace** for full traceability. 
-> The `sample` command has no git requirements – use it for quick experimentation.
+> **Note:** The `generate` command requires the **input schema file to be committed** and the 
+> **output directory to be clean** for traceability. The `sample` command has no git requirements 
+> – use it for quick experimentation.
 
 ### Generated code
 

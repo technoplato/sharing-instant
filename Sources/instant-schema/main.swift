@@ -75,10 +75,17 @@ extension InstantSchema {
       
       // Skip git check in validate mode - we're just comparing files
       if !validate {
-        // STEP 1: Ensure git working directory is clean
-        print("🔍 Checking git status...")
-        try GitUtilities.ensureCleanWorkingDirectory()
-        print("✅ Working directory is clean")
+        // STEP 1: Ensure input schema file is committed (if using a file)
+        if let input = inputPath {
+          print("🔍 Checking schema file git status...")
+          try GitUtilities.ensureFileIsClean(input)
+          print("✅ Schema file is committed")
+        }
+        
+        // STEP 2: Ensure output directory files are clean
+        print("🔍 Checking output directory git status...")
+        try GitUtilities.ensureDirectoryIsClean(outputDir)
+        print("✅ Output directory is clean")
       } else {
         print("🔍 Validating generated files are up-to-date...")
       }

@@ -275,6 +275,8 @@ public struct GitCommit: Sendable {
 /// Errors that can occur during git operations.
 public enum GitError: Error, LocalizedError {
   case dirtyWorkingDirectory(files: [String])
+  case dirtySchemaFile(file: String, status: String)
+  case dirtyOutputFiles(files: [String])
   case notAGitRepository
   case commandFailed(String)
   
@@ -294,6 +296,35 @@ public enum GitError: Error, LocalizedError {
         
         Please commit your changes before running code generation:
           git add -A && git commit -m "Your commit message"
+        """
+    case .dirtySchemaFile(let file, let status):
+      return """
+        ❌ ERROR: Schema file has uncommitted changes.
+        
+        The input schema file must be committed so that generated code
+        can be traced back to a specific version of the schema.
+        
+        Dirty file: \(file)
+        Status: \(status)
+        
+        Please commit your schema changes before running code generation:
+          git add \(file) && git commit -m "Update schema"
+        """
+    case .dirtyOutputFiles(let files):
+      let fileList = files.prefix(10).joined(separator: "\n  ")
+      let moreCount = files.count > 10 ? "\n  ... and \(files.count - 10) more" : ""
+      return """
+        ❌ ERROR: Output directory has uncommitted changes.
+        
+        The output files have uncommitted changes that would be overwritten.
+        
+        Dirty files:
+          \(fileList)\(moreCount)
+        
+        Please commit or discard your changes before running code generation:
+          git add <files> && git commit -m "Your commit message"
+        Or to discard:
+          git checkout -- <files>
         """
     case .notAGitRepository:
       return "Not a git repository. Code generation requires git for traceability."
@@ -318,6 +349,79 @@ public enum GitUtilities {
     let dirtyFiles = output.split(separator: "\n").map { String($0) }
     if !dirtyFiles.isEmpty {
       throw GitError.dirtyWorkingDirectory(files: dirtyFiles)
+    }
+  }
+  
+  /// Check if a specific file is committed and not dirty.
+  ///
+  /// ## Why This Exists
+  /// When generating code from a schema file, we need to ensure the schema
+  /// is committed so that the generated code can be traced back to a specific
+  /// version of the schema. This allows other developers to understand exactly
+  /// what schema produced the generated code.
+  ///
+  /// - Parameter path: Path to the file to check (absolute or relative)
+  /// - Throws: `GitError.dirtySchemaFile` if the file has uncommitted changes
+  public static func ensureFileIsClean(_ path: String) throws {
+    let relativePath = GitUtilities.relativePath(from: path)
+    let (output, exitCode) = runGitCommand(["status", "--porcelain", "--", relativePath])
+    
+    guard exitCode == 0 else {
+      throw GitError.notAGitRepository
+    }
+    
+    let trimmed = output.trimmingCharacters(in: .whitespacesAndNewlines)
+    if !trimmed.isEmpty {
+      // Parse the status code (first 2 characters)
+      // e.g., "M  file.ts" = modified, "?? file.ts" = untracked
+      let status = String(trimmed.prefix(2)).trimmingCharacters(in: .whitespaces)
+      let statusDescription: String
+      switch status {
+      case "M":
+        statusDescription = "modified (staged)"
+      case " M":
+        statusDescription = "modified (unstaged)"
+      case "MM":
+        statusDescription = "modified (staged and unstaged)"
+      case "A":
+        statusDescription = "added (staged)"
+      case "??":
+        statusDescription = "untracked (not committed)"
+      case "D":
+        statusDescription = "deleted"
+      default:
+        statusDescription = "has changes (\(status))"
+      }
+      throw GitError.dirtySchemaFile(file: relativePath, status: statusDescription)
+    }
+  }
+  
+  /// Check if any files in a directory have uncommitted changes.
+  ///
+  /// ## Why This Exists
+  /// Before overwriting generated files, we check that the output directory
+  /// doesn't have uncommitted changes. This prevents accidentally losing
+  /// manual edits that haven't been committed yet.
+  ///
+  /// - Parameter directory: Path to the directory to check
+  /// - Throws: `GitError.dirtyOutputFiles` if any files in the directory are dirty
+  public static func ensureDirectoryIsClean(_ directory: String) throws {
+    let relativePath = GitUtilities.relativePath(from: directory)
+    
+    // Use trailing slash to match directory contents
+    let pathPattern = relativePath.hasSuffix("/") ? relativePath : relativePath + "/"
+    let (output, exitCode) = runGitCommand(["status", "--porcelain", "--", pathPattern])
+    
+    guard exitCode == 0 else {
+      throw GitError.notAGitRepository
+    }
+    
+    let dirtyFiles = output.split(separator: "\n")
+      .map { String($0) }
+      .filter { !$0.isEmpty }
+    
+    if !dirtyFiles.isEmpty {
+      throw GitError.dirtyOutputFiles(files: dirtyFiles)
     }
   }
   
