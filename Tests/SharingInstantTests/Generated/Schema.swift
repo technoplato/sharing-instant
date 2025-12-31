@@ -193,10 +193,10 @@ swift run instant-schema generate \
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// HEAD Commit:
-///   SHA:      77229f5771ac57a127e6a559959f03aea20380c3
+///   SHA:      cb55a630be06e98d0e1ad8e1a9e7c264aa83bca4
 ///   Date:     December 30, 2025 at 7:09 PM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  docs: Add mutation API design documents and sync architecture analysis
+///   Message:  chore: Regenerate schema files with presence mutations
 ///
 /// Schema File Last Modified:
 ///   SHA:      522ffbf617207b60ecfa647b2d1dc6b9bfa3a7ff
