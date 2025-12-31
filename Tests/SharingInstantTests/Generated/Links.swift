@@ -214,10 +214,10 @@ swift run instant-schema generate \
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// HEAD Commit:
-///   SHA:      b983854f913fc7815aecd9e12eca3b159b7ecb83
-///   Date:     December 30, 2025 at 7:11 PM EST
+///   SHA:      d65d2aaee354ea7d75c361eae743dc07d9ad8937
+///   Date:     December 30, 2025 at 7:12 PM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  feat(codegen): Add topic mutation generation to Rooms.swift
+///   Message:  fix: Remove unused variables and regenerate schema files
 ///
 /// Schema File Last Modified:
 ///   SHA:      522ffbf617207b60ecfa647b2d1dc6b9bfa3a7ff
