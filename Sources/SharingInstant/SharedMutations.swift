@@ -600,17 +600,18 @@ public enum InstantMutationError: Error, LocalizedError {
 ///
 /// This extracts all properties except `id` and link properties (which are
 /// handled separately via link operations).
+///
+/// ## Why We Use a Custom Encoder
+///
+/// The naive approach of `JSONEncoder` + `JSONSerialization.jsonObject()` has a critical bug:
+/// `JSONSerialization` uses `NSNumber` for both numbers and booleans, and Swift's bridging
+/// can interpret `0`/`1` as `false`/`true`. This causes InstantDB server errors like:
+/// "Invalid value type for tiles.x. Value must be a number but the provided value type is boolean."
+///
+/// Instead, we use a custom `DictionaryEncoder` that preserves type information.
 private func encodeEntityAttributes<E: Encodable>(_ entity: E) throws -> [String: Any] {
-  let encoder = JSONEncoder()
-  let data = try encoder.encode(entity)
-  
-  guard let dict = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-    throw InstantMutationError.encodingFailed(
-      NSError(domain: "SharingInstant", code: -1, userInfo: [
-        NSLocalizedDescriptionKey: "Failed to convert encoded entity to dictionary"
-      ])
-    )
-  }
+  let encoder = DictionaryEncoder()
+  let dict = try encoder.encode(entity)
   
   // Filter out id (handled separately) and link properties (arrays/objects)
   // Links should be handled via explicit link() calls
@@ -624,8 +625,342 @@ private func encodeEntityAttributes<E: Encodable>(_ entity: E) throws -> [String
     if value is [Any] { continue }
     if value is [String: Any] { continue }
     
+    // Skip nil values
+    if case Optional<Any>.none = value { continue }
+    if value is NSNull { continue }
+    
     attrs[key] = value
   }
   
   return attrs
+}
+
+// MARK: - Dictionary Encoder
+
+/// A custom encoder that encodes `Encodable` values directly to `[String: Any]` dictionaries.
+///
+/// Unlike `JSONEncoder` + `JSONSerialization`, this preserves type information correctly:
+/// - `Double` values stay as `Double` (not converted to `NSNumber` which might be interpreted as `Bool`)
+/// - `Bool` values stay as `Bool`
+/// - `Int` values stay as `Int`
+///
+/// This is critical for InstantDB which strictly validates types.
+private class DictionaryEncoder {
+  func encode<T: Encodable>(_ value: T) throws -> [String: Any] {
+    let encoder = _DictionaryEncoder()
+    try value.encode(to: encoder)
+    guard let dict = encoder.result as? [String: Any] else {
+      throw InstantMutationError.encodingFailed(
+        NSError(domain: "SharingInstant", code: -1, userInfo: [
+          NSLocalizedDescriptionKey: "Failed to encode entity to dictionary"
+        ])
+      )
+    }
+    return dict
+  }
+}
+
+private class _DictionaryEncoder: Encoder {
+  var codingPath: [CodingKey] = []
+  var userInfo: [CodingUserInfoKey: Any] = [:]
+  var result: Any?
+  
+  func container<Key: CodingKey>(keyedBy type: Key.Type) -> KeyedEncodingContainer<Key> {
+    let container = _KeyedEncodingContainer<Key>(encoder: self, codingPath: codingPath)
+    return KeyedEncodingContainer(container)
+  }
+  
+  func unkeyedContainer() -> UnkeyedEncodingContainer {
+    return _UnkeyedEncodingContainer(encoder: self, codingPath: codingPath)
+  }
+  
+  func singleValueContainer() -> SingleValueEncodingContainer {
+    return _SingleValueEncodingContainer(encoder: self, codingPath: codingPath)
+  }
+}
+
+private class _KeyedEncodingContainer<Key: CodingKey>: KeyedEncodingContainerProtocol {
+  private let encoder: _DictionaryEncoder
+  var codingPath: [CodingKey]
+  private var storage: [String: Any] = [:]
+  
+  init(encoder: _DictionaryEncoder, codingPath: [CodingKey]) {
+    self.encoder = encoder
+    self.codingPath = codingPath
+  }
+  
+  deinit {
+    encoder.result = storage
+  }
+  
+  func encodeNil(forKey key: Key) throws {
+    storage[key.stringValue] = NSNull()
+  }
+  
+  func encode(_ value: Bool, forKey key: Key) throws {
+    storage[key.stringValue] = value
+  }
+  
+  func encode(_ value: String, forKey key: Key) throws {
+    storage[key.stringValue] = value
+  }
+  
+  func encode(_ value: Double, forKey key: Key) throws {
+    storage[key.stringValue] = value
+  }
+  
+  func encode(_ value: Float, forKey key: Key) throws {
+    storage[key.stringValue] = Double(value)
+  }
+  
+  func encode(_ value: Int, forKey key: Key) throws {
+    storage[key.stringValue] = value
+  }
+  
+  func encode(_ value: Int8, forKey key: Key) throws {
+    storage[key.stringValue] = Int(value)
+  }
+  
+  func encode(_ value: Int16, forKey key: Key) throws {
+    storage[key.stringValue] = Int(value)
+  }
+  
+  func encode(_ value: Int32, forKey key: Key) throws {
+    storage[key.stringValue] = Int(value)
+  }
+  
+  func encode(_ value: Int64, forKey key: Key) throws {
+    storage[key.stringValue] = Int(value)
+  }
+  
+  func encode(_ value: UInt, forKey key: Key) throws {
+    storage[key.stringValue] = Int(value)
+  }
+  
+  func encode(_ value: UInt8, forKey key: Key) throws {
+    storage[key.stringValue] = Int(value)
+  }
+  
+  func encode(_ value: UInt16, forKey key: Key) throws {
+    storage[key.stringValue] = Int(value)
+  }
+  
+  func encode(_ value: UInt32, forKey key: Key) throws {
+    storage[key.stringValue] = Int(value)
+  }
+  
+  func encode(_ value: UInt64, forKey key: Key) throws {
+    storage[key.stringValue] = Int(value)
+  }
+  
+  func encode<T: Encodable>(_ value: T, forKey key: Key) throws {
+    let nestedEncoder = _DictionaryEncoder()
+    nestedEncoder.codingPath = codingPath + [key]
+    try value.encode(to: nestedEncoder)
+    storage[key.stringValue] = nestedEncoder.result
+  }
+  
+  func nestedContainer<NestedKey: CodingKey>(keyedBy keyType: NestedKey.Type, forKey key: Key) -> KeyedEncodingContainer<NestedKey> {
+    let container = _KeyedEncodingContainer<NestedKey>(encoder: encoder, codingPath: codingPath + [key])
+    return KeyedEncodingContainer(container)
+  }
+  
+  func nestedUnkeyedContainer(forKey key: Key) -> UnkeyedEncodingContainer {
+    return _UnkeyedEncodingContainer(encoder: encoder, codingPath: codingPath + [key])
+  }
+  
+  func superEncoder() -> Encoder {
+    return encoder
+  }
+  
+  func superEncoder(forKey key: Key) -> Encoder {
+    return encoder
+  }
+}
+
+private class _UnkeyedEncodingContainer: UnkeyedEncodingContainer {
+  private let encoder: _DictionaryEncoder
+  var codingPath: [CodingKey]
+  var count: Int = 0
+  private var storage: [Any] = []
+  
+  init(encoder: _DictionaryEncoder, codingPath: [CodingKey]) {
+    self.encoder = encoder
+    self.codingPath = codingPath
+  }
+  
+  deinit {
+    encoder.result = storage
+  }
+  
+  func encodeNil() throws {
+    storage.append(NSNull())
+    count += 1
+  }
+  
+  func encode(_ value: Bool) throws {
+    storage.append(value)
+    count += 1
+  }
+  
+  func encode(_ value: String) throws {
+    storage.append(value)
+    count += 1
+  }
+  
+  func encode(_ value: Double) throws {
+    storage.append(value)
+    count += 1
+  }
+  
+  func encode(_ value: Float) throws {
+    storage.append(Double(value))
+    count += 1
+  }
+  
+  func encode(_ value: Int) throws {
+    storage.append(value)
+    count += 1
+  }
+  
+  func encode(_ value: Int8) throws {
+    storage.append(Int(value))
+    count += 1
+  }
+  
+  func encode(_ value: Int16) throws {
+    storage.append(Int(value))
+    count += 1
+  }
+  
+  func encode(_ value: Int32) throws {
+    storage.append(Int(value))
+    count += 1
+  }
+  
+  func encode(_ value: Int64) throws {
+    storage.append(Int(value))
+    count += 1
+  }
+  
+  func encode(_ value: UInt) throws {
+    storage.append(Int(value))
+    count += 1
+  }
+  
+  func encode(_ value: UInt8) throws {
+    storage.append(Int(value))
+    count += 1
+  }
+  
+  func encode(_ value: UInt16) throws {
+    storage.append(Int(value))
+    count += 1
+  }
+  
+  func encode(_ value: UInt32) throws {
+    storage.append(Int(value))
+    count += 1
+  }
+  
+  func encode(_ value: UInt64) throws {
+    storage.append(Int(value))
+    count += 1
+  }
+  
+  func encode<T: Encodable>(_ value: T) throws {
+    let nestedEncoder = _DictionaryEncoder()
+    try value.encode(to: nestedEncoder)
+    storage.append(nestedEncoder.result as Any)
+    count += 1
+  }
+  
+  func nestedContainer<NestedKey: CodingKey>(keyedBy keyType: NestedKey.Type) -> KeyedEncodingContainer<NestedKey> {
+    let container = _KeyedEncodingContainer<NestedKey>(encoder: encoder, codingPath: codingPath)
+    return KeyedEncodingContainer(container)
+  }
+  
+  func nestedUnkeyedContainer() -> UnkeyedEncodingContainer {
+    return _UnkeyedEncodingContainer(encoder: encoder, codingPath: codingPath)
+  }
+  
+  func superEncoder() -> Encoder {
+    return encoder
+  }
+}
+
+private class _SingleValueEncodingContainer: SingleValueEncodingContainer {
+  private let encoder: _DictionaryEncoder
+  var codingPath: [CodingKey]
+  
+  init(encoder: _DictionaryEncoder, codingPath: [CodingKey]) {
+    self.encoder = encoder
+    self.codingPath = codingPath
+  }
+  
+  func encodeNil() throws {
+    encoder.result = NSNull()
+  }
+  
+  func encode(_ value: Bool) throws {
+    encoder.result = value
+  }
+  
+  func encode(_ value: String) throws {
+    encoder.result = value
+  }
+  
+  func encode(_ value: Double) throws {
+    encoder.result = value
+  }
+  
+  func encode(_ value: Float) throws {
+    encoder.result = Double(value)
+  }
+  
+  func encode(_ value: Int) throws {
+    encoder.result = value
+  }
+  
+  func encode(_ value: Int8) throws {
+    encoder.result = Int(value)
+  }
+  
+  func encode(_ value: Int16) throws {
+    encoder.result = Int(value)
+  }
+  
+  func encode(_ value: Int32) throws {
+    encoder.result = Int(value)
+  }
+  
+  func encode(_ value: Int64) throws {
+    encoder.result = Int(value)
+  }
+  
+  func encode(_ value: UInt) throws {
+    encoder.result = Int(value)
+  }
+  
+  func encode(_ value: UInt8) throws {
+    encoder.result = Int(value)
+  }
+  
+  func encode(_ value: UInt16) throws {
+    encoder.result = Int(value)
+  }
+  
+  func encode(_ value: UInt32) throws {
+    encoder.result = Int(value)
+  }
+  
+  func encode(_ value: UInt64) throws {
+    encoder.result = Int(value)
+  }
+  
+  func encode<T: Encodable>(_ value: T) throws {
+    let nestedEncoder = _DictionaryEncoder()
+    try value.encode(to: nestedEncoder)
+    encoder.result = nestedEncoder.result
+  }
 }
