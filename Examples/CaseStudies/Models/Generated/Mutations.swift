@@ -211,7 +211,7 @@ struct FactMutationsView: View {
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// Mode:            Production (full traceability)
-/// Generated:       December 30, 2025 at 8:28 PM EST
+/// Generated:       December 30, 2025 at 9:29 PM EST
 /// Machine:         mlustig-hy7l9xrd61.local (Apple M4 Pro, macOS 26.2)
 /// Generator:       Sources/instant-schema/main.swift
 /// Source Schema:   Examples/CaseStudies/instant.schema.ts
@@ -227,10 +227,10 @@ swift run instant-schema generate \
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// HEAD Commit:
-///   SHA:      416732dee6d05e5fa2365697f4be835e7593629b
-///   Date:     December 30, 2025 at 8:28 PM EST
+///   SHA:      f93afd10f28d772ffbb216369f3648279d0e9c25
+///   Date:     December 30, 2025 at 9:29 PM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  chore: Regenerate test schema files with fixed topic publish
+///   Message:  fix(codegen): Remove redundant 'public' modifiers from extension methods
 ///
 /// Schema File Last Modified:
 ///   SHA:      522ffbf617207b60ecfa647b2d1dc6b9bfa3a7ff
