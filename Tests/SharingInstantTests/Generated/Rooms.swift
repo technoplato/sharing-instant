@@ -164,10 +164,10 @@ swift run instant-schema generate \
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// HEAD Commit:
-///   SHA:      77229f5771ac57a127e6a559959f03aea20380c3
+///   SHA:      cb55a630be06e98d0e1ad8e1a9e7c264aa83bca4
 ///   Date:     December 30, 2025 at 7:09 PM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  docs: Add mutation API design documents and sync architecture analysis
+///   Message:  chore: Regenerate schema files with presence mutations
 ///
 /// Schema File Last Modified:
 ///   SHA:      522ffbf617207b60ecfa647b2d1dc6b9bfa3a7ff
@@ -347,7 +347,7 @@ public extension Shared where Value == RoomPresence<AvatarsPresence> {
   @MainActor
   public func setUser(
     name: String,
-    color: String
+    color: String,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
     setUser(AvatarsPresence(
@@ -412,7 +412,7 @@ public extension Shared where Value == RoomPresence<ChatPresence> {
   public func setUser(
     name: String,
     color: String,
-    isTyping: Bool
+    isTyping: Bool,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
     setUser(ChatPresence(
@@ -511,7 +511,7 @@ public extension Shared where Value == RoomPresence<CursorsPresence> {
     name: String,
     color: String,
     cursorX: Double,
-    cursorY: Double
+    cursorY: Double,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
     setUser(CursorsPresence(
@@ -599,7 +599,7 @@ public extension Shared where Value == RoomPresence<ReactionsPresence> {
   /// ```
   @MainActor
   public func setUser(
-    name: String
+    name: String,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
     setUser(ReactionsPresence(
@@ -651,7 +651,7 @@ public extension Shared where Value == RoomPresence<TileGamePresence> {
   @MainActor
   public func setUser(
     name: String,
-    color: String
+    color: String,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
     setUser(TileGamePresence(
