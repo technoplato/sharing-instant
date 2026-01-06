@@ -12,6 +12,28 @@ import Sharing
 /// 2. Subscriptions to queries.
 /// 3. The Shared TripleStore.
 
+// #region agent log
+/// Debug logging helper for Cursor debug mode - sends via HTTP to Mac
+private func reactorDebugLog(_ message: String, data: [String: Any] = [:], hypothesisId: String = "H10", file: String = #file, line: Int = #line) {
+    let fileName = (file as NSString).lastPathComponent.replacingOccurrences(of: ".swift", with: "")
+    let location = "\(fileName):\(line)"
+    guard let ingestURL = URL(string: "http://192.168.68.108:7248/ingest/8e9cd30c-2978-4fd0-aac6-721b5eaff68a") else { return }
+    let payload: [String: Any] = [
+        "location": location,
+        "message": message,
+        "data": data,
+        "timestamp": Date().timeIntervalSince1970 * 1000,
+        "sessionId": "debug-session",
+        "hypothesisId": hypothesisId
+    ]
+    guard let jsonData = try? JSONSerialization.data(withJSONObject: payload) else { return }
+    var request = URLRequest(url: ingestURL)
+    request.httpMethod = "POST"
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    request.httpBody = jsonData
+    URLSession.shared.dataTask(with: request).resume()
+}
+// #endregion
 
 public actor Reactor {
   // public static let shared = Reactor() // Removed for DI
@@ -106,6 +128,27 @@ public actor Reactor {
     return .unsupported
   }
   
+  /// Notifies ALL active subscriptions to recompute their data from the store.
+  ///
+  /// ## Why This Exists (TypeScript Parity)
+  /// The TypeScript SDK's `notifyAll()` (Reactor.js lines 1303-1310) recomputes ALL
+  /// subscriptions after any mutation. This ensures:
+  /// - Cross-namespace consistency (e.g., a link mutation affects both sides)
+  /// - Correct filtering (subscriptions with complex WHERE clauses recompute)
+  /// - No missed updates (even if we can't predict which subscriptions are affected)
+  ///
+  /// ## Performance Note
+  /// This is intentionally aggressive. The TypeScript SDK does the same because
+  /// correctness trumps optimization. Each subscription reads from the normalized
+  /// store which is fast, and deduplication happens at the UI layer.
+  private func notifyAll() async {
+    for (_, handle) in activeSubscriptions {
+      // Trigger a recompute by calling upsert with a sentinel ID.
+      // The SubscriptionState will re-read from the store and yield new values.
+      await handle.upsert("__notifyAll__")
+    }
+  }
+
   private func notifyOptimisticUpsert(namespace: String, id: String) async {
     for (_, handle) in activeSubscriptions where handle.namespace == namespace {
       switch handle.filter {
@@ -119,7 +162,7 @@ public actor Reactor {
       }
     }
   }
-  
+
   private func notifyOptimisticDelete(namespace: String, id: String) async {
     for handle in activeSubscriptions.values where handle.namespace == namespace {
       switch handle.filter {
@@ -200,26 +243,47 @@ public actor Reactor {
     appID: String,
     chunks: [TransactionChunk]
   ) async throws {
+    // #region agent log - H10: Trace transact timing
+    let transactStart = Date()
+    let chunkIds = chunks.map { $0.id }
+    reactorDebugLog("transact START", data: ["chunkIds": chunkIds])
+    // #endregion
+    
     let client = await MainActor.run { InstantClientFactory.makeClient(appID: appID, instanceID: self.clientInstanceID) }
+    // #region agent log
+    reactorDebugLog("transact: got client", data: ["elapsed_ms": Date().timeIntervalSince(transactStart) * 1000])
+    // #endregion
 
     // Ensure connected
     let isDisconnected = await MainActor.run { client.connectionState == .disconnected }
     if isDisconnected {
       await MainActor.run { client.connect() }
     }
+    // #region agent log
+    reactorDebugLog("transact: checked connection", data: ["elapsed_ms": Date().timeIntervalSince(transactStart) * 1000, "wasDisconnected": isDisconnected])
+    // #endregion
 
     let initialAttrs = await MainActor.run { client.attributes }
     if !initialAttrs.isEmpty {
       store.updateAttributes(initialAttrs)
     }
+    // #region agent log
+    reactorDebugLog("transact: got attrs", data: ["elapsed_ms": Date().timeIntervalSince(transactStart) * 1000, "attrCount": initialAttrs.count])
+    // #endregion
 
     // Optimistic Update
     // We apply the changes to the triple store immediately so callers can read their
     // writes locally while the server transaction is in-flight.
     await applyOptimisticUpdate(chunks: chunks)
+    // #region agent log
+    reactorDebugLog("transact: applied optimistic", data: ["elapsed_ms": Date().timeIntervalSince(transactStart) * 1000])
+    // #endregion
 
     // Persist + enqueue mutations while offline, and flush automatically on reconnect.
     _ = try await client.transactLocalFirst(chunks)
+    // #region agent log
+    reactorDebugLog("transact END", data: ["elapsed_ms": Date().timeIntervalSince(transactStart) * 1000, "chunkIds": chunkIds])
+    // #endregion
   }
 
   /// Explicitly sign in as a guest.
@@ -256,12 +320,18 @@ public actor Reactor {
   private func applyOptimisticUpdate(chunks: [TransactionChunk]) async {
     let timestamp = ConflictResolution.optimisticTimestamp()
 
+    // Track affected entities for targeted notifications
+    var affectedNamespaces: Set<String> = []
+    var upsertedIds: [(namespace: String, id: String)] = []
+    var deletedIds: [(namespace: String, id: String)] = []
+
     for chunk in chunks {
       for op in chunk.ops {
         guard let action = op.first as? String else { continue }
 
         let namespace = (op.count > 1 ? op[1] as? String : nil) ?? chunk.namespace
         let id = (op.count > 2 ? op[2] as? String : nil) ?? chunk.id
+        affectedNamespaces.insert(namespace)
 
         switch action {
         case "create", "update":
@@ -276,7 +346,7 @@ public actor Reactor {
             createdAt: timestamp
           )
           store.addTriples(triples)
-          await notifyOptimisticUpsert(namespace: namespace, id: id)
+          upsertedIds.append((namespace: namespace, id: id))
 
         case "link":
           guard op.count > 3, let payload = op[3] as? [String: Any] else { continue }
@@ -292,7 +362,7 @@ public actor Reactor {
             createdAt: timestamp
           )
           store.addTriples(triples)
-          await notifyOptimisticUpsert(namespace: namespace, id: id)
+          upsertedIds.append((namespace: namespace, id: id))
 
         case "unlink":
           guard op.count > 3, let payload = op[3] as? [String: Any] else { continue }
@@ -302,17 +372,22 @@ public actor Reactor {
             payload: payload,
             timestamp: timestamp
           )
-          await notifyOptimisticUpsert(namespace: namespace, id: id)
+          upsertedIds.append((namespace: namespace, id: id))
 
         case "delete":
           store.deleteEntity(id: id)
-          await notifyOptimisticDelete(namespace: namespace, id: id)
+          deletedIds.append((namespace: namespace, id: id))
 
         default:
           continue
         }
       }
     }
+
+    // Notify all subscriptions after ALL mutations are applied (TypeScript parity)
+    // This ensures cross-namespace consistency and correct filtering.
+    // See Reactor.js pushOps() line 1367: this.notifyAll()
+    await notifyAll()
   }
 
   private func applyOptimisticUnlink(
@@ -727,6 +802,12 @@ private actor SubscriptionState<Value: EntityIdentifiable & Codable & Sendable> 
     }
     
     func handleOptimisticUpsert(id: String) async {
+        // Handle notifyAll() sentinel - just trigger a store update without modifying tracking
+        if id == "__notifyAll__" {
+          await handleStoreUpdate()
+          return
+        }
+
         if !optimisticIDs.contains(id) {
           if orderByIsDescending {
             optimisticIDs.insert(id, at: 0)
@@ -742,7 +823,7 @@ private actor SubscriptionState<Value: EntityIdentifiable & Codable & Sendable> 
             currentIDs.append(id)
           }
         }
-        
+
         if observerTokens[id] == nil {
             let token = store.addObserver(id: id) { [weak self] in
                 guard let self else { return }
@@ -752,7 +833,7 @@ private actor SubscriptionState<Value: EntityIdentifiable & Codable & Sendable> 
             }
             observerTokens[id] = token
         }
-        
+
         await handleStoreUpdate()
     }
     
