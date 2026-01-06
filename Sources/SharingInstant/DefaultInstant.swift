@@ -112,6 +112,44 @@ private enum InstantClientInstanceIDKey: DependencyKey {
   static let testValue: String = "test"
 }
 
+// MARK: - Network Monitor Dependency
+
+extension DependencyValues {
+  /// The network monitor used by the Instant iOS SDK to detect online/offline state.
+  ///
+  /// ## Why This Exists
+  /// InstantDB needs to know when the device is online or offline to:
+  /// - Queue mutations when offline and replay them when back online
+  /// - Show appropriate connection states in the UI
+  /// - Trigger reconnection attempts when connectivity returns
+  ///
+  /// ## Testing
+  /// In tests, use `NetworkMonitorClient.mock(initiallyOnline:)` to create a controllable
+  /// network monitor that lets you simulate offline/online transitions:
+  ///
+  /// ```swift
+  /// let (networkMonitor, setOnline) = NetworkMonitorClient.mock(initiallyOnline: true)
+  ///
+  /// try await withDependencies {
+  ///   $0.instantNetworkMonitor = networkMonitor
+  /// } operation: {
+  ///   // Test starts online
+  ///   setOnline(false)  // Simulate going offline
+  ///   // ... perform offline operations ...
+  ///   setOnline(true)   // Simulate coming back online
+  /// }
+  /// ```
+  public var instantNetworkMonitor: NetworkMonitorClient {
+    get { self[InstantNetworkMonitorKey.self] }
+    set { self[InstantNetworkMonitorKey.self] = newValue }
+  }
+}
+
+private enum InstantNetworkMonitorKey: DependencyKey {
+  static let liveValue: NetworkMonitorClient = .live
+  static let testValue: NetworkMonitorClient = .alwaysOnline
+}
+
 // MARK: - Client Factory
 
 /// Factory for creating and caching InstantDB clients.
@@ -160,12 +198,17 @@ public enum InstantClientFactory {
   @MainActor
   public static func makeClient(appID: String, instanceID: String) -> InstantClient {
     @Dependency(\.instantEnableLocalPersistence) var enableLocalPersistence
+    @Dependency(\.instantNetworkMonitor) var networkMonitor
 
     let cacheKey = ClientCacheKey(appID: appID, instanceID: instanceID)
     if let cached = clientCache[cacheKey] {
       return cached
     }
-    let client = InstantClient(appID: appID, enableLocalPersistence: enableLocalPersistence)
+    let client = InstantClient(
+      appID: appID,
+      networkMonitor: networkMonitor,
+      enableLocalPersistence: enableLocalPersistence
+    )
     clientCache[cacheKey] = client
     return client
   }
