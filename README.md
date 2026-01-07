@@ -8,7 +8,8 @@ Point-Free's [Sharing](https://github.com/pointfreeco/swift-sharing) library.
 
 ## Demo
 
-[![SharingInstant Demo](https://img.youtube.com/vi/wuGd6pt1reA/0.jpg)](https://www.youtube.com/watch?v=wuGd6pt1reA)
+`v0.1` Demo
+[![SharingInstant Demo](https://img.youtube.com/vi/wuGd6pt1reA/0.jpg)]([https://www.youtube.com/watch?v=wuGd6pt1reA](https://youtu.be/KqUGbV2rIiY))
 
 > **Note:** This library depends on [instant-ios-sdk PR #6](https://github.com/instantdb/instant-ios-sdk/pull/6) 
 > which adds presence support and threading fixes.
