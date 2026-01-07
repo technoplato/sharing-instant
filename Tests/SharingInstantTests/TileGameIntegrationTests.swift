@@ -44,40 +44,40 @@ private class TileGameModelRefactored: ObservableObject {
       .instantPresence(
         Schema.Rooms.tileGame,
         roomId: boardId,
-        initialPresence: TileGamePresence(name: "", color: "")
+        initialPresence: TileGamePresence(color: "", name: "")
       )
     )
   }
-  
+
   var board: Board? {
     boards.first
   }
-  
+
   func tileColor(x: Int, y: Int) -> String {
     guard let board = board, let tiles = board.tiles else { return "#FFFFFF" }
     guard let tile = tiles.first(where: { Int($0.x) == x && Int($0.y) == y }) else { return "#FFFFFF" }
     return tile.color
   }
-  
+
   func initializeGame() {
     $presence.withLock { state in
-      state.user = TileGamePresence(name: userId, color: myColor)
+      state.user = TileGamePresence(color: myColor, name: userId)
     }
-    
+
     if board == nil {
       let now = Date().timeIntervalSince1970 * 1_000
-      let newBoard = Board(id: boardId, title: "Test Board", createdAt: now)
+      let newBoard = Board(id: boardId, createdAt: now, title: "Test Board")
       $boards.withLock { $0.append(newBoard) }
-      
+
       var newTiles: [Tile] = []
       for row in 0..<boardSize {
         for col in 0..<boardSize {
           newTiles.append(
             Tile(
-              x: Double(row),
-              y: Double(col),
               color: "#FFFFFF",
-              createdAt: now
+              createdAt: now,
+              x: Double(row),
+              y: Double(col)
             )
           )
         }

@@ -146,9 +146,6 @@ struct FactMutationsView: View {
 ///   updateContent(_:to:)
 ///   updateImageUrl(_:to:)
 ///   updateCreatedAt(_:to:)
-///   updateLikesCount(_:to:)
-///   incrementLikesCount(_:by:)
-///   decrementLikesCount(_:by:)
 ///   deletePost(_:) // by ID
 ///   deletePost(_:) // by entity
 ///   linkComments(_:to:)
@@ -204,6 +201,57 @@ struct FactMutationsView: View {
 ///   unlinkTiles(_:from:)
 /// }
 ///
+/// Media Mutations {
+///   createMedia(...)
+///   updateTitle(_:to:)
+///   updateDurationSeconds(_:to:)
+///   incrementDurationSeconds(_:by:)
+///   decrementDurationSeconds(_:by:)
+///   updateMediaType(_:to:)
+///   updateIngestedAt(_:to:)
+///   updateDescription(_:to:)
+///   deleteMedia(_:) // by ID
+///   deleteMedia(_:) // by entity
+///   linkTranscriptionRuns(_:to:)
+///   unlinkTranscriptionRuns(_:from:)
+/// }
+///
+/// TranscriptionRun Mutations {
+///   createTranscriptionRun(...)
+///   updateToolVersion(_:to:)
+///   updateExecutedAt(_:to:)
+///   updateRunType(_:to:)
+///   updateIsActive(_:to:)
+///   toggleIsActive(_:)
+///   markIsActive(_:)
+///   unmarkIsActive(_:)
+///   deleteTranscriptionRun(_:) // by ID
+///   deleteTranscriptionRun(_:) // by entity
+///   linkTranscriptionSegments(_:to:)
+///   unlinkTranscriptionSegments(_:from:)
+///   linkMedia(_:to:)
+///   unlinkMedia(_:from:)
+/// }
+///
+/// TranscriptionSegment Mutations {
+///   createTranscriptionSegment(...)
+///   updateStartTime(_:to:)
+///   updateEndTime(_:to:)
+///   updateText(_:to:)
+///   updateSegmentIndex(_:to:)
+///   updateIsFinalized(_:to:)
+///   toggleIsFinalized(_:)
+///   markIsFinalized(_:)
+///   unmarkIsFinalized(_:)
+///   updateIngestedAt(_:to:)
+///   updateSpeaker(_:to:)
+///   updateWords(_:to:)
+///   deleteTranscriptionSegment(_:) // by ID
+///   deleteTranscriptionSegment(_:) // by entity
+///   linkTranscriptionRun(_:to:)
+///   unlinkTranscriptionRun(_:from:)
+/// }
+///
 
 ///
 /// ─────────────────────────────────────────────────────────────────────────────────
@@ -211,15 +259,15 @@ struct FactMutationsView: View {
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// Mode:            Production (full traceability)
-/// Generated:       December 30, 2025 at 11:23 PM EST
+/// Generated:       January 6, 2026 at 9:51 PM EST
 /// Machine:         mlustig-hy7l9xrd61.local (Apple M4 Pro, macOS 26.2)
 /// Generator:       Sources/instant-schema/main.swift
-/// Source Schema:   Examples/CaseStudies/instant.schema.ts
+/// Source Schema:   Examples/instant.schema.ts
 
 /* To regenerate this file, run:
 
 swift run instant-schema generate \
-  --from Examples/CaseStudies/instant.schema.ts \
+  --from Examples/instant.schema.ts \
   --to Examples/CaseStudies/Models/Generated
 */
 /// ─────────────────────────────────────────────────────────────────────────────────
@@ -227,16 +275,16 @@ swift run instant-schema generate \
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// HEAD Commit:
-///   SHA:      1c4c66bedb72039ba775a89156a75e35561bf9e5
-///   Date:     December 30, 2025 at 11:23 PM EST
+///   SHA:      f638771bea036ebc8ee4b51bf4762bb111f77cc6
+///   Date:     January 6, 2026 at 9:51 PM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  WIP: TileGameDemo debugging and other demo updates
+///   Message:  feat: Add transcription entities for rapid update testing
 ///
 /// Schema File Last Modified:
-///   SHA:      522ffbf617207b60ecfa647b2d1dc6b9bfa3a7ff
-///   Date:     December 22, 2025 at 6:46 AM EST
+///   SHA:      f638771bea036ebc8ee4b51bf4762bb111f77cc6
+///   Date:     January 6, 2026 at 9:51 PM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  fix: Remove recursive self-link to fix Swift compilation
+///   Message:  feat: Add transcription entities for rapid update testing
 ///
 /// ═══════════════════════════════════════════════════════════════════════════════
 
@@ -1744,7 +1792,6 @@ public extension Shared where Value == IdentifiedArrayOf<Post> {
     content: String,
     imageUrl: String? = nil,
     createdAt: Double,
-    likesCount: Double,
     callbacks: MutationCallbacks<Post> = .init()
   ) {
     callbacks.onMutate?()
@@ -1752,8 +1799,7 @@ public extension Shared where Value == IdentifiedArrayOf<Post> {
       id: id,
       content: content,
       imageUrl: imageUrl,
-      createdAt: createdAt,
-      likesCount: likesCount
+      createdAt: createdAt
     )
     Task {
       do {
@@ -1833,62 +1879,6 @@ public extension Shared where Value == IdentifiedArrayOf<Post> {
       }
       callbacks.onSettled?()
     }
-  }
-
-  /// Update the likesCount field of a Post.
-  @MainActor
-  public func updateLikesCount(
-    _ id: String,
-    to value: Double,
-    callbacks: MutationCallbacks<Post> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.update(id: id) { entity in
-          entity.likesCount = value
-        }
-        if let updated = self.wrappedValue[id: id] {
-          callbacks.onSuccess?(updated)
-        }
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  /// Increment the likesCount field of a Post.
-  @MainActor
-  public func incrementLikesCount(
-    _ id: String,
-    by amount: Double = 1,
-    callbacks: MutationCallbacks<Post> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.update(id: id) { entity in
-          entity.likesCount += amount
-        }
-        if let updated = self.wrappedValue[id: id] {
-          callbacks.onSuccess?(updated)
-        }
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  /// Decrement the likesCount field of a Post.
-  @MainActor
-  public func decrementLikesCount(
-    _ id: String,
-    by amount: Double = 1,
-    callbacks: MutationCallbacks<Post> = .init()
-  ) {
-    incrementLikesCount(id, by: -amount, callbacks: callbacks)
   }
 
   // MARK: Delete
@@ -2052,7 +2042,6 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
     content: String,
     imageUrl: String? = nil,
     createdAt: Double,
-    likesCount: Double,
     callbacks: MutationCallbacks<Post> = .init()
   ) {
     callbacks.onMutate?()
@@ -2060,8 +2049,7 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
       id: id,
       content: content,
       imageUrl: imageUrl,
-      createdAt: createdAt,
-      likesCount: likesCount
+      createdAt: createdAt
     )
     Task {
       do {
@@ -3032,6 +3020,1074 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
     callbacks: MutationCallbacks<Void> = .init()
   ) {
     deleteBoard(entity.id, callbacks: callbacks)
+  }
+}
+
+// MARK: - Media Mutations
+
+public extension Shared where Value == IdentifiedArrayOf<Media> {
+
+  // MARK: Create
+
+  /// Create a new Media and sync to InstantDB.
+  @MainActor
+  public func createMedia(
+    id: String = UUID().uuidString.lowercased(),
+    title: String,
+    durationSeconds: Double,
+    mediaType: String,
+    ingestedAt: String,
+    description: String? = nil,
+    callbacks: MutationCallbacks<Media> = .init()
+  ) {
+    callbacks.onMutate?()
+    let entity = Media(
+      id: id,
+      title: title,
+      durationSeconds: durationSeconds,
+      mediaType: mediaType,
+      ingestedAt: ingestedAt,
+      description: description
+    )
+    Task {
+      do {
+        try await self.create(entity)
+        callbacks.onSuccess?(entity)
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the title field of a Media.
+  @MainActor
+  public func updateTitle(
+    _ id: String,
+    to value: String,
+    callbacks: MutationCallbacks<Media> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.title = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the durationSeconds field of a Media.
+  @MainActor
+  public func updateDurationSeconds(
+    _ id: String,
+    to value: Double,
+    callbacks: MutationCallbacks<Media> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.durationSeconds = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Increment the durationSeconds field of a Media.
+  @MainActor
+  public func incrementDurationSeconds(
+    _ id: String,
+    by amount: Double = 1,
+    callbacks: MutationCallbacks<Media> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.durationSeconds += amount
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Decrement the durationSeconds field of a Media.
+  @MainActor
+  public func decrementDurationSeconds(
+    _ id: String,
+    by amount: Double = 1,
+    callbacks: MutationCallbacks<Media> = .init()
+  ) {
+    incrementDurationSeconds(id, by: -amount, callbacks: callbacks)
+  }
+
+  /// Update the mediaType field of a Media.
+  @MainActor
+  public func updateMediaType(
+    _ id: String,
+    to value: String,
+    callbacks: MutationCallbacks<Media> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.mediaType = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the ingestedAt field of a Media.
+  @MainActor
+  public func updateIngestedAt(
+    _ id: String,
+    to value: String,
+    callbacks: MutationCallbacks<Media> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.ingestedAt = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the description field of a Media.
+  @MainActor
+  public func updateDescription(
+    _ id: String,
+    to value: String?,
+    callbacks: MutationCallbacks<Media> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.description = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  // MARK: Delete
+
+  /// Delete a Media by ID.
+  @MainActor
+  public func deleteMedia(
+    _ id: String,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.delete(id: id) as Void
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Delete a Media entity.
+  @MainActor
+  public func deleteMedia(
+    _ entity: Media,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    deleteMedia(entity.id, callbacks: callbacks)
+  }
+
+  // MARK: Link/Unlink TranscriptionRuns
+
+  /// Link a Media to a TranscriptionRun via 'transcriptionRuns'.
+  @MainActor
+  public func linkTranscriptionRuns(
+    _ id: String,
+    to target: TranscriptionRun,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.link(id, "transcriptionRuns", to: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Unlink a Media from a TranscriptionRun via 'transcriptionRuns'.
+  @MainActor
+  public func unlinkTranscriptionRuns(
+    _ id: String,
+    from target: TranscriptionRun,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.unlink(id, "transcriptionRuns", from: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+}
+
+public extension Shared where Value: RangeReplaceableCollection, Value.Element == Media {
+
+  // MARK: Create
+
+  /// Create a new Media and sync to InstantDB.
+  @MainActor
+  public func createMedia(
+    id: String = UUID().uuidString.lowercased(),
+    title: String,
+    durationSeconds: Double,
+    mediaType: String,
+    ingestedAt: String,
+    description: String? = nil,
+    callbacks: MutationCallbacks<Media> = .init()
+  ) {
+    callbacks.onMutate?()
+    let entity = Media(
+      id: id,
+      title: title,
+      durationSeconds: durationSeconds,
+      mediaType: mediaType,
+      ingestedAt: ingestedAt,
+      description: description
+    )
+    Task {
+      do {
+        try await self.create(entity)
+        callbacks.onSuccess?(entity)
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  // MARK: Delete
+
+  /// Delete a Media by ID.
+  @MainActor
+  public func deleteMedia(
+    _ id: String,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.delete(id: id) as Void
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Delete a Media entity.
+  @MainActor
+  public func deleteMedia(
+    _ entity: Media,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    deleteMedia(entity.id, callbacks: callbacks)
+  }
+}
+
+// MARK: - TranscriptionRun Mutations
+
+public extension Shared where Value == IdentifiedArrayOf<TranscriptionRun> {
+
+  // MARK: Create
+
+  /// Create a new TranscriptionRun and sync to InstantDB.
+  @MainActor
+  public func createTranscriptionRun(
+    id: String = UUID().uuidString.lowercased(),
+    toolVersion: String,
+    executedAt: String,
+    runType: String? = nil,
+    isActive: Bool? = nil,
+    callbacks: MutationCallbacks<TranscriptionRun> = .init()
+  ) {
+    callbacks.onMutate?()
+    let entity = TranscriptionRun(
+      id: id,
+      toolVersion: toolVersion,
+      executedAt: executedAt,
+      runType: runType,
+      isActive: isActive
+    )
+    Task {
+      do {
+        try await self.create(entity)
+        callbacks.onSuccess?(entity)
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the toolVersion field of a TranscriptionRun.
+  @MainActor
+  public func updateToolVersion(
+    _ id: String,
+    to value: String,
+    callbacks: MutationCallbacks<TranscriptionRun> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.toolVersion = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the executedAt field of a TranscriptionRun.
+  @MainActor
+  public func updateExecutedAt(
+    _ id: String,
+    to value: String,
+    callbacks: MutationCallbacks<TranscriptionRun> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.executedAt = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the runType field of a TranscriptionRun.
+  @MainActor
+  public func updateRunType(
+    _ id: String,
+    to value: String?,
+    callbacks: MutationCallbacks<TranscriptionRun> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.runType = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the isActive field of a TranscriptionRun.
+  @MainActor
+  public func updateIsActive(
+    _ id: String,
+    to value: Bool?,
+    callbacks: MutationCallbacks<TranscriptionRun> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.isActive = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Toggle the isActive field of a TranscriptionRun.
+  @MainActor
+  public func toggleIsActive(
+    _ id: String,
+    callbacks: MutationCallbacks<TranscriptionRun> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.isActive = !(entity.isActive ?? false)
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Set isActive to true for a TranscriptionRun.
+  @MainActor
+  public func markIsActive(
+    _ id: String,
+    callbacks: MutationCallbacks<TranscriptionRun> = .init()
+  ) {
+    updateIsActive(id, to: true, callbacks: callbacks)
+  }
+
+  /// Set isActive to false for a TranscriptionRun.
+  @MainActor
+  public func unmarkIsActive(
+    _ id: String,
+    callbacks: MutationCallbacks<TranscriptionRun> = .init()
+  ) {
+    updateIsActive(id, to: false, callbacks: callbacks)
+  }
+
+  // MARK: Delete
+
+  /// Delete a TranscriptionRun by ID.
+  @MainActor
+  public func deleteTranscriptionRun(
+    _ id: String,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.delete(id: id) as Void
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Delete a TranscriptionRun entity.
+  @MainActor
+  public func deleteTranscriptionRun(
+    _ entity: TranscriptionRun,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    deleteTranscriptionRun(entity.id, callbacks: callbacks)
+  }
+
+  // MARK: Link/Unlink TranscriptionSegments
+
+  /// Link a TranscriptionRun to a TranscriptionSegment via 'transcriptionSegments'.
+  @MainActor
+  public func linkTranscriptionSegments(
+    _ id: String,
+    to target: TranscriptionSegment,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.link(id, "transcriptionSegments", to: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Unlink a TranscriptionRun from a TranscriptionSegment via 'transcriptionSegments'.
+  @MainActor
+  public func unlinkTranscriptionSegments(
+    _ id: String,
+    from target: TranscriptionSegment,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.unlink(id, "transcriptionSegments", from: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  // MARK: Link/Unlink Media
+
+  /// Link a TranscriptionRun to a Media via 'media'.
+  @MainActor
+  public func linkMedia(
+    _ id: String,
+    to target: Media,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.link(id, "media", to: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Unlink a TranscriptionRun from a Media via 'media'.
+  @MainActor
+  public func unlinkMedia(
+    _ id: String,
+    from target: Media,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.unlink(id, "media", from: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+}
+
+public extension Shared where Value: RangeReplaceableCollection, Value.Element == TranscriptionRun {
+
+  // MARK: Create
+
+  /// Create a new TranscriptionRun and sync to InstantDB.
+  @MainActor
+  public func createTranscriptionRun(
+    id: String = UUID().uuidString.lowercased(),
+    toolVersion: String,
+    executedAt: String,
+    runType: String? = nil,
+    isActive: Bool? = nil,
+    callbacks: MutationCallbacks<TranscriptionRun> = .init()
+  ) {
+    callbacks.onMutate?()
+    let entity = TranscriptionRun(
+      id: id,
+      toolVersion: toolVersion,
+      executedAt: executedAt,
+      runType: runType,
+      isActive: isActive
+    )
+    Task {
+      do {
+        try await self.create(entity)
+        callbacks.onSuccess?(entity)
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  // MARK: Delete
+
+  /// Delete a TranscriptionRun by ID.
+  @MainActor
+  public func deleteTranscriptionRun(
+    _ id: String,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.delete(id: id) as Void
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Delete a TranscriptionRun entity.
+  @MainActor
+  public func deleteTranscriptionRun(
+    _ entity: TranscriptionRun,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    deleteTranscriptionRun(entity.id, callbacks: callbacks)
+  }
+}
+
+// MARK: - TranscriptionSegment Mutations
+
+public extension Shared where Value == IdentifiedArrayOf<TranscriptionSegment> {
+
+  // MARK: Create
+
+  /// Create a new TranscriptionSegment and sync to InstantDB.
+  @MainActor
+  public func createTranscriptionSegment(
+    id: String = UUID().uuidString.lowercased(),
+    startTime: Double,
+    endTime: Double,
+    text: String,
+    segmentIndex: Double,
+    isFinalized: Bool,
+    ingestedAt: String,
+    speaker: Double? = nil,
+    words: [TranscriptionSegmentWords]? = nil,
+    callbacks: MutationCallbacks<TranscriptionSegment> = .init()
+  ) {
+    callbacks.onMutate?()
+    let entity = TranscriptionSegment(
+      id: id,
+      startTime: startTime,
+      endTime: endTime,
+      text: text,
+      segmentIndex: segmentIndex,
+      isFinalized: isFinalized,
+      ingestedAt: ingestedAt,
+      speaker: speaker,
+      words: words
+    )
+    Task {
+      do {
+        try await self.create(entity)
+        callbacks.onSuccess?(entity)
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the startTime field of a TranscriptionSegment.
+  @MainActor
+  public func updateStartTime(
+    _ id: String,
+    to value: Double,
+    callbacks: MutationCallbacks<TranscriptionSegment> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.startTime = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the endTime field of a TranscriptionSegment.
+  @MainActor
+  public func updateEndTime(
+    _ id: String,
+    to value: Double,
+    callbacks: MutationCallbacks<TranscriptionSegment> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.endTime = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the text field of a TranscriptionSegment.
+  @MainActor
+  public func updateText(
+    _ id: String,
+    to value: String,
+    callbacks: MutationCallbacks<TranscriptionSegment> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.text = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the segmentIndex field of a TranscriptionSegment.
+  @MainActor
+  public func updateSegmentIndex(
+    _ id: String,
+    to value: Double,
+    callbacks: MutationCallbacks<TranscriptionSegment> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.segmentIndex = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the isFinalized field of a TranscriptionSegment.
+  @MainActor
+  public func updateIsFinalized(
+    _ id: String,
+    to value: Bool,
+    callbacks: MutationCallbacks<TranscriptionSegment> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.isFinalized = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Toggle the isFinalized field of a TranscriptionSegment.
+  @MainActor
+  public func toggleIsFinalized(
+    _ id: String,
+    callbacks: MutationCallbacks<TranscriptionSegment> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.isFinalized.toggle()
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Set isFinalized to true for a TranscriptionSegment.
+  @MainActor
+  public func markIsFinalized(
+    _ id: String,
+    callbacks: MutationCallbacks<TranscriptionSegment> = .init()
+  ) {
+    updateIsFinalized(id, to: true, callbacks: callbacks)
+  }
+
+  /// Set isFinalized to false for a TranscriptionSegment.
+  @MainActor
+  public func unmarkIsFinalized(
+    _ id: String,
+    callbacks: MutationCallbacks<TranscriptionSegment> = .init()
+  ) {
+    updateIsFinalized(id, to: false, callbacks: callbacks)
+  }
+
+  /// Update the ingestedAt field of a TranscriptionSegment.
+  @MainActor
+  public func updateIngestedAt(
+    _ id: String,
+    to value: String,
+    callbacks: MutationCallbacks<TranscriptionSegment> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.ingestedAt = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the speaker field of a TranscriptionSegment.
+  @MainActor
+  public func updateSpeaker(
+    _ id: String,
+    to value: Double?,
+    callbacks: MutationCallbacks<TranscriptionSegment> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.speaker = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the words field of a TranscriptionSegment.
+  @MainActor
+  public func updateWords(
+    _ id: String,
+    to value: [TranscriptionSegmentWords]?,
+    callbacks: MutationCallbacks<TranscriptionSegment> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.words = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  // MARK: Delete
+
+  /// Delete a TranscriptionSegment by ID.
+  @MainActor
+  public func deleteTranscriptionSegment(
+    _ id: String,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.delete(id: id) as Void
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Delete a TranscriptionSegment entity.
+  @MainActor
+  public func deleteTranscriptionSegment(
+    _ entity: TranscriptionSegment,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    deleteTranscriptionSegment(entity.id, callbacks: callbacks)
+  }
+
+  // MARK: Link/Unlink TranscriptionRun
+
+  /// Link a TranscriptionSegment to a TranscriptionRun via 'transcriptionRun'.
+  @MainActor
+  public func linkTranscriptionRun(
+    _ id: String,
+    to target: TranscriptionRun,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.link(id, "transcriptionRun", to: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Unlink a TranscriptionSegment from a TranscriptionRun via 'transcriptionRun'.
+  @MainActor
+  public func unlinkTranscriptionRun(
+    _ id: String,
+    from target: TranscriptionRun,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.unlink(id, "transcriptionRun", from: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+}
+
+public extension Shared where Value: RangeReplaceableCollection, Value.Element == TranscriptionSegment {
+
+  // MARK: Create
+
+  /// Create a new TranscriptionSegment and sync to InstantDB.
+  @MainActor
+  public func createTranscriptionSegment(
+    id: String = UUID().uuidString.lowercased(),
+    startTime: Double,
+    endTime: Double,
+    text: String,
+    segmentIndex: Double,
+    isFinalized: Bool,
+    ingestedAt: String,
+    speaker: Double? = nil,
+    words: [TranscriptionSegmentWords]? = nil,
+    callbacks: MutationCallbacks<TranscriptionSegment> = .init()
+  ) {
+    callbacks.onMutate?()
+    let entity = TranscriptionSegment(
+      id: id,
+      startTime: startTime,
+      endTime: endTime,
+      text: text,
+      segmentIndex: segmentIndex,
+      isFinalized: isFinalized,
+      ingestedAt: ingestedAt,
+      speaker: speaker,
+      words: words
+    )
+    Task {
+      do {
+        try await self.create(entity)
+        callbacks.onSuccess?(entity)
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  // MARK: Delete
+
+  /// Delete a TranscriptionSegment by ID.
+  @MainActor
+  public func deleteTranscriptionSegment(
+    _ id: String,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.delete(id: id) as Void
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Delete a TranscriptionSegment entity.
+  @MainActor
+  public func deleteTranscriptionSegment(
+    _ entity: TranscriptionSegment,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    deleteTranscriptionSegment(entity.id, callbacks: callbacks)
   }
 }
 

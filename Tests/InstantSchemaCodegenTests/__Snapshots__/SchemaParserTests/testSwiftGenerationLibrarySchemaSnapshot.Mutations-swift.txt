@@ -192,7 +192,7 @@ public extension Shared where Value == IdentifiedArrayOf<Member> {
 
   /// Create a new Member and sync to InstantDB.
   @MainActor
-  public func createMember(
+   func createMember(
     id: String = UUID().uuidString.lowercased(),
     name: String,
     email: String,
@@ -227,7 +227,7 @@ public extension Shared where Value == IdentifiedArrayOf<Member> {
 
   /// Update the name field of a Member.
   @MainActor
-  public func updateName(
+   func updateName(
     _ id: String,
     to value: String,
     callbacks: MutationCallbacks<Member> = .init()
@@ -250,7 +250,7 @@ public extension Shared where Value == IdentifiedArrayOf<Member> {
 
   /// Update the email field of a Member.
   @MainActor
-  public func updateEmail(
+   func updateEmail(
     _ id: String,
     to value: String,
     callbacks: MutationCallbacks<Member> = .init()
@@ -273,7 +273,7 @@ public extension Shared where Value == IdentifiedArrayOf<Member> {
 
   /// Update the memberSince field of a Member.
   @MainActor
-  public func updateMemberSince(
+   func updateMemberSince(
     _ id: String,
     to value: Date,
     callbacks: MutationCallbacks<Member> = .init()
@@ -296,7 +296,7 @@ public extension Shared where Value == IdentifiedArrayOf<Member> {
 
   /// Update the isActive field of a Member.
   @MainActor
-  public func updateIsActive(
+   func updateIsActive(
     _ id: String,
     to value: Bool,
     callbacks: MutationCallbacks<Member> = .init()
@@ -319,7 +319,7 @@ public extension Shared where Value == IdentifiedArrayOf<Member> {
 
   /// Toggle the isActive field of a Member.
   @MainActor
-  public func toggleIsActive(
+   func toggleIsActive(
     _ id: String,
     callbacks: MutationCallbacks<Member> = .init()
   ) {
@@ -341,7 +341,7 @@ public extension Shared where Value == IdentifiedArrayOf<Member> {
 
   /// Set isActive to true for a Member.
   @MainActor
-  public func markIsActive(
+   func markIsActive(
     _ id: String,
     callbacks: MutationCallbacks<Member> = .init()
   ) {
@@ -350,7 +350,7 @@ public extension Shared where Value == IdentifiedArrayOf<Member> {
 
   /// Set isActive to false for a Member.
   @MainActor
-  public func unmarkIsActive(
+   func unmarkIsActive(
     _ id: String,
     callbacks: MutationCallbacks<Member> = .init()
   ) {
@@ -359,7 +359,7 @@ public extension Shared where Value == IdentifiedArrayOf<Member> {
 
   /// Update the phoneNumber field of a Member.
   @MainActor
-  public func updatePhoneNumber(
+   func updatePhoneNumber(
     _ id: String,
     to value: String?,
     callbacks: MutationCallbacks<Member> = .init()
@@ -382,7 +382,7 @@ public extension Shared where Value == IdentifiedArrayOf<Member> {
 
   /// Update the currentBorrowCount field of a Member.
   @MainActor
-  public func updateCurrentBorrowCount(
+   func updateCurrentBorrowCount(
     _ id: String,
     to value: Double,
     callbacks: MutationCallbacks<Member> = .init()
@@ -405,7 +405,7 @@ public extension Shared where Value == IdentifiedArrayOf<Member> {
 
   /// Increment the currentBorrowCount field of a Member.
   @MainActor
-  public func incrementCurrentBorrowCount(
+   func incrementCurrentBorrowCount(
     _ id: String,
     by amount: Double = 1,
     callbacks: MutationCallbacks<Member> = .init()
@@ -428,7 +428,7 @@ public extension Shared where Value == IdentifiedArrayOf<Member> {
 
   /// Decrement the currentBorrowCount field of a Member.
   @MainActor
-  public func decrementCurrentBorrowCount(
+   func decrementCurrentBorrowCount(
     _ id: String,
     by amount: Double = 1,
     callbacks: MutationCallbacks<Member> = .init()
@@ -438,7 +438,7 @@ public extension Shared where Value == IdentifiedArrayOf<Member> {
 
   /// Update the preferences field of a Member.
   @MainActor
-  public func updatePreferences(
+   func updatePreferences(
     _ id: String,
     to value: AnyCodable?,
     callbacks: MutationCallbacks<Member> = .init()
@@ -463,7 +463,7 @@ public extension Shared where Value == IdentifiedArrayOf<Member> {
 
   /// Delete a Member by ID.
   @MainActor
-  public func deleteMember(
+   func deleteMember(
     _ id: String,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -481,7 +481,7 @@ public extension Shared where Value == IdentifiedArrayOf<Member> {
 
   /// Delete a Member entity.
   @MainActor
-  public func deleteMember(
+   func deleteMember(
     _ entity: Member,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -492,7 +492,7 @@ public extension Shared where Value == IdentifiedArrayOf<Member> {
 
   /// Link a Member to a Author via 'favoriteAuthor'.
   @MainActor
-  public func linkFavoriteAuthor(
+   func linkFavoriteAuthor(
     _ id: String,
     to target: Author,
     callbacks: MutationCallbacks<Void> = .init()
@@ -511,7 +511,7 @@ public extension Shared where Value == IdentifiedArrayOf<Member> {
 
   /// Unlink a Member from a Author via 'favoriteAuthor'.
   @MainActor
-  public func unlinkFavoriteAuthor(
+   func unlinkFavoriteAuthor(
     _ id: String,
     from target: Author,
     callbacks: MutationCallbacks<Void> = .init()
@@ -532,7 +532,7 @@ public extension Shared where Value == IdentifiedArrayOf<Member> {
 
   /// Link a Member to a Genre via 'genreInterests'.
   @MainActor
-  public func linkGenreInterests(
+   func linkGenreInterests(
     _ id: String,
     to target: Genre,
     callbacks: MutationCallbacks<Void> = .init()
@@ -551,7 +551,7 @@ public extension Shared where Value == IdentifiedArrayOf<Member> {
 
   /// Unlink a Member from a Genre via 'genreInterests'.
   @MainActor
-  public func unlinkGenreInterests(
+   func unlinkGenreInterests(
     _ id: String,
     from target: Genre,
     callbacks: MutationCallbacks<Void> = .init()
@@ -572,7 +572,7 @@ public extension Shared where Value == IdentifiedArrayOf<Member> {
 
   /// Link a Member to a Book via 'borrowedBooks'.
   @MainActor
-  public func linkBorrowedBooks(
+   func linkBorrowedBooks(
     _ id: String,
     to target: Book,
     callbacks: MutationCallbacks<Void> = .init()
@@ -591,7 +591,7 @@ public extension Shared where Value == IdentifiedArrayOf<Member> {
 
   /// Unlink a Member from a Book via 'borrowedBooks'.
   @MainActor
-  public func unlinkBorrowedBooks(
+   func unlinkBorrowedBooks(
     _ id: String,
     from target: Book,
     callbacks: MutationCallbacks<Void> = .init()
@@ -612,7 +612,7 @@ public extension Shared where Value == IdentifiedArrayOf<Member> {
 
   /// Link a Member to a BorrowRecord via 'borrowHistory'.
   @MainActor
-  public func linkBorrowHistory(
+   func linkBorrowHistory(
     _ id: String,
     to target: BorrowRecord,
     callbacks: MutationCallbacks<Void> = .init()
@@ -631,7 +631,7 @@ public extension Shared where Value == IdentifiedArrayOf<Member> {
 
   /// Unlink a Member from a BorrowRecord via 'borrowHistory'.
   @MainActor
-  public func unlinkBorrowHistory(
+   func unlinkBorrowHistory(
     _ id: String,
     from target: BorrowRecord,
     callbacks: MutationCallbacks<Void> = .init()
@@ -655,7 +655,7 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Create a new Member and sync to InstantDB.
   @MainActor
-  public func createMember(
+   func createMember(
     id: String = UUID().uuidString.lowercased(),
     name: String,
     email: String,
@@ -692,7 +692,7 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Delete a Member by ID.
   @MainActor
-  public func deleteMember(
+   func deleteMember(
     _ id: String,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -710,7 +710,7 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Delete a Member entity.
   @MainActor
-  public func deleteMember(
+   func deleteMember(
     _ entity: Member,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -726,7 +726,7 @@ public extension Shared where Value == IdentifiedArrayOf<Author> {
 
   /// Create a new Author and sync to InstantDB.
   @MainActor
-  public func createAuthor(
+   func createAuthor(
     id: String = UUID().uuidString.lowercased(),
     name: String,
     bio: String? = nil,
@@ -757,7 +757,7 @@ public extension Shared where Value == IdentifiedArrayOf<Author> {
 
   /// Update the name field of a Author.
   @MainActor
-  public func updateName(
+   func updateName(
     _ id: String,
     to value: String,
     callbacks: MutationCallbacks<Author> = .init()
@@ -780,7 +780,7 @@ public extension Shared where Value == IdentifiedArrayOf<Author> {
 
   /// Update the bio field of a Author.
   @MainActor
-  public func updateBio(
+   func updateBio(
     _ id: String,
     to value: String?,
     callbacks: MutationCallbacks<Author> = .init()
@@ -803,7 +803,7 @@ public extension Shared where Value == IdentifiedArrayOf<Author> {
 
   /// Update the birthYear field of a Author.
   @MainActor
-  public func updateBirthYear(
+   func updateBirthYear(
     _ id: String,
     to value: Double?,
     callbacks: MutationCallbacks<Author> = .init()
@@ -826,7 +826,7 @@ public extension Shared where Value == IdentifiedArrayOf<Author> {
 
   /// Update the isActive field of a Author.
   @MainActor
-  public func updateIsActive(
+   func updateIsActive(
     _ id: String,
     to value: Bool,
     callbacks: MutationCallbacks<Author> = .init()
@@ -849,7 +849,7 @@ public extension Shared where Value == IdentifiedArrayOf<Author> {
 
   /// Toggle the isActive field of a Author.
   @MainActor
-  public func toggleIsActive(
+   func toggleIsActive(
     _ id: String,
     callbacks: MutationCallbacks<Author> = .init()
   ) {
@@ -871,7 +871,7 @@ public extension Shared where Value == IdentifiedArrayOf<Author> {
 
   /// Set isActive to true for a Author.
   @MainActor
-  public func markIsActive(
+   func markIsActive(
     _ id: String,
     callbacks: MutationCallbacks<Author> = .init()
   ) {
@@ -880,7 +880,7 @@ public extension Shared where Value == IdentifiedArrayOf<Author> {
 
   /// Set isActive to false for a Author.
   @MainActor
-  public func unmarkIsActive(
+   func unmarkIsActive(
     _ id: String,
     callbacks: MutationCallbacks<Author> = .init()
   ) {
@@ -889,7 +889,7 @@ public extension Shared where Value == IdentifiedArrayOf<Author> {
 
   /// Update the bookCount field of a Author.
   @MainActor
-  public func updateBookCount(
+   func updateBookCount(
     _ id: String,
     to value: Double,
     callbacks: MutationCallbacks<Author> = .init()
@@ -912,7 +912,7 @@ public extension Shared where Value == IdentifiedArrayOf<Author> {
 
   /// Increment the bookCount field of a Author.
   @MainActor
-  public func incrementBookCount(
+   func incrementBookCount(
     _ id: String,
     by amount: Double = 1,
     callbacks: MutationCallbacks<Author> = .init()
@@ -935,7 +935,7 @@ public extension Shared where Value == IdentifiedArrayOf<Author> {
 
   /// Decrement the bookCount field of a Author.
   @MainActor
-  public func decrementBookCount(
+   func decrementBookCount(
     _ id: String,
     by amount: Double = 1,
     callbacks: MutationCallbacks<Author> = .init()
@@ -947,7 +947,7 @@ public extension Shared where Value == IdentifiedArrayOf<Author> {
 
   /// Delete a Author by ID.
   @MainActor
-  public func deleteAuthor(
+   func deleteAuthor(
     _ id: String,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -965,7 +965,7 @@ public extension Shared where Value == IdentifiedArrayOf<Author> {
 
   /// Delete a Author entity.
   @MainActor
-  public func deleteAuthor(
+   func deleteAuthor(
     _ entity: Author,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -976,7 +976,7 @@ public extension Shared where Value == IdentifiedArrayOf<Author> {
 
   /// Link a Author to a Book via 'books'.
   @MainActor
-  public func linkBooks(
+   func linkBooks(
     _ id: String,
     to target: Book,
     callbacks: MutationCallbacks<Void> = .init()
@@ -995,7 +995,7 @@ public extension Shared where Value == IdentifiedArrayOf<Author> {
 
   /// Unlink a Author from a Book via 'books'.
   @MainActor
-  public func unlinkBooks(
+   func unlinkBooks(
     _ id: String,
     from target: Book,
     callbacks: MutationCallbacks<Void> = .init()
@@ -1016,7 +1016,7 @@ public extension Shared where Value == IdentifiedArrayOf<Author> {
 
   /// Link a Author to a Member via 'fans'.
   @MainActor
-  public func linkFans(
+   func linkFans(
     _ id: String,
     to target: Member,
     callbacks: MutationCallbacks<Void> = .init()
@@ -1035,7 +1035,7 @@ public extension Shared where Value == IdentifiedArrayOf<Author> {
 
   /// Unlink a Author from a Member via 'fans'.
   @MainActor
-  public func unlinkFans(
+   func unlinkFans(
     _ id: String,
     from target: Member,
     callbacks: MutationCallbacks<Void> = .init()
@@ -1059,7 +1059,7 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Create a new Author and sync to InstantDB.
   @MainActor
-  public func createAuthor(
+   func createAuthor(
     id: String = UUID().uuidString.lowercased(),
     name: String,
     bio: String? = nil,
@@ -1092,7 +1092,7 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Delete a Author by ID.
   @MainActor
-  public func deleteAuthor(
+   func deleteAuthor(
     _ id: String,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -1110,7 +1110,7 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Delete a Author entity.
   @MainActor
-  public func deleteAuthor(
+   func deleteAuthor(
     _ entity: Author,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -1126,7 +1126,7 @@ public extension Shared where Value == IdentifiedArrayOf<Book> {
 
   /// Create a new Book and sync to InstantDB.
   @MainActor
-  public func createBook(
+   func createBook(
     id: String = UUID().uuidString.lowercased(),
     title: String,
     isbn: String,
@@ -1163,7 +1163,7 @@ public extension Shared where Value == IdentifiedArrayOf<Book> {
 
   /// Update the title field of a Book.
   @MainActor
-  public func updateTitle(
+   func updateTitle(
     _ id: String,
     to value: String,
     callbacks: MutationCallbacks<Book> = .init()
@@ -1186,7 +1186,7 @@ public extension Shared where Value == IdentifiedArrayOf<Book> {
 
   /// Update the isbn field of a Book.
   @MainActor
-  public func updateIsbn(
+   func updateIsbn(
     _ id: String,
     to value: String,
     callbacks: MutationCallbacks<Book> = .init()
@@ -1209,7 +1209,7 @@ public extension Shared where Value == IdentifiedArrayOf<Book> {
 
   /// Update the publicationYear field of a Book.
   @MainActor
-  public func updatePublicationYear(
+   func updatePublicationYear(
     _ id: String,
     to value: Double,
     callbacks: MutationCallbacks<Book> = .init()
@@ -1232,7 +1232,7 @@ public extension Shared where Value == IdentifiedArrayOf<Book> {
 
   /// Update the pageCount field of a Book.
   @MainActor
-  public func updatePageCount(
+   func updatePageCount(
     _ id: String,
     to value: Double?,
     callbacks: MutationCallbacks<Book> = .init()
@@ -1255,7 +1255,7 @@ public extension Shared where Value == IdentifiedArrayOf<Book> {
 
   /// Increment the pageCount field of a Book.
   @MainActor
-  public func incrementPageCount(
+   func incrementPageCount(
     _ id: String,
     by amount: Double = 1,
     callbacks: MutationCallbacks<Book> = .init()
@@ -1264,7 +1264,7 @@ public extension Shared where Value == IdentifiedArrayOf<Book> {
     Task {
       do {
         try await self.update(id: id) { entity in
-          entity.pageCount += amount
+          entity.pageCount = (entity.pageCount ?? 0) + amount
         }
         if let updated = self.wrappedValue[id: id] {
           callbacks.onSuccess?(updated)
@@ -1278,7 +1278,7 @@ public extension Shared where Value == IdentifiedArrayOf<Book> {
 
   /// Decrement the pageCount field of a Book.
   @MainActor
-  public func decrementPageCount(
+   func decrementPageCount(
     _ id: String,
     by amount: Double = 1,
     callbacks: MutationCallbacks<Book> = .init()
@@ -1288,7 +1288,7 @@ public extension Shared where Value == IdentifiedArrayOf<Book> {
 
   /// Update the description field of a Book.
   @MainActor
-  public func updateDescription(
+   func updateDescription(
     _ id: String,
     to value: String?,
     callbacks: MutationCallbacks<Book> = .init()
@@ -1311,7 +1311,7 @@ public extension Shared where Value == IdentifiedArrayOf<Book> {
 
   /// Update the averageRating field of a Book.
   @MainActor
-  public func updateAverageRating(
+   func updateAverageRating(
     _ id: String,
     to value: Double?,
     callbacks: MutationCallbacks<Book> = .init()
@@ -1334,7 +1334,7 @@ public extension Shared where Value == IdentifiedArrayOf<Book> {
 
   /// Update the availableCopies field of a Book.
   @MainActor
-  public func updateAvailableCopies(
+   func updateAvailableCopies(
     _ id: String,
     to value: Double,
     callbacks: MutationCallbacks<Book> = .init()
@@ -1357,7 +1357,7 @@ public extension Shared where Value == IdentifiedArrayOf<Book> {
 
   /// Increment the availableCopies field of a Book.
   @MainActor
-  public func incrementAvailableCopies(
+   func incrementAvailableCopies(
     _ id: String,
     by amount: Double = 1,
     callbacks: MutationCallbacks<Book> = .init()
@@ -1380,7 +1380,7 @@ public extension Shared where Value == IdentifiedArrayOf<Book> {
 
   /// Decrement the availableCopies field of a Book.
   @MainActor
-  public func decrementAvailableCopies(
+   func decrementAvailableCopies(
     _ id: String,
     by amount: Double = 1,
     callbacks: MutationCallbacks<Book> = .init()
@@ -1390,7 +1390,7 @@ public extension Shared where Value == IdentifiedArrayOf<Book> {
 
   /// Update the metadata field of a Book.
   @MainActor
-  public func updateMetadata(
+   func updateMetadata(
     _ id: String,
     to value: AnyCodable?,
     callbacks: MutationCallbacks<Book> = .init()
@@ -1415,7 +1415,7 @@ public extension Shared where Value == IdentifiedArrayOf<Book> {
 
   /// Delete a Book by ID.
   @MainActor
-  public func deleteBook(
+   func deleteBook(
     _ id: String,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -1433,7 +1433,7 @@ public extension Shared where Value == IdentifiedArrayOf<Book> {
 
   /// Delete a Book entity.
   @MainActor
-  public func deleteBook(
+   func deleteBook(
     _ entity: Book,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -1444,7 +1444,7 @@ public extension Shared where Value == IdentifiedArrayOf<Book> {
 
   /// Link a Book to a Genre via 'genres'.
   @MainActor
-  public func linkGenres(
+   func linkGenres(
     _ id: String,
     to target: Genre,
     callbacks: MutationCallbacks<Void> = .init()
@@ -1463,7 +1463,7 @@ public extension Shared where Value == IdentifiedArrayOf<Book> {
 
   /// Unlink a Book from a Genre via 'genres'.
   @MainActor
-  public func unlinkGenres(
+   func unlinkGenres(
     _ id: String,
     from target: Genre,
     callbacks: MutationCallbacks<Void> = .init()
@@ -1484,7 +1484,7 @@ public extension Shared where Value == IdentifiedArrayOf<Book> {
 
   /// Link a Book to a Member via 'currentBorrower'.
   @MainActor
-  public func linkCurrentBorrower(
+   func linkCurrentBorrower(
     _ id: String,
     to target: Member,
     callbacks: MutationCallbacks<Void> = .init()
@@ -1503,7 +1503,7 @@ public extension Shared where Value == IdentifiedArrayOf<Book> {
 
   /// Unlink a Book from a Member via 'currentBorrower'.
   @MainActor
-  public func unlinkCurrentBorrower(
+   func unlinkCurrentBorrower(
     _ id: String,
     from target: Member,
     callbacks: MutationCallbacks<Void> = .init()
@@ -1524,7 +1524,7 @@ public extension Shared where Value == IdentifiedArrayOf<Book> {
 
   /// Link a Book to a Author via 'author'.
   @MainActor
-  public func linkAuthor(
+   func linkAuthor(
     _ id: String,
     to target: Author,
     callbacks: MutationCallbacks<Void> = .init()
@@ -1543,7 +1543,7 @@ public extension Shared where Value == IdentifiedArrayOf<Book> {
 
   /// Unlink a Book from a Author via 'author'.
   @MainActor
-  public func unlinkAuthor(
+   func unlinkAuthor(
     _ id: String,
     from target: Author,
     callbacks: MutationCallbacks<Void> = .init()
@@ -1564,7 +1564,7 @@ public extension Shared where Value == IdentifiedArrayOf<Book> {
 
   /// Link a Book to a BorrowRecord via 'borrowHistory'.
   @MainActor
-  public func linkBorrowHistory(
+   func linkBorrowHistory(
     _ id: String,
     to target: BorrowRecord,
     callbacks: MutationCallbacks<Void> = .init()
@@ -1583,7 +1583,7 @@ public extension Shared where Value == IdentifiedArrayOf<Book> {
 
   /// Unlink a Book from a BorrowRecord via 'borrowHistory'.
   @MainActor
-  public func unlinkBorrowHistory(
+   func unlinkBorrowHistory(
     _ id: String,
     from target: BorrowRecord,
     callbacks: MutationCallbacks<Void> = .init()
@@ -1607,7 +1607,7 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Create a new Book and sync to InstantDB.
   @MainActor
-  public func createBook(
+   func createBook(
     id: String = UUID().uuidString.lowercased(),
     title: String,
     isbn: String,
@@ -1646,7 +1646,7 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Delete a Book by ID.
   @MainActor
-  public func deleteBook(
+   func deleteBook(
     _ id: String,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -1664,7 +1664,7 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Delete a Book entity.
   @MainActor
-  public func deleteBook(
+   func deleteBook(
     _ entity: Book,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -1680,7 +1680,7 @@ public extension Shared where Value == IdentifiedArrayOf<Genre> {
 
   /// Create a new Genre and sync to InstantDB.
   @MainActor
-  public func createGenre(
+   func createGenre(
     id: String = UUID().uuidString.lowercased(),
     name: String,
     code: String,
@@ -1709,7 +1709,7 @@ public extension Shared where Value == IdentifiedArrayOf<Genre> {
 
   /// Update the name field of a Genre.
   @MainActor
-  public func updateName(
+   func updateName(
     _ id: String,
     to value: String,
     callbacks: MutationCallbacks<Genre> = .init()
@@ -1732,7 +1732,7 @@ public extension Shared where Value == IdentifiedArrayOf<Genre> {
 
   /// Update the code field of a Genre.
   @MainActor
-  public func updateCode(
+   func updateCode(
     _ id: String,
     to value: String,
     callbacks: MutationCallbacks<Genre> = .init()
@@ -1755,7 +1755,7 @@ public extension Shared where Value == IdentifiedArrayOf<Genre> {
 
   /// Update the description field of a Genre.
   @MainActor
-  public func updateDescription(
+   func updateDescription(
     _ id: String,
     to value: String?,
     callbacks: MutationCallbacks<Genre> = .init()
@@ -1778,7 +1778,7 @@ public extension Shared where Value == IdentifiedArrayOf<Genre> {
 
   /// Update the bookCount field of a Genre.
   @MainActor
-  public func updateBookCount(
+   func updateBookCount(
     _ id: String,
     to value: Double,
     callbacks: MutationCallbacks<Genre> = .init()
@@ -1801,7 +1801,7 @@ public extension Shared where Value == IdentifiedArrayOf<Genre> {
 
   /// Increment the bookCount field of a Genre.
   @MainActor
-  public func incrementBookCount(
+   func incrementBookCount(
     _ id: String,
     by amount: Double = 1,
     callbacks: MutationCallbacks<Genre> = .init()
@@ -1824,7 +1824,7 @@ public extension Shared where Value == IdentifiedArrayOf<Genre> {
 
   /// Decrement the bookCount field of a Genre.
   @MainActor
-  public func decrementBookCount(
+   func decrementBookCount(
     _ id: String,
     by amount: Double = 1,
     callbacks: MutationCallbacks<Genre> = .init()
@@ -1836,7 +1836,7 @@ public extension Shared where Value == IdentifiedArrayOf<Genre> {
 
   /// Delete a Genre by ID.
   @MainActor
-  public func deleteGenre(
+   func deleteGenre(
     _ id: String,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -1854,7 +1854,7 @@ public extension Shared where Value == IdentifiedArrayOf<Genre> {
 
   /// Delete a Genre entity.
   @MainActor
-  public func deleteGenre(
+   func deleteGenre(
     _ entity: Genre,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -1865,7 +1865,7 @@ public extension Shared where Value == IdentifiedArrayOf<Genre> {
 
   /// Link a Genre to a Book via 'books'.
   @MainActor
-  public func linkBooks(
+   func linkBooks(
     _ id: String,
     to target: Book,
     callbacks: MutationCallbacks<Void> = .init()
@@ -1884,7 +1884,7 @@ public extension Shared where Value == IdentifiedArrayOf<Genre> {
 
   /// Unlink a Genre from a Book via 'books'.
   @MainActor
-  public func unlinkBooks(
+   func unlinkBooks(
     _ id: String,
     from target: Book,
     callbacks: MutationCallbacks<Void> = .init()
@@ -1905,7 +1905,7 @@ public extension Shared where Value == IdentifiedArrayOf<Genre> {
 
   /// Link a Genre to a Member via 'interestedMembers'.
   @MainActor
-  public func linkInterestedMembers(
+   func linkInterestedMembers(
     _ id: String,
     to target: Member,
     callbacks: MutationCallbacks<Void> = .init()
@@ -1924,7 +1924,7 @@ public extension Shared where Value == IdentifiedArrayOf<Genre> {
 
   /// Unlink a Genre from a Member via 'interestedMembers'.
   @MainActor
-  public func unlinkInterestedMembers(
+   func unlinkInterestedMembers(
     _ id: String,
     from target: Member,
     callbacks: MutationCallbacks<Void> = .init()
@@ -1948,7 +1948,7 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Create a new Genre and sync to InstantDB.
   @MainActor
-  public func createGenre(
+   func createGenre(
     id: String = UUID().uuidString.lowercased(),
     name: String,
     code: String,
@@ -1979,7 +1979,7 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Delete a Genre by ID.
   @MainActor
-  public func deleteGenre(
+   func deleteGenre(
     _ id: String,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -1997,7 +1997,7 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Delete a Genre entity.
   @MainActor
-  public func deleteGenre(
+   func deleteGenre(
     _ entity: Genre,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -2013,7 +2013,7 @@ public extension Shared where Value == IdentifiedArrayOf<BorrowRecord> {
 
   /// Create a new BorrowRecord and sync to InstantDB.
   @MainActor
-  public func createBorrowRecord(
+   func createBorrowRecord(
     id: String = UUID().uuidString.lowercased(),
     borrowedAt: Date,
     dueAt: Date,
@@ -2042,7 +2042,7 @@ public extension Shared where Value == IdentifiedArrayOf<BorrowRecord> {
 
   /// Update the borrowedAt field of a BorrowRecord.
   @MainActor
-  public func updateBorrowedAt(
+   func updateBorrowedAt(
     _ id: String,
     to value: Date,
     callbacks: MutationCallbacks<BorrowRecord> = .init()
@@ -2065,7 +2065,7 @@ public extension Shared where Value == IdentifiedArrayOf<BorrowRecord> {
 
   /// Update the dueAt field of a BorrowRecord.
   @MainActor
-  public func updateDueAt(
+   func updateDueAt(
     _ id: String,
     to value: Date,
     callbacks: MutationCallbacks<BorrowRecord> = .init()
@@ -2088,7 +2088,7 @@ public extension Shared where Value == IdentifiedArrayOf<BorrowRecord> {
 
   /// Update the returnedAt field of a BorrowRecord.
   @MainActor
-  public func updateReturnedAt(
+   func updateReturnedAt(
     _ id: String,
     to value: Date?,
     callbacks: MutationCallbacks<BorrowRecord> = .init()
@@ -2111,7 +2111,7 @@ public extension Shared where Value == IdentifiedArrayOf<BorrowRecord> {
 
   /// Update the lateFeeInCents field of a BorrowRecord.
   @MainActor
-  public func updateLateFeeInCents(
+   func updateLateFeeInCents(
     _ id: String,
     to value: Double?,
     callbacks: MutationCallbacks<BorrowRecord> = .init()
@@ -2134,7 +2134,7 @@ public extension Shared where Value == IdentifiedArrayOf<BorrowRecord> {
 
   /// Increment the lateFeeInCents field of a BorrowRecord.
   @MainActor
-  public func incrementLateFeeInCents(
+   func incrementLateFeeInCents(
     _ id: String,
     by amount: Double = 1,
     callbacks: MutationCallbacks<BorrowRecord> = .init()
@@ -2143,7 +2143,7 @@ public extension Shared where Value == IdentifiedArrayOf<BorrowRecord> {
     Task {
       do {
         try await self.update(id: id) { entity in
-          entity.lateFeeInCents += amount
+          entity.lateFeeInCents = (entity.lateFeeInCents ?? 0) + amount
         }
         if let updated = self.wrappedValue[id: id] {
           callbacks.onSuccess?(updated)
@@ -2157,7 +2157,7 @@ public extension Shared where Value == IdentifiedArrayOf<BorrowRecord> {
 
   /// Decrement the lateFeeInCents field of a BorrowRecord.
   @MainActor
-  public func decrementLateFeeInCents(
+   func decrementLateFeeInCents(
     _ id: String,
     by amount: Double = 1,
     callbacks: MutationCallbacks<BorrowRecord> = .init()
@@ -2169,7 +2169,7 @@ public extension Shared where Value == IdentifiedArrayOf<BorrowRecord> {
 
   /// Delete a BorrowRecord by ID.
   @MainActor
-  public func deleteBorrowRecord(
+   func deleteBorrowRecord(
     _ id: String,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -2187,7 +2187,7 @@ public extension Shared where Value == IdentifiedArrayOf<BorrowRecord> {
 
   /// Delete a BorrowRecord entity.
   @MainActor
-  public func deleteBorrowRecord(
+   func deleteBorrowRecord(
     _ entity: BorrowRecord,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -2198,7 +2198,7 @@ public extension Shared where Value == IdentifiedArrayOf<BorrowRecord> {
 
   /// Link a BorrowRecord to a Book via 'book'.
   @MainActor
-  public func linkBook(
+   func linkBook(
     _ id: String,
     to target: Book,
     callbacks: MutationCallbacks<Void> = .init()
@@ -2217,7 +2217,7 @@ public extension Shared where Value == IdentifiedArrayOf<BorrowRecord> {
 
   /// Unlink a BorrowRecord from a Book via 'book'.
   @MainActor
-  public func unlinkBook(
+   func unlinkBook(
     _ id: String,
     from target: Book,
     callbacks: MutationCallbacks<Void> = .init()
@@ -2238,7 +2238,7 @@ public extension Shared where Value == IdentifiedArrayOf<BorrowRecord> {
 
   /// Link a BorrowRecord to a Member via 'member'.
   @MainActor
-  public func linkMember(
+   func linkMember(
     _ id: String,
     to target: Member,
     callbacks: MutationCallbacks<Void> = .init()
@@ -2257,7 +2257,7 @@ public extension Shared where Value == IdentifiedArrayOf<BorrowRecord> {
 
   /// Unlink a BorrowRecord from a Member via 'member'.
   @MainActor
-  public func unlinkMember(
+   func unlinkMember(
     _ id: String,
     from target: Member,
     callbacks: MutationCallbacks<Void> = .init()
@@ -2281,7 +2281,7 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Create a new BorrowRecord and sync to InstantDB.
   @MainActor
-  public func createBorrowRecord(
+   func createBorrowRecord(
     id: String = UUID().uuidString.lowercased(),
     borrowedAt: Date,
     dueAt: Date,
@@ -2312,7 +2312,7 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Delete a BorrowRecord by ID.
   @MainActor
-  public func deleteBorrowRecord(
+   func deleteBorrowRecord(
     _ id: String,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -2330,7 +2330,7 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Delete a BorrowRecord entity.
   @MainActor
-  public func deleteBorrowRecord(
+   func deleteBorrowRecord(
     _ entity: BorrowRecord,
     callbacks: MutationCallbacks<Void> = .init()
   ) {

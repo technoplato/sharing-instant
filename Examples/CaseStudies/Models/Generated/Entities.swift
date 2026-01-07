@@ -126,7 +126,6 @@ struct FactListContentView: View {
 ///   content: String
 ///   imageUrl: String?
 ///   createdAt: Double
-///   likesCount: Double
 ///   comments: [Comment]?  // Link (has: many)
 ///   likes: [Like]?  // Link (has: many)
 ///   author: Profile?  // Link (has: one)
@@ -163,6 +162,39 @@ struct FactListContentView: View {
 ///   tiles: [Tile]?  // Link (has: many)
 /// }
 ///
+/// Media {
+///   id: String
+///   title: String
+///   durationSeconds: Double
+///   mediaType: String
+///   ingestedAt: String
+///   description: String?
+///   transcriptionRuns: [TranscriptionRun]?  // Link (has: many)
+/// }
+///
+/// TranscriptionRun {
+///   id: String
+///   toolVersion: String
+///   executedAt: String
+///   runType: String?
+///   isActive: Bool?
+///   transcriptionSegments: [TranscriptionSegment]?  // Link (has: many)
+///   media: Media?  // Link (has: one)
+/// }
+///
+/// TranscriptionSegment {
+///   id: String
+///   startTime: Double
+///   endTime: Double
+///   text: String
+///   segmentIndex: Double
+///   isFinalized: Bool
+///   ingestedAt: String
+///   speaker: Double?
+///   words: AnyCodable?
+///   transcriptionRun: TranscriptionRun?  // Link (has: one)
+/// }
+///
 
 ///
 /// ─────────────────────────────────────────────────────────────────────────────────
@@ -170,15 +202,15 @@ struct FactListContentView: View {
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// Mode:            Production (full traceability)
-/// Generated:       December 30, 2025 at 11:23 PM EST
+/// Generated:       January 6, 2026 at 9:51 PM EST
 /// Machine:         mlustig-hy7l9xrd61.local (Apple M4 Pro, macOS 26.2)
 /// Generator:       Sources/instant-schema/main.swift
-/// Source Schema:   Examples/CaseStudies/instant.schema.ts
+/// Source Schema:   Examples/instant.schema.ts
 
 /* To regenerate this file, run:
 
 swift run instant-schema generate \
-  --from Examples/CaseStudies/instant.schema.ts \
+  --from Examples/instant.schema.ts \
   --to Examples/CaseStudies/Models/Generated
 */
 /// ─────────────────────────────────────────────────────────────────────────────────
@@ -186,22 +218,39 @@ swift run instant-schema generate \
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// HEAD Commit:
-///   SHA:      1c4c66bedb72039ba775a89156a75e35561bf9e5
-///   Date:     December 30, 2025 at 11:23 PM EST
+///   SHA:      f638771bea036ebc8ee4b51bf4762bb111f77cc6
+///   Date:     January 6, 2026 at 9:51 PM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  WIP: TileGameDemo debugging and other demo updates
+///   Message:  feat: Add transcription entities for rapid update testing
 ///
 /// Schema File Last Modified:
-///   SHA:      522ffbf617207b60ecfa647b2d1dc6b9bfa3a7ff
-///   Date:     December 22, 2025 at 6:46 AM EST
+///   SHA:      f638771bea036ebc8ee4b51bf4762bb111f77cc6
+///   Date:     January 6, 2026 at 9:51 PM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  fix: Remove recursive self-link to fix Swift compilation
+///   Message:  feat: Add transcription entities for rapid update testing
 ///
 /// ═══════════════════════════════════════════════════════════════════════════════
 
 import Foundation
 import InstantDB
 import SharingInstant
+
+/// Generated struct for JSON object type
+public struct TranscriptionSegmentWords: Codable, Sendable, Equatable {
+  public var text: String
+  public var startTime: Double
+  public var endTime: Double
+
+  public init(
+    text: String,
+    startTime: Double,
+    endTime: Double
+  ) {
+    self.text = text
+    self.startTime = startTime
+    self.endTime = endTime
+  }
+}
 
 public struct InstantFile: EntityIdentifiable, Codable, Sendable, Equatable {
   public static var namespace: String { "$files" }
@@ -518,7 +567,6 @@ public struct Post: EntityIdentifiable, Codable, Sendable, Equatable {
   public var content: String
   public var imageUrl: String?
   public var createdAt: Double
-  public var likesCount: Double
 
   // MARK: - Links
   // Populated when queried with .with(...)
@@ -543,7 +591,6 @@ public struct Post: EntityIdentifiable, Codable, Sendable, Equatable {
     content: String,
     imageUrl: String? = nil,
     createdAt: Double,
-    likesCount: Double,
     comments: [Comment]? = nil,
     likes: [Like]? = nil,
     author: Profile? = nil
@@ -552,7 +599,6 @@ public struct Post: EntityIdentifiable, Codable, Sendable, Equatable {
     self.content = content
     self.imageUrl = imageUrl
     self.createdAt = createdAt
-    self.likesCount = likesCount
     self.comments = comments
     self.likes = likes
     self.author = author
@@ -561,7 +607,7 @@ public struct Post: EntityIdentifiable, Codable, Sendable, Equatable {
   // MARK: - Custom Codable (handles InstantDB type quirks)
 
   private enum CodingKeys: String, CodingKey {
-    case id, content, imageUrl, createdAt, likesCount, comments, likes, author
+    case id, content, imageUrl, createdAt, comments, likes, author
   }
 
   public init(from decoder: Decoder) throws {
@@ -570,7 +616,6 @@ public struct Post: EntityIdentifiable, Codable, Sendable, Equatable {
     self.content = try container.decode(String.self, forKey: .content)
     self.imageUrl = try container.decodeIfPresent(String.self, forKey: .imageUrl)
     self.createdAt = try container.decode(FlexibleDouble.self, forKey: .createdAt).wrappedValue
-    self.likesCount = try container.decode(FlexibleDouble.self, forKey: .likesCount).wrappedValue
     self.comments = try container.decodeIfPresent([Comment].self, forKey: .comments)
     self.likes = try container.decodeIfPresent([Like].self, forKey: .likes)
     self.author = try container.decodeIfPresent(Profile.self, forKey: .author)
@@ -582,7 +627,6 @@ public struct Post: EntityIdentifiable, Codable, Sendable, Equatable {
     try container.encode(content, forKey: .content)
     try container.encodeIfPresent(imageUrl, forKey: .imageUrl)
     try container.encode(createdAt, forKey: .createdAt)
-    try container.encode(likesCount, forKey: .likesCount)
     try container.encodeIfPresent(comments, forKey: .comments)
     try container.encodeIfPresent(likes, forKey: .likes)
     try container.encodeIfPresent(author, forKey: .author)
@@ -831,6 +875,245 @@ public struct Board: EntityIdentifiable, Codable, Sendable, Equatable {
     try container.encode(title, forKey: .title)
     try container.encode(createdAt, forKey: .createdAt)
     try container.encodeIfPresent(tiles, forKey: .tiles)
+  }
+}
+
+
+public struct Media: EntityIdentifiable, Codable, Sendable, Equatable {
+  public static var namespace: String { "media" }
+  
+  // MARK: - Fields
+  
+  /// The unique identifier for this entity
+  public var id: String
+  public var title: String
+  public var durationSeconds: Double
+  public var mediaType: String
+  public var ingestedAt: String
+  public var description: String?
+
+  // MARK: - Links
+  // Populated when queried with .with(...)
+
+  /// Link to transcriptionRuns via 'mediaTranscriptionRuns'
+  /// - Note: Only populated when queried with `.with(\.transcriptionRuns)`
+  public var transcriptionRuns: [TranscriptionRun]?
+
+
+  // MARK: - Initializer
+
+  public init(
+    id: String = UUID().uuidString.lowercased(),
+    title: String,
+    durationSeconds: Double,
+    mediaType: String,
+    ingestedAt: String,
+    description: String? = nil,
+    transcriptionRuns: [TranscriptionRun]? = nil
+  ) {
+    self.id = id
+    self.title = title
+    self.durationSeconds = durationSeconds
+    self.mediaType = mediaType
+    self.ingestedAt = ingestedAt
+    self.description = description
+    self.transcriptionRuns = transcriptionRuns
+  }
+
+  // MARK: - Custom Codable (handles InstantDB type quirks)
+
+  private enum CodingKeys: String, CodingKey {
+    case id, title, durationSeconds, mediaType, ingestedAt, description, transcriptionRuns
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.id = try container.decode(String.self, forKey: .id)
+    self.title = try container.decode(String.self, forKey: .title)
+    self.durationSeconds = try container.decode(FlexibleDouble.self, forKey: .durationSeconds).wrappedValue
+    self.mediaType = try container.decode(String.self, forKey: .mediaType)
+    self.ingestedAt = try container.decode(String.self, forKey: .ingestedAt)
+    self.description = try container.decodeIfPresent(String.self, forKey: .description)
+    self.transcriptionRuns = try container.decodeIfPresent([TranscriptionRun].self, forKey: .transcriptionRuns)
+  }
+
+  public func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(id, forKey: .id)
+    try container.encode(title, forKey: .title)
+    try container.encode(durationSeconds, forKey: .durationSeconds)
+    try container.encode(mediaType, forKey: .mediaType)
+    try container.encode(ingestedAt, forKey: .ingestedAt)
+    try container.encodeIfPresent(description, forKey: .description)
+    try container.encodeIfPresent(transcriptionRuns, forKey: .transcriptionRuns)
+  }
+}
+
+
+public struct TranscriptionRun: EntityIdentifiable, Codable, Sendable, Equatable {
+  public static var namespace: String { "transcriptionRuns" }
+  
+  // MARK: - Fields
+  
+  /// The unique identifier for this entity
+  public var id: String
+  public var toolVersion: String
+  public var executedAt: String
+  public var runType: String?
+  public var isActive: Bool?
+
+  // MARK: - Links
+  // Populated when queried with .with(...)
+
+  /// Link to transcriptionSegments via 'transcriptionRunsSegments'
+  /// - Note: Only populated when queried with `.with(\.transcriptionSegments)`
+  public var transcriptionSegments: [TranscriptionSegment]?
+
+  /// Link to media via 'mediaTranscriptionRuns'
+  /// - Note: Only populated when queried with `.with(\.media)`
+  public var media: Media?
+
+
+  // MARK: - Initializer
+
+  public init(
+    id: String = UUID().uuidString.lowercased(),
+    toolVersion: String,
+    executedAt: String,
+    runType: String? = nil,
+    isActive: Bool? = nil,
+    transcriptionSegments: [TranscriptionSegment]? = nil,
+    media: Media? = nil
+  ) {
+    self.id = id
+    self.toolVersion = toolVersion
+    self.executedAt = executedAt
+    self.runType = runType
+    self.isActive = isActive
+    self.transcriptionSegments = transcriptionSegments
+    self.media = media
+  }
+
+  // MARK: - Custom Codable (handles InstantDB type quirks)
+
+  private enum CodingKeys: String, CodingKey {
+    case id, toolVersion, executedAt, runType, isActive, transcriptionSegments, media
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.id = try container.decode(String.self, forKey: .id)
+    self.toolVersion = try container.decode(String.self, forKey: .toolVersion)
+    self.executedAt = try container.decode(String.self, forKey: .executedAt)
+    self.runType = try container.decodeIfPresent(String.self, forKey: .runType)
+    if let flexValue = try container.decodeIfPresent(FlexibleBool.self, forKey: .isActive) {
+      self.isActive = flexValue.wrappedValue
+    } else {
+      self.isActive = nil
+    }
+    self.transcriptionSegments = try container.decodeIfPresent([TranscriptionSegment].self, forKey: .transcriptionSegments)
+    self.media = try container.decodeIfPresent(Media.self, forKey: .media)
+  }
+
+  public func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(id, forKey: .id)
+    try container.encode(toolVersion, forKey: .toolVersion)
+    try container.encode(executedAt, forKey: .executedAt)
+    try container.encodeIfPresent(runType, forKey: .runType)
+    try container.encodeIfPresent(isActive, forKey: .isActive)
+    try container.encodeIfPresent(transcriptionSegments, forKey: .transcriptionSegments)
+    try container.encodeIfPresent(media, forKey: .media)
+  }
+}
+
+
+public struct TranscriptionSegment: EntityIdentifiable, Codable, Sendable, Equatable {
+  public static var namespace: String { "transcriptionSegments" }
+  
+  // MARK: - Fields
+  
+  /// The unique identifier for this entity
+  public var id: String
+  public var startTime: Double
+  public var endTime: Double
+  public var text: String
+  public var segmentIndex: Double
+  public var isFinalized: Bool
+  public var ingestedAt: String
+  public var speaker: Double?
+  public var words: [TranscriptionSegmentWords]?
+
+  // MARK: - Links
+  // Populated when queried with .with(...)
+
+  /// Link to transcriptionRuns via 'transcriptionRunsSegments'
+  /// - Note: Only populated when queried with `.with(\.transcriptionRun)`
+  public var transcriptionRun: TranscriptionRun?
+
+
+  // MARK: - Initializer
+
+  public init(
+    id: String = UUID().uuidString.lowercased(),
+    startTime: Double,
+    endTime: Double,
+    text: String,
+    segmentIndex: Double,
+    isFinalized: Bool,
+    ingestedAt: String,
+    speaker: Double? = nil,
+    words: [TranscriptionSegmentWords]? = nil,
+    transcriptionRun: TranscriptionRun? = nil
+  ) {
+    self.id = id
+    self.startTime = startTime
+    self.endTime = endTime
+    self.text = text
+    self.segmentIndex = segmentIndex
+    self.isFinalized = isFinalized
+    self.ingestedAt = ingestedAt
+    self.speaker = speaker
+    self.words = words
+    self.transcriptionRun = transcriptionRun
+  }
+
+  // MARK: - Custom Codable (handles InstantDB type quirks)
+
+  private enum CodingKeys: String, CodingKey {
+    case id, startTime, endTime, text, segmentIndex, isFinalized, ingestedAt, speaker, words, transcriptionRun
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.id = try container.decode(String.self, forKey: .id)
+    self.startTime = try container.decode(FlexibleDouble.self, forKey: .startTime).wrappedValue
+    self.endTime = try container.decode(FlexibleDouble.self, forKey: .endTime).wrappedValue
+    self.text = try container.decode(String.self, forKey: .text)
+    self.segmentIndex = try container.decode(FlexibleDouble.self, forKey: .segmentIndex).wrappedValue
+    self.isFinalized = try container.decode(FlexibleBool.self, forKey: .isFinalized).wrappedValue
+    self.ingestedAt = try container.decode(String.self, forKey: .ingestedAt)
+    if let flexValue = try container.decodeIfPresent(FlexibleDouble.self, forKey: .speaker) {
+      self.speaker = flexValue.wrappedValue
+    } else {
+      self.speaker = nil
+    }
+    self.words = try container.decodeIfPresent([TranscriptionSegmentWords].self, forKey: .words)
+    self.transcriptionRun = try container.decodeIfPresent(TranscriptionRun.self, forKey: .transcriptionRun)
+  }
+
+  public func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(id, forKey: .id)
+    try container.encode(startTime, forKey: .startTime)
+    try container.encode(endTime, forKey: .endTime)
+    try container.encode(text, forKey: .text)
+    try container.encode(segmentIndex, forKey: .segmentIndex)
+    try container.encode(isFinalized, forKey: .isFinalized)
+    try container.encode(ingestedAt, forKey: .ingestedAt)
+    try container.encodeIfPresent(speaker, forKey: .speaker)
+    try container.encodeIfPresent(words, forKey: .words)
+    try container.encodeIfPresent(transcriptionRun, forKey: .transcriptionRun)
   }
 }
 

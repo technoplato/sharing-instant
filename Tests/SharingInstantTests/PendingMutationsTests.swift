@@ -609,11 +609,11 @@ final class PendingMutationsTests: XCTestCase {
             let kimId = UUID().uuidString.lowercased()
             let kim = Profile(
                 id: kimId,
-                displayName: "Kim Kardashian",
-                handle: "@kimkardashian_shared_test",
-                bio: "Testing optimistic updates",
                 avatarUrl: nil,
-                createdAt: Date().timeIntervalSince1970 * 1000
+                bio: "Testing optimistic updates",
+                createdAt: Date().timeIntervalSince1970 * 1000,
+                displayName: "Kim Kardashian",
+                handle: "@kimkardashian_shared_test"
             )
             
             // Insert via withLock - this is how users do it
@@ -763,8 +763,7 @@ final class PendingMutationsTests: XCTestCase {
             ops: [
                 ["update", "posts", post1Id, [
                     "content": "Post 1 - will be deleted",
-                    "createdAt": Date().timeIntervalSince1970 * 1000,
-                    "likesCount": 0
+                    "createdAt": Date().timeIntervalSince1970 * 1000
                 ]],
                 ["link", "posts", post1Id, ["author": ["id": authorId, "namespace": "profiles"]]]
             ]
@@ -775,8 +774,7 @@ final class PendingMutationsTests: XCTestCase {
             ops: [
                 ["update", "posts", post2Id, [
                     "content": "Post 2 - will be deleted",
-                    "createdAt": Date().timeIntervalSince1970 * 1000 + 1000,
-                    "likesCount": 0
+                    "createdAt": Date().timeIntervalSince1970 * 1000 + 1000
                 ]],
                 ["link", "posts", post2Id, ["author": ["id": authorId, "namespace": "profiles"]]]
             ]
@@ -837,12 +835,11 @@ final class PendingMutationsTests: XCTestCase {
             let newPost = Post(
                 content: "New post after deletion",
                 createdAt: Date().timeIntervalSince1970 * 1000 + 5000,
-                likesCount: 0,
                 author: Profile(
                     id: authorId,
+                    createdAt: 0,
                     displayName: "Alice",
-                    handle: "alice_deletion_test",
-                    createdAt: 0
+                    handle: "alice_deletion_test"
                 )
             )
             
@@ -956,20 +953,20 @@ final class PendingMutationsTests: XCTestCase {
             let profile1Id = UUID().uuidString.lowercased()
             let profile1 = Profile(
                 id: profile1Id,
+                createdAt: Date().timeIntervalSince1970 * 1000,
                 displayName: "Lifecycle Test 1",
-                handle: "@lifecycle_test_1",
-                createdAt: Date().timeIntervalSince1970 * 1000
+                handle: "@lifecycle_test_1"
             )
-            
+
             $profiles.withLock { $0.insert(profile1, at: 0) }
-            
+
             // Immediately create second profile (both should be pending)
             let profile2Id = UUID().uuidString.lowercased()
             let profile2 = Profile(
                 id: profile2Id,
+                createdAt: Date().timeIntervalSince1970 * 1000 + 1000,
                 displayName: "Lifecycle Test 2",
-                handle: "@lifecycle_test_2",
-                createdAt: Date().timeIntervalSince1970 * 1000 + 1000
+                handle: "@lifecycle_test_2"
             )
             
             $profiles.withLock { $0.insert(profile2, at: 0) }
@@ -1059,9 +1056,9 @@ final class PendingMutationsTests: XCTestCase {
             let newProfileId = UUID().uuidString.lowercased()
             let newProfile = Profile(
                 id: newProfileId,
+                createdAt: Date().timeIntervalSince1970 * 1000,
                 displayName: "Only Changes Test",
-                handle: "@only_changes_test",
-                createdAt: Date().timeIntervalSince1970 * 1000
+                handle: "@only_changes_test"
             )
             
             print("DEBUG: Creating new profile...")

@@ -239,6 +239,28 @@ public actor Reactor {
   /// - Parameters:
   ///   - appID: The App ID.
   ///   - chunks: The transaction chunks to execute.
+  /// Reads an entity directly from the local TripleStore.
+  ///
+  /// ## Why This Exists
+  /// The `update()` mutation method needs to read the current entity state before
+  /// applying modifications. However, `wrappedValue` is updated asynchronously via
+  /// AsyncStream, which creates a race condition:
+  ///
+  /// 1. `create()` applies optimistic update to TripleStore
+  /// 2. `create()` yields to AsyncStream
+  /// 3. **AsyncStream consumer hasn't run yet**
+  /// 4. `update()` reads `wrappedValue[id: id]` → entity not found!
+  ///
+  /// By reading directly from the TripleStore (which IS updated synchronously in
+  /// step 1), we avoid this race condition.
+  ///
+  /// - Parameters:
+  ///   - id: The entity ID to read
+  /// - Returns: The entity if found and decodable, nil otherwise
+  public func getEntity<T: Decodable>(id: String) -> T? {
+    store.get(id: id)
+  }
+
   public func transact(
     appID: String,
     chunks: [TransactionChunk]
@@ -384,8 +406,17 @@ public actor Reactor {
       }
     }
 
-    // Notify all subscriptions after ALL mutations are applied (TypeScript parity)
-    // This ensures cross-namespace consistency and correct filtering.
+    // Notify subscriptions of the specific changes
+    // This ensures currentIDs gets updated with the new entity IDs
+    for (namespace, id) in upsertedIds {
+      await notifyOptimisticUpsert(namespace: namespace, id: id)
+    }
+    for (namespace, id) in deletedIds {
+      await notifyOptimisticDelete(namespace: namespace, id: id)
+    }
+
+    // Also notify all subscriptions to ensure cross-namespace consistency
+    // (e.g., a link mutation affects both sides of the relationship)
     // See Reactor.js pushOps() line 1367: this.notifyAll()
     await notifyAll()
   }
@@ -659,14 +690,32 @@ public actor Reactor {
     }
     
     // Keep alive until cancelled
-    await withTaskCancellationHandler {
-        // Wait indefinitely for cancellation
-        try? await Task.sleep(nanoseconds: .max)
-    } onCancel: {
+    // Note: When the subscription is cancelled, we need to exit cleanly without
+    // throwing CancellationError because XCTest/Swift Testing intercepts thrown errors
+    // even if they're caught in a do-catch block.
+    //
+    // Solution: Use withCheckedContinuation which never throws, and manually resume
+    // when cancellation is detected via onCancel handler.
+    await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+        // Store continuation so onCancel handler can resume it
+        let continuationBox = UnsafeMutablePointer<CheckedContinuation<Void, Never>?>.allocate(capacity: 1)
+        continuationBox.initialize(to: continuation)
+
+        // Set up cancellation handler that resumes the continuation
         Task { [handleId] in
-          await self.removeSubscriptionHandle(id: handleId)
-        }
-        Task {
+            // Wait for cancellation by checking periodically
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 100_000_000) // 100ms poll
+            }
+
+            // When cancelled, resume continuation and cleanup
+            if let cont = continuationBox.pointee {
+                continuationBox.pointee = nil
+                cont.resume()
+            }
+            continuationBox.deallocate()
+
+            await self.removeSubscriptionHandle(id: handleId)
             await subscriptionState.cleanup()
         }
     }

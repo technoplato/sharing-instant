@@ -119,7 +119,6 @@ final class NestedFilteringIntegrationTests: XCTestCase {
         "create", "posts", matchingPostId, [
           "content": "Hello from matching author",
           "createdAt": nowMs,
-          "likesCount": 0,
         ],
       ]]
     )
@@ -131,7 +130,6 @@ final class NestedFilteringIntegrationTests: XCTestCase {
         "create", "posts", nonMatchingPostId, [
           "content": "Hello from non-matching author",
           "createdAt": nowMs,
-          "likesCount": 0,
         ],
       ]]
     )

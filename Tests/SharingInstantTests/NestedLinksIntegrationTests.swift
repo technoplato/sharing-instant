@@ -257,8 +257,7 @@ final class NestedLinksIntegrationTests: XCTestCase {
           ops: [
             ["update", "posts", postId, [
               "content": "Post from Swift SDK",
-              "createdAt": now,
-              "likesCount": 0
+              "createdAt": now
             ]],
             ["link", "posts", postId, ["author": profileId]]
           ]

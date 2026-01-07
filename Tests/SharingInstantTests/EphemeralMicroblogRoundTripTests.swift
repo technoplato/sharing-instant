@@ -129,9 +129,9 @@ final class EphemeralMicroblogRoundTripTests: XCTestCase {
 
     let alice = Profile(
       id: profileId,
+      createdAt: Date().timeIntervalSince1970,
       displayName: "Alice",
-      handle: "alice-\(String(profileId.prefix(8)))",
-      createdAt: Date().timeIntervalSince1970
+      handle: "alice-\(String(profileId.prefix(8)))"
     )
 
     _ = $profiles.withLock { $0.append(alice) }
@@ -148,7 +148,6 @@ final class EphemeralMicroblogRoundTripTests: XCTestCase {
       id: postId,
       content: "Hello from ephemeral integration test",
       createdAt: Date().timeIntervalSince1970,
-      likesCount: 0,
       author: alice
     )
 
@@ -198,7 +197,7 @@ final class EphemeralMicroblogRoundTripTests: XCTestCase {
 
     $posts.withLock { posts in
       guard var existing = posts[id: postId] else { return }
-      existing.likesCount = 1
+      existing.content = "Updated content"
       posts[id: postId] = existing
     }
 
@@ -207,7 +206,7 @@ final class EphemeralMicroblogRoundTripTests: XCTestCase {
       pollInterval: 0.2,
       failureMessage: "Expected post update to round-trip and remain queryable."
     ) {
-      posts[id: postId]?.likesCount == 1
+      posts[id: postId]?.content == "Updated content"
     }
 
     try await Self.eventually(
@@ -340,7 +339,6 @@ final class EphemeralMicroblogRoundTripTests: XCTestCase {
           attrs: [
             "content": dataAttr(valueType: "string", required: true),
             "createdAt": dataAttr(valueType: "number", required: true, indexed: true),
-            "likesCount": dataAttr(valueType: "number", required: true),
           ],
           links: [
             "author": [

@@ -24,7 +24,7 @@
 ///   @Shared(.instantPresence(
 ///     Schema.Rooms.avatars,
 ///     roomId: "my-room-id",
-///     initialPresence: AvatarsPresence(name: "", color: "")
+///     initialPresence: AvatarsPresence(color: "", name: "")
 ///   ))
 ///   var presence: RoomPresence<AvatarsPresence>
 /// Access presence data:
@@ -47,7 +47,7 @@ struct AvatarsRoomView: View {
   @Shared(.instantPresence(
     Schema.Rooms.avatars,
     roomId: "demo-room",
-    initialPresence: AvatarsPresence(name: "", color: "")
+    initialPresence: AvatarsPresence(color: "", name: "")
   ))
   private var presence: RoomPresence<AvatarsPresence>
 
@@ -70,7 +70,7 @@ struct AvatarsRoomView: View {
     .onAppear {
       // Update your presence when view appears
       $presence.withLock { state in
-        state.user = AvatarsPresence(name: "", color: "")
+        state.user = AvatarsPresence(color: "", name: "")
       }
     }
   }
@@ -87,7 +87,7 @@ struct EmojiTopicView: View {
 
   var body: some View {
     Button("Send Event") {
-      channel.publish(EmojiTopic(name: "value", directionAngle: 0, rotationAngle: 0))
+      channel.publish(EmojiTopic(directionAngle: 0, name: "value", rotationAngle: 0))
     }
     .onReceive(channel.events) { event in
       print("Received from \(event.peerId): \(event.data)")
@@ -104,21 +104,21 @@ struct EmojiTopicView: View {
 /// ROOMS:
 ///
 /// Schema.Rooms.avatars → AvatarsPresence {
-///   name: String
 ///   color: String
+///   name: String
 /// }
 ///
 /// Schema.Rooms.chat → ChatPresence {
-///   name: String
 ///   color: String
 ///   isTyping: Bool
+///   name: String
 /// }
 ///
 /// Schema.Rooms.cursors → CursorsPresence {
-///   name: String
 ///   color: String
 ///   cursorX: Double
 ///   cursorY: Double
+///   name: String
 /// }
 ///
 /// Schema.Rooms.reactions → ReactionsPresence {
@@ -126,8 +126,8 @@ struct EmojiTopicView: View {
 /// }
 ///
 /// Schema.Rooms.tileGame → TileGamePresence {
-///   name: String
 ///   color: String
+///   name: String
 /// }
 ///
 /// TOPICS:
@@ -135,8 +135,8 @@ struct EmojiTopicView: View {
 /// Schema.Topics.emoji → EmojiTopic {
 ///   room: "reactions"
 ///   payload: {
-///     name: String
 ///     directionAngle: Double
+///     name: String
 ///     rotationAngle: Double
 ///   }
 /// }
@@ -148,15 +148,15 @@ struct EmojiTopicView: View {
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// Mode:            Production (full traceability)
-/// Generated:       December 30, 2025 at 9:29 PM EST
+/// Generated:       January 7, 2026 at 10:21 AM EST
 /// Machine:         mlustig-hy7l9xrd61.local (Apple M4 Pro, macOS 26.2)
 /// Generator:       Sources/instant-schema/main.swift
-/// Source Schema:   Examples/CaseStudies/instant.schema.ts
+/// Source Schema:   instant.schema.ts
 
 /* To regenerate this file, run:
 
 swift run instant-schema generate \
-  --from Examples/CaseStudies/instant.schema.ts \
+  --from instant.schema.ts \
   --to Tests/SharingInstantTests/Generated
 */
 /// ─────────────────────────────────────────────────────────────────────────────────
@@ -164,16 +164,16 @@ swift run instant-schema generate \
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// HEAD Commit:
-///   SHA:      409fdf941059f57f1f9c7ebdac98ed4999bc3af3
-///   Date:     December 30, 2025 at 9:29 PM EST
+///   SHA:      7984aa49f6505dc5906a550adc3f0c4d362a2d1d
+///   Date:     January 6, 2026 at 9:55 PM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  chore: Regenerate CaseStudies schema with fixed public modifiers
+///   Message:  feat: Add transcription entities to test schema
 ///
 /// Schema File Last Modified:
-///   SHA:      522ffbf617207b60ecfa647b2d1dc6b9bfa3a7ff
-///   Date:     December 22, 2025 at 6:46 AM EST
+///   SHA:      7984aa49f6505dc5906a550adc3f0c4d362a2d1d
+///   Date:     January 6, 2026 at 9:55 PM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  fix: Remove recursive self-link to fix Swift compilation
+///   Message:  feat: Add transcription entities to test schema
 ///
 /// ═══════════════════════════════════════════════════════════════════════════════
 
@@ -185,52 +185,52 @@ import InstantDB
 
 /// Presence data for 'avatars' room.
 public struct AvatarsPresence: PresenceData {
-  public var name: String
   public var color: String
+  public var name: String
 
   public init(
-    name: String,
-    color: String
+    color: String,
+    name: String
   ) {
-    self.name = name
     self.color = color
+    self.name = name
   }
 }
 
 /// Presence data for 'chat' room.
 public struct ChatPresence: PresenceData {
-  public var name: String
   public var color: String
   public var isTyping: Bool
+  public var name: String
 
   public init(
-    name: String,
     color: String,
-    isTyping: Bool
+    isTyping: Bool,
+    name: String
   ) {
-    self.name = name
     self.color = color
     self.isTyping = isTyping
+    self.name = name
   }
 }
 
 /// Presence data for 'cursors' room.
 public struct CursorsPresence: PresenceData {
-  public var name: String
   public var color: String
   public var cursorX: Double
   public var cursorY: Double
+  public var name: String
 
   public init(
-    name: String,
     color: String,
     cursorX: Double,
-    cursorY: Double
+    cursorY: Double,
+    name: String
   ) {
-    self.name = name
     self.color = color
     self.cursorX = cursorX
     self.cursorY = cursorY
+    self.name = name
   }
 }
 
@@ -247,15 +247,15 @@ public struct ReactionsPresence: PresenceData {
 
 /// Presence data for 'tileGame' room.
 public struct TileGamePresence: PresenceData {
-  public var name: String
   public var color: String
+  public var name: String
 
   public init(
-    name: String,
-    color: String
+    color: String,
+    name: String
   ) {
-    self.name = name
     self.color = color
+    self.name = name
   }
 }
 
@@ -263,17 +263,17 @@ public struct TileGamePresence: PresenceData {
 
 /// Topic payload for 'reactions.emoji' events.
 public struct EmojiTopic: Codable, Sendable, Equatable {
-  public var name: String
   public var directionAngle: Double
+  public var name: String
   public var rotationAngle: Double
 
   public init(
-    name: String,
     directionAngle: Double,
+    name: String,
     rotationAngle: Double
   ) {
-    self.name = name
     self.directionAngle = directionAngle
+    self.name = name
     self.rotationAngle = rotationAngle
   }
 }
@@ -340,30 +340,20 @@ public extension Shared where Value == RoomPresence<AvatarsPresence> {
   ///
   /// ```swift
   /// $presence.setUser(
-  ///   name: value,
-  ///   color: value
+  ///   color: value,
+  ///   name: value
   /// )
   /// ```
   @MainActor
    func setUser(
-    name: String,
     color: String,
+    name: String,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
     setUser(AvatarsPresence(
-      name: name,
-      color: color
+      color: color,
+      name: name
     ), callbacks: callbacks)
-  }
-  // MARK: Name (String)
-
-  /// Set name to a specific value.
-  @MainActor
-   func setName(_ value: String, callbacks: MutationCallbacks<Void> = .init()) {
-    callbacks.onMutate?()
-    withLock { $0.user.name = value }
-    callbacks.onSuccess?(())
-    callbacks.onSettled?()
   }
   // MARK: Color (String)
 
@@ -372,6 +362,16 @@ public extension Shared where Value == RoomPresence<AvatarsPresence> {
    func setColor(_ value: String, callbacks: MutationCallbacks<Void> = .init()) {
     callbacks.onMutate?()
     withLock { $0.user.color = value }
+    callbacks.onSuccess?(())
+    callbacks.onSettled?()
+  }
+  // MARK: Name (String)
+
+  /// Set name to a specific value.
+  @MainActor
+   func setName(_ value: String, callbacks: MutationCallbacks<Void> = .init()) {
+    callbacks.onMutate?()
+    withLock { $0.user.name = value }
     callbacks.onSuccess?(())
     callbacks.onSettled?()
   }
@@ -403,33 +403,23 @@ public extension Shared where Value == RoomPresence<ChatPresence> {
   ///
   /// ```swift
   /// $presence.setUser(
-  ///   name: value,
   ///   color: value,
-  ///   isTyping: value
+  ///   isTyping: value,
+  ///   name: value
   /// )
   /// ```
   @MainActor
    func setUser(
-    name: String,
     color: String,
     isTyping: Bool,
+    name: String,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
     setUser(ChatPresence(
-      name: name,
       color: color,
-      isTyping: isTyping
+      isTyping: isTyping,
+      name: name
     ), callbacks: callbacks)
-  }
-  // MARK: Name (String)
-
-  /// Set name to a specific value.
-  @MainActor
-   func setName(_ value: String, callbacks: MutationCallbacks<Void> = .init()) {
-    callbacks.onMutate?()
-    withLock { $0.user.name = value }
-    callbacks.onSuccess?(())
-    callbacks.onSettled?()
   }
   // MARK: Color (String)
 
@@ -472,6 +462,16 @@ public extension Shared where Value == RoomPresence<ChatPresence> {
    func stopTyping(callbacks: MutationCallbacks<Void> = .init()) {
     setIsTyping(false, callbacks: callbacks)
   }
+  // MARK: Name (String)
+
+  /// Set name to a specific value.
+  @MainActor
+   func setName(_ value: String, callbacks: MutationCallbacks<Void> = .init()) {
+    callbacks.onMutate?()
+    withLock { $0.user.name = value }
+    callbacks.onSuccess?(())
+    callbacks.onSettled?()
+  }
 }
 
 // MARK: CursorsPresence Mutations
@@ -500,36 +500,26 @@ public extension Shared where Value == RoomPresence<CursorsPresence> {
   ///
   /// ```swift
   /// $presence.setUser(
-  ///   name: value,
   ///   color: value,
   ///   cursorX: value,
-  ///   cursorY: value
+  ///   cursorY: value,
+  ///   name: value
   /// )
   /// ```
   @MainActor
    func setUser(
-    name: String,
     color: String,
     cursorX: Double,
     cursorY: Double,
+    name: String,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
     setUser(CursorsPresence(
-      name: name,
       color: color,
       cursorX: cursorX,
-      cursorY: cursorY
+      cursorY: cursorY,
+      name: name
     ), callbacks: callbacks)
-  }
-  // MARK: Name (String)
-
-  /// Set name to a specific value.
-  @MainActor
-   func setName(_ value: String, callbacks: MutationCallbacks<Void> = .init()) {
-    callbacks.onMutate?()
-    withLock { $0.user.name = value }
-    callbacks.onSuccess?(())
-    callbacks.onSettled?()
   }
   // MARK: Color (String)
 
@@ -565,6 +555,16 @@ public extension Shared where Value == RoomPresence<CursorsPresence> {
   @MainActor
    func clearCursor(callbacks: MutationCallbacks<Void> = .init()) {
     updateCursor(x: 0, y: 0, callbacks: callbacks)
+  }
+  // MARK: Name (String)
+
+  /// Set name to a specific value.
+  @MainActor
+   func setName(_ value: String, callbacks: MutationCallbacks<Void> = .init()) {
+    callbacks.onMutate?()
+    withLock { $0.user.name = value }
+    callbacks.onSuccess?(())
+    callbacks.onSettled?()
   }
 }
 
@@ -644,30 +644,20 @@ public extension Shared where Value == RoomPresence<TileGamePresence> {
   ///
   /// ```swift
   /// $presence.setUser(
-  ///   name: value,
-  ///   color: value
+  ///   color: value,
+  ///   name: value
   /// )
   /// ```
   @MainActor
    func setUser(
-    name: String,
     color: String,
+    name: String,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
     setUser(TileGamePresence(
-      name: name,
-      color: color
+      color: color,
+      name: name
     ), callbacks: callbacks)
-  }
-  // MARK: Name (String)
-
-  /// Set name to a specific value.
-  @MainActor
-   func setName(_ value: String, callbacks: MutationCallbacks<Void> = .init()) {
-    callbacks.onMutate?()
-    withLock { $0.user.name = value }
-    callbacks.onSuccess?(())
-    callbacks.onSettled?()
   }
   // MARK: Color (String)
 
@@ -676,6 +666,16 @@ public extension Shared where Value == RoomPresence<TileGamePresence> {
    func setColor(_ value: String, callbacks: MutationCallbacks<Void> = .init()) {
     callbacks.onMutate?()
     withLock { $0.user.color = value }
+    callbacks.onSuccess?(())
+    callbacks.onSettled?()
+  }
+  // MARK: Name (String)
+
+  /// Set name to a specific value.
+  @MainActor
+   func setName(_ value: String, callbacks: MutationCallbacks<Void> = .init()) {
+    callbacks.onMutate?()
+    withLock { $0.user.name = value }
     callbacks.onSuccess?(())
     callbacks.onSettled?()
   }
@@ -693,23 +693,23 @@ public extension Shared where Value == TopicChannel<EmojiTopic> {
   ///
   /// ```swift
   /// $channel.sendEmoji(
-  ///   name: value,
   ///   directionAngle: value,
+  ///   name: value,
   ///   rotationAngle: value
   /// )
   /// ```
   @MainActor
    func sendEmoji(
-    name: String,
     directionAngle: Double = 0,
+    name: String,
     rotationAngle: Double = 0,
     onAttempt: ((EmojiTopic) -> Void)? = nil,
     onError: ((Error) -> Void)? = nil,
     onSettled: (() -> Void)? = nil
   ) {
     let payload = EmojiTopic(
-      name: name,
       directionAngle: directionAngle,
+      name: name,
       rotationAngle: rotationAngle
     )
     self.publish(payload, onAttempt: onAttempt, onError: onError, onSettled: onSettled)

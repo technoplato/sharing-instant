@@ -138,3 +138,123 @@ public enum Schema {
   public static let transcriptions = EntityKey<Transcription>(namespace: "transcriptions")
 
 }
+
+// MARK: - Link-Based Where Clause Extensions
+
+public extension EntityKey where Entity == Task {
+
+  /// Filter tasks by their linked Media's ID.
+  ///
+  /// This enables type-safe filtering by linked entity relationships:
+  /// ```swift
+  /// Schema.tasks.whereMedia(id: someId)
+  /// ```
+  ///
+  /// - Parameter id: The ID of the linked Media to filter by
+  /// - Returns: A new EntityKey with the filter applied
+  func whereMedia(id: String) -> EntityKey<Task> {
+    self.where("media.id", .eq(id))
+  }
+
+  /// Filter tasks by their linked Media using a predicate.
+  ///
+  /// This enables flexible filtering using various predicates:
+  /// ```swift
+  /// Schema.tasks.whereMedia(.eq(someId))
+  /// Schema.tasks.whereMedia(.in([id1, id2]))
+  /// ```
+  ///
+  /// - Parameter predicate: The predicate to apply to the linked Media's ID
+  /// - Returns: A new EntityKey with the filter applied
+  func whereMedia(_ predicate: EntityKeyPredicate) -> EntityKey<Task> {
+    self.where("media.id", predicate)
+  }
+}
+
+public extension EntityKey where Entity == Media {
+
+  /// Filter medias by their linked Task's ID.
+  ///
+  /// This enables type-safe filtering by linked entity relationships:
+  /// ```swift
+  /// Schema.media.whereTask(id: someId)
+  /// ```
+  ///
+  /// - Parameter id: The ID of the linked Task to filter by
+  /// - Returns: A new EntityKey with the filter applied
+  func whereTask(id: String) -> EntityKey<Media> {
+    self.where("task.id", .eq(id))
+  }
+
+  /// Filter medias by their linked Task using a predicate.
+  ///
+  /// This enables flexible filtering using various predicates:
+  /// ```swift
+  /// Schema.media.whereTask(.eq(someId))
+  /// Schema.media.whereTask(.in([id1, id2]))
+  /// ```
+  ///
+  /// - Parameter predicate: The predicate to apply to the linked Task's ID
+  /// - Returns: A new EntityKey with the filter applied
+  func whereTask(_ predicate: EntityKeyPredicate) -> EntityKey<Media> {
+    self.where("task.id", predicate)
+  }
+
+  /// Filter medias by their linked Transcription's ID.
+  ///
+  /// This enables type-safe filtering by linked entity relationships:
+  /// ```swift
+  /// Schema.media.whereTranscription(id: someId)
+  /// ```
+  ///
+  /// - Parameter id: The ID of the linked Transcription to filter by
+  /// - Returns: A new EntityKey with the filter applied
+  func whereTranscription(id: String) -> EntityKey<Media> {
+    self.where("transcription.id", .eq(id))
+  }
+
+  /// Filter medias by their linked Transcription using a predicate.
+  ///
+  /// This enables flexible filtering using various predicates:
+  /// ```swift
+  /// Schema.media.whereTranscription(.eq(someId))
+  /// Schema.media.whereTranscription(.in([id1, id2]))
+  /// ```
+  ///
+  /// - Parameter predicate: The predicate to apply to the linked Transcription's ID
+  /// - Returns: A new EntityKey with the filter applied
+  func whereTranscription(_ predicate: EntityKeyPredicate) -> EntityKey<Media> {
+    self.where("transcription.id", predicate)
+  }
+}
+
+public extension EntityKey where Entity == Transcription {
+
+  /// Filter transcriptions by their linked Media's ID.
+  ///
+  /// This enables type-safe filtering by linked entity relationships:
+  /// ```swift
+  /// Schema.transcriptions.whereMedia(id: someId)
+  /// ```
+  ///
+  /// - Parameter id: The ID of the linked Media to filter by
+  /// - Returns: A new EntityKey with the filter applied
+  func whereMedia(id: String) -> EntityKey<Transcription> {
+    self.where("media.id", .eq(id))
+  }
+
+  /// Filter transcriptions by their linked Media using a predicate.
+  ///
+  /// This enables flexible filtering using various predicates:
+  /// ```swift
+  /// Schema.transcriptions.whereMedia(.eq(someId))
+  /// Schema.transcriptions.whereMedia(.in([id1, id2]))
+  /// ```
+  ///
+  /// - Parameter predicate: The predicate to apply to the linked Media's ID
+  /// - Returns: A new EntityKey with the filter applied
+  func whereMedia(_ predicate: EntityKeyPredicate) -> EntityKey<Transcription> {
+    self.where("media.id", predicate)
+  }
+}
+

@@ -201,16 +201,16 @@ final class EphemeralCaseStudiesStressTests: XCTestCase {
 
       let alice = Profile(
         id: aliceId,
+        createdAt: now,
         displayName: "Alice",
-        handle: "alice-\(String(aliceId.prefix(8)))",
-        createdAt: now
+        handle: "alice-\(String(aliceId.prefix(8)))"
       )
 
       let bob = Profile(
         id: bobId,
+        createdAt: now + 1,
         displayName: "Bob",
-        handle: "bob-\(String(bobId.prefix(8)))",
-        createdAt: now + 1
+        handle: "bob-\(String(bobId.prefix(8)))"
       )
 
       $profiles.withLock { profiles in
@@ -234,7 +234,6 @@ final class EphemeralCaseStudiesStressTests: XCTestCase {
           id: id,
           content: "Stress post \(offset)",
           createdAt: now + Double(offset),
-          likesCount: 0,
           author: author
         )
       }
@@ -439,7 +438,6 @@ final class EphemeralCaseStudiesStressTests: XCTestCase {
           attrs: [
             "content": dataAttr(valueType: "string", required: true),
             "createdAt": dataAttr(valueType: "number", required: true, indexed: true),
-            "likesCount": dataAttr(valueType: "number", required: true),
           ],
           links: [
             "author": [

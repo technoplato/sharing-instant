@@ -24,15 +24,15 @@
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// Use the generated mutation methods on your @Shared collections:
-///   @Shared(Schema.facts)
-///   private var items: IdentifiedArrayOf<Fact> = []
+///   @Shared(Schema.boards)
+///   private var items: IdentifiedArrayOf<Board> = []
 ///   // Create with all fields
-///   $items.createFact(count: value)
+///   $items.createBoard(createdAt: value)
 ///   // Update specific field
-///   $items.updateCount(itemId, to: newValue)
+///   $items.updateCreatedAt(itemId, to: newValue)
 ///   // Delete by ID or entity
-///   $items.deleteFact(itemId)
-///   $items.deleteFact(item)
+///   $items.deleteBoard(itemId)
+///   $items.deleteBoard(item)
 ///
 /// ─────────────────────────────────────────────────────────────────────────────────
 /// QUICK START - Copy & Paste Example
@@ -44,9 +44,9 @@ import SwiftUI
 import SharingInstant
 import IdentifiedCollections
 
-struct FactMutationsView: View {
-  @Shared(Schema.facts)
-  private var items: IdentifiedArrayOf<Fact> = []
+struct BoardMutationsView: View {
+  @Shared(Schema.boards)
+  private var items: IdentifiedArrayOf<Board> = []
 
   var body: some View {
     List(items) { item in
@@ -55,8 +55,8 @@ struct FactMutationsView: View {
   }
 
   private func createItem() {
-    $items.createFact(
-      count: "value",
+    $items.createBoard(
+      createdAt: "value",
       callbacks: MutationCallbacks(
         onSuccess: { item in print("Created: \(item.id)") },
         onError: { error in print("Error: \(error)") }
@@ -86,6 +86,34 @@ struct FactMutationsView: View {
 ///   updateType(_:to:)
 ///   deleteInstantUser(_:) // by ID
 ///   deleteInstantUser(_:) // by entity
+///   linkLinkedPrimaryUser(_:to:)
+///   unlinkLinkedPrimaryUser(_:from:)
+///   linkLinkedGuestUsers(_:to:)
+///   unlinkLinkedGuestUsers(_:from:)
+/// }
+///
+/// Board Mutations {
+///   createBoard(...)
+///   updateCreatedAt(_:to:)
+///   updateTitle(_:to:)
+///   deleteBoard(_:) // by ID
+///   deleteBoard(_:) // by entity
+///   linkLinkedTiles(_:to:)
+///   unlinkLinkedTiles(_:from:)
+///   linkTiles(_:to:)
+///   unlinkTiles(_:from:)
+/// }
+///
+/// Comment Mutations {
+///   createComment(...)
+///   updateCreatedAt(_:to:)
+///   updateText(_:to:)
+///   deleteComment(_:) // by ID
+///   deleteComment(_:) // by entity
+///   linkPost(_:to:)
+///   unlinkPost(_:from:)
+///   linkAuthor(_:to:)
+///   unlinkAuthor(_:from:)
 /// }
 ///
 /// Fact Mutations {
@@ -98,18 +126,75 @@ struct FactMutationsView: View {
 ///   deleteFact(_:) // by entity
 /// }
 ///
+/// Like Mutations {
+///   createLike(...)
+///   updateCreatedAt(_:to:)
+///   deleteLike(_:) // by ID
+///   deleteLike(_:) // by entity
+///   linkPost(_:to:)
+///   unlinkPost(_:from:)
+///   linkProfile(_:to:)
+///   unlinkProfile(_:from:)
+/// }
+///
 /// Log Mutations {
 ///   createLog(...)
-///   updateLevel(_:to:)
-///   updateMessage(_:to:)
-///   updateJsonPayload(_:to:)
 ///   updateFile(_:to:)
-///   updateLine(_:to:)
-///   updateTimestamp(_:to:)
 ///   updateFormattedDate(_:to:)
+///   updateJsonPayload(_:to:)
+///   updateLevel(_:to:)
+///   updateLine(_:to:)
+///   updateMessage(_:to:)
+///   updateTimestamp(_:to:)
 ///   updateTimezone(_:to:)
 ///   deleteLog(_:) // by ID
 ///   deleteLog(_:) // by entity
+/// }
+///
+/// Post Mutations {
+///   createPost(...)
+///   updateContent(_:to:)
+///   updateCreatedAt(_:to:)
+///   updateImageUrl(_:to:)
+///   deletePost(_:) // by ID
+///   deletePost(_:) // by entity
+///   linkComments(_:to:)
+///   unlinkComments(_:from:)
+///   linkLikes(_:to:)
+///   unlinkLikes(_:from:)
+///   linkAuthor(_:to:)
+///   unlinkAuthor(_:from:)
+/// }
+///
+/// Profile Mutations {
+///   createProfile(...)
+///   updateAvatarUrl(_:to:)
+///   updateBio(_:to:)
+///   updateCreatedAt(_:to:)
+///   updateDisplayName(_:to:)
+///   updateHandle(_:to:)
+///   deleteProfile(_:) // by ID
+///   deleteProfile(_:) // by entity
+///   linkComments(_:to:)
+///   unlinkComments(_:from:)
+///   linkLikes(_:to:)
+///   unlinkLikes(_:from:)
+///   linkPosts(_:to:)
+///   unlinkPosts(_:from:)
+/// }
+///
+/// Tile Mutations {
+///   createTile(...)
+///   updateColor(_:to:)
+///   updateCreatedAt(_:to:)
+///   updateX(_:to:)
+///   updateY(_:to:)
+///   deleteTile(_:) // by ID
+///   deleteTile(_:) // by entity
+///   linkLinkedBoard(_:to:)
+///   unlinkLinkedBoard(_:from:)
+///   linkBoard(_:to:)
+///   unlinkBoard(_:from:)
 /// }
 ///
 /// Todo Mutations {
@@ -124,84 +209,55 @@ struct FactMutationsView: View {
 ///   deleteTodo(_:) // by entity
 /// }
 ///
-/// Profile Mutations {
-///   createProfile(...)
-///   updateDisplayName(_:to:)
-///   updateHandle(_:to:)
-///   updateBio(_:to:)
-///   updateAvatarUrl(_:to:)
-///   updateCreatedAt(_:to:)
-///   deleteProfile(_:) // by ID
-///   deleteProfile(_:) // by entity
-///   linkPosts(_:to:)
-///   unlinkPosts(_:from:)
-///   linkComments(_:to:)
-///   unlinkComments(_:from:)
-///   linkLikes(_:to:)
-///   unlinkLikes(_:from:)
-/// }
-///
-/// Post Mutations {
-///   createPost(...)
-///   updateContent(_:to:)
-///   updateImageUrl(_:to:)
-///   updateCreatedAt(_:to:)
-///   updateLikesCount(_:to:)
-///   incrementLikesCount(_:by:)
-///   decrementLikesCount(_:by:)
-///   deletePost(_:) // by ID
-///   deletePost(_:) // by entity
-///   linkComments(_:to:)
-///   unlinkComments(_:from:)
-///   linkLikes(_:to:)
-///   unlinkLikes(_:from:)
-///   linkAuthor(_:to:)
-///   unlinkAuthor(_:from:)
-/// }
-///
-/// Comment Mutations {
-///   createComment(...)
-///   updateText(_:to:)
-///   updateCreatedAt(_:to:)
-///   deleteComment(_:) // by ID
-///   deleteComment(_:) // by entity
-///   linkAuthor(_:to:)
-///   unlinkAuthor(_:from:)
-///   linkPost(_:to:)
-///   unlinkPost(_:from:)
-/// }
-///
-/// Like Mutations {
-///   createLike(...)
-///   updateCreatedAt(_:to:)
-///   deleteLike(_:) // by ID
-///   deleteLike(_:) // by entity
-///   linkProfile(_:to:)
-///   unlinkProfile(_:from:)
-///   linkPost(_:to:)
-///   unlinkPost(_:from:)
-/// }
-///
-/// Tile Mutations {
-///   createTile(...)
-///   updateX(_:to:)
-///   updateY(_:to:)
-///   updateColor(_:to:)
-///   updateCreatedAt(_:to:)
-///   deleteTile(_:) // by ID
-///   deleteTile(_:) // by entity
-///   linkBoard(_:to:)
-///   unlinkBoard(_:from:)
-/// }
-///
-/// Board Mutations {
-///   createBoard(...)
+/// Media Mutations {
+///   createMedia(...)
 ///   updateTitle(_:to:)
-///   updateCreatedAt(_:to:)
-///   deleteBoard(_:) // by ID
-///   deleteBoard(_:) // by entity
-///   linkTiles(_:to:)
-///   unlinkTiles(_:from:)
+///   updateDurationSeconds(_:to:)
+///   incrementDurationSeconds(_:by:)
+///   decrementDurationSeconds(_:by:)
+///   updateMediaType(_:to:)
+///   updateIngestedAt(_:to:)
+///   updateDescription(_:to:)
+///   deleteMedia(_:) // by ID
+///   deleteMedia(_:) // by entity
+///   linkTranscriptionRuns(_:to:)
+///   unlinkTranscriptionRuns(_:from:)
+/// }
+///
+/// TranscriptionRun Mutations {
+///   createTranscriptionRun(...)
+///   updateToolVersion(_:to:)
+///   updateExecutedAt(_:to:)
+///   updateRunType(_:to:)
+///   updateIsActive(_:to:)
+///   toggleIsActive(_:)
+///   markIsActive(_:)
+///   unmarkIsActive(_:)
+///   deleteTranscriptionRun(_:) // by ID
+///   deleteTranscriptionRun(_:) // by entity
+///   linkTranscriptionSegments(_:to:)
+///   unlinkTranscriptionSegments(_:from:)
+///   linkMedia(_:to:)
+///   unlinkMedia(_:from:)
+/// }
+///
+/// TranscriptionSegment Mutations {
+///   createTranscriptionSegment(...)
+///   updateStartTime(_:to:)
+///   updateEndTime(_:to:)
+///   updateText(_:to:)
+///   updateSegmentIndex(_:to:)
+///   updateIsFinalized(_:to:)
+///   toggleIsFinalized(_:)
+///   markIsFinalized(_:)
+///   unmarkIsFinalized(_:)
+///   updateIngestedAt(_:to:)
+///   updateSpeaker(_:to:)
+///   updateWords(_:to:)
+///   deleteTranscriptionSegment(_:) // by ID
+///   deleteTranscriptionSegment(_:) // by entity
+///   linkTranscriptionRun(_:to:)
+///   unlinkTranscriptionRun(_:from:)
 /// }
 ///
 
@@ -211,15 +267,15 @@ struct FactMutationsView: View {
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// Mode:            Production (full traceability)
-/// Generated:       December 30, 2025 at 9:29 PM EST
+/// Generated:       January 7, 2026 at 10:21 AM EST
 /// Machine:         mlustig-hy7l9xrd61.local (Apple M4 Pro, macOS 26.2)
 /// Generator:       Sources/instant-schema/main.swift
-/// Source Schema:   Examples/CaseStudies/instant.schema.ts
+/// Source Schema:   instant.schema.ts
 
 /* To regenerate this file, run:
 
 swift run instant-schema generate \
-  --from Examples/CaseStudies/instant.schema.ts \
+  --from instant.schema.ts \
   --to Tests/SharingInstantTests/Generated
 */
 /// ─────────────────────────────────────────────────────────────────────────────────
@@ -227,16 +283,16 @@ swift run instant-schema generate \
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// HEAD Commit:
-///   SHA:      409fdf941059f57f1f9c7ebdac98ed4999bc3af3
-///   Date:     December 30, 2025 at 9:29 PM EST
+///   SHA:      7984aa49f6505dc5906a550adc3f0c4d362a2d1d
+///   Date:     January 6, 2026 at 9:55 PM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  chore: Regenerate CaseStudies schema with fixed public modifiers
+///   Message:  feat: Add transcription entities to test schema
 ///
 /// Schema File Last Modified:
-///   SHA:      522ffbf617207b60ecfa647b2d1dc6b9bfa3a7ff
-///   Date:     December 22, 2025 at 6:46 AM EST
+///   SHA:      7984aa49f6505dc5906a550adc3f0c4d362a2d1d
+///   Date:     January 6, 2026 at 9:55 PM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  fix: Remove recursive self-link to fix Swift compilation
+///   Message:  feat: Add transcription entities to test schema
 ///
 /// ═══════════════════════════════════════════════════════════════════════════════
 
@@ -253,7 +309,7 @@ public extension Shared where Value == IdentifiedArrayOf<InstantFile> {
 
   /// Create a new InstantFile and sync to InstantDB.
   @MainActor
-  public func createInstantFile(
+   func createInstantFile(
     id: String = UUID().uuidString.lowercased(),
     path: String,
     url: String,
@@ -278,7 +334,7 @@ public extension Shared where Value == IdentifiedArrayOf<InstantFile> {
 
   /// Update the path field of a InstantFile.
   @MainActor
-  public func updatePath(
+   func updatePath(
     _ id: String,
     to value: String,
     callbacks: MutationCallbacks<InstantFile> = .init()
@@ -301,7 +357,7 @@ public extension Shared where Value == IdentifiedArrayOf<InstantFile> {
 
   /// Update the url field of a InstantFile.
   @MainActor
-  public func updateUrl(
+   func updateUrl(
     _ id: String,
     to value: String,
     callbacks: MutationCallbacks<InstantFile> = .init()
@@ -326,7 +382,7 @@ public extension Shared where Value == IdentifiedArrayOf<InstantFile> {
 
   /// Delete a InstantFile by ID.
   @MainActor
-  public func deleteInstantFile(
+   func deleteInstantFile(
     _ id: String,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -344,7 +400,7 @@ public extension Shared where Value == IdentifiedArrayOf<InstantFile> {
 
   /// Delete a InstantFile entity.
   @MainActor
-  public func deleteInstantFile(
+   func deleteInstantFile(
     _ entity: InstantFile,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -358,7 +414,7 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Create a new InstantFile and sync to InstantDB.
   @MainActor
-  public func createInstantFile(
+   func createInstantFile(
     id: String = UUID().uuidString.lowercased(),
     path: String,
     url: String,
@@ -385,7 +441,7 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Delete a InstantFile by ID.
   @MainActor
-  public func deleteInstantFile(
+   func deleteInstantFile(
     _ id: String,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -403,7 +459,7 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Delete a InstantFile entity.
   @MainActor
-  public func deleteInstantFile(
+   func deleteInstantFile(
     _ entity: InstantFile,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -419,7 +475,7 @@ public extension Shared where Value == IdentifiedArrayOf<InstantUser> {
 
   /// Create a new InstantUser and sync to InstantDB.
   @MainActor
-  public func createInstantUser(
+   func createInstantUser(
     id: String = UUID().uuidString.lowercased(),
     email: String? = nil,
     imageURL: String? = nil,
@@ -446,7 +502,7 @@ public extension Shared where Value == IdentifiedArrayOf<InstantUser> {
 
   /// Update the email field of a InstantUser.
   @MainActor
-  public func updateEmail(
+   func updateEmail(
     _ id: String,
     to value: String?,
     callbacks: MutationCallbacks<InstantUser> = .init()
@@ -469,7 +525,7 @@ public extension Shared where Value == IdentifiedArrayOf<InstantUser> {
 
   /// Update the imageURL field of a InstantUser.
   @MainActor
-  public func updateImageURL(
+   func updateImageURL(
     _ id: String,
     to value: String?,
     callbacks: MutationCallbacks<InstantUser> = .init()
@@ -492,7 +548,7 @@ public extension Shared where Value == IdentifiedArrayOf<InstantUser> {
 
   /// Update the type field of a InstantUser.
   @MainActor
-  public func updateType(
+   func updateType(
     _ id: String,
     to value: String?,
     callbacks: MutationCallbacks<InstantUser> = .init()
@@ -517,7 +573,7 @@ public extension Shared where Value == IdentifiedArrayOf<InstantUser> {
 
   /// Delete a InstantUser by ID.
   @MainActor
-  public func deleteInstantUser(
+   func deleteInstantUser(
     _ id: String,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -535,11 +591,91 @@ public extension Shared where Value == IdentifiedArrayOf<InstantUser> {
 
   /// Delete a InstantUser entity.
   @MainActor
-  public func deleteInstantUser(
+   func deleteInstantUser(
     _ entity: InstantUser,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
     deleteInstantUser(entity.id, callbacks: callbacks)
+  }
+
+  // MARK: Link/Unlink LinkedPrimaryUser
+
+  /// Link a InstantUser to a InstantUser via 'linkedPrimaryUser'.
+  @MainActor
+   func linkLinkedPrimaryUser(
+    _ id: String,
+    to target: InstantUser,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.link(id, "linkedPrimaryUser", to: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Unlink a InstantUser from a InstantUser via 'linkedPrimaryUser'.
+  @MainActor
+   func unlinkLinkedPrimaryUser(
+    _ id: String,
+    from target: InstantUser,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.unlink(id, "linkedPrimaryUser", from: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  // MARK: Link/Unlink LinkedGuestUsers
+
+  /// Link a InstantUser to a InstantUser via 'linkedGuestUsers'.
+  @MainActor
+   func linkLinkedGuestUsers(
+    _ id: String,
+    to target: InstantUser,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.link(id, "linkedGuestUsers", to: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Unlink a InstantUser from a InstantUser via 'linkedGuestUsers'.
+  @MainActor
+   func unlinkLinkedGuestUsers(
+    _ id: String,
+    from target: InstantUser,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.unlink(id, "linkedGuestUsers", from: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
   }
 }
 
@@ -549,7 +685,7 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Create a new InstantUser and sync to InstantDB.
   @MainActor
-  public func createInstantUser(
+   func createInstantUser(
     id: String = UUID().uuidString.lowercased(),
     email: String? = nil,
     imageURL: String? = nil,
@@ -578,7 +714,7 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Delete a InstantUser by ID.
   @MainActor
-  public func deleteInstantUser(
+   func deleteInstantUser(
     _ id: String,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -596,11 +732,503 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Delete a InstantUser entity.
   @MainActor
-  public func deleteInstantUser(
+   func deleteInstantUser(
     _ entity: InstantUser,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
     deleteInstantUser(entity.id, callbacks: callbacks)
+  }
+}
+
+// MARK: - Board Mutations
+
+public extension Shared where Value == IdentifiedArrayOf<Board> {
+
+  // MARK: Create
+
+  /// Create a new Board and sync to InstantDB.
+  @MainActor
+   func createBoard(
+    id: String = UUID().uuidString.lowercased(),
+    createdAt: Double,
+    title: String,
+    callbacks: MutationCallbacks<Board> = .init()
+  ) {
+    callbacks.onMutate?()
+    let entity = Board(
+      id: id,
+      createdAt: createdAt,
+      title: title
+    )
+    Task {
+      do {
+        try await self.create(entity)
+        callbacks.onSuccess?(entity)
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the createdAt field of a Board.
+  @MainActor
+   func updateCreatedAt(
+    _ id: String,
+    to value: Double,
+    callbacks: MutationCallbacks<Board> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.createdAt = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the title field of a Board.
+  @MainActor
+   func updateTitle(
+    _ id: String,
+    to value: String,
+    callbacks: MutationCallbacks<Board> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.title = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  // MARK: Delete
+
+  /// Delete a Board by ID.
+  @MainActor
+   func deleteBoard(
+    _ id: String,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.delete(id: id) as Void
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Delete a Board entity.
+  @MainActor
+   func deleteBoard(
+    _ entity: Board,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    deleteBoard(entity.id, callbacks: callbacks)
+  }
+
+  // MARK: Link/Unlink LinkedTiles
+
+  /// Link a Board to a Tile via 'linkedTiles'.
+  @MainActor
+   func linkLinkedTiles(
+    _ id: String,
+    to target: Tile,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.link(id, "linkedTiles", to: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Unlink a Board from a Tile via 'linkedTiles'.
+  @MainActor
+   func unlinkLinkedTiles(
+    _ id: String,
+    from target: Tile,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.unlink(id, "linkedTiles", from: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  // MARK: Link/Unlink Tiles
+
+  /// Link a Board to a Tile via 'tiles'.
+  @MainActor
+   func linkTiles(
+    _ id: String,
+    to target: Tile,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.link(id, "tiles", to: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Unlink a Board from a Tile via 'tiles'.
+  @MainActor
+   func unlinkTiles(
+    _ id: String,
+    from target: Tile,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.unlink(id, "tiles", from: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+}
+
+public extension Shared where Value: RangeReplaceableCollection, Value.Element == Board {
+
+  // MARK: Create
+
+  /// Create a new Board and sync to InstantDB.
+  @MainActor
+   func createBoard(
+    id: String = UUID().uuidString.lowercased(),
+    createdAt: Double,
+    title: String,
+    callbacks: MutationCallbacks<Board> = .init()
+  ) {
+    callbacks.onMutate?()
+    let entity = Board(
+      id: id,
+      createdAt: createdAt,
+      title: title
+    )
+    Task {
+      do {
+        try await self.create(entity)
+        callbacks.onSuccess?(entity)
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  // MARK: Delete
+
+  /// Delete a Board by ID.
+  @MainActor
+   func deleteBoard(
+    _ id: String,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.delete(id: id) as Void
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Delete a Board entity.
+  @MainActor
+   func deleteBoard(
+    _ entity: Board,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    deleteBoard(entity.id, callbacks: callbacks)
+  }
+}
+
+// MARK: - Comment Mutations
+
+public extension Shared where Value == IdentifiedArrayOf<Comment> {
+
+  // MARK: Create
+
+  /// Create a new Comment and sync to InstantDB.
+  @MainActor
+   func createComment(
+    id: String = UUID().uuidString.lowercased(),
+    createdAt: Double,
+    text: String,
+    callbacks: MutationCallbacks<Comment> = .init()
+  ) {
+    callbacks.onMutate?()
+    let entity = Comment(
+      id: id,
+      createdAt: createdAt,
+      text: text
+    )
+    Task {
+      do {
+        try await self.create(entity)
+        callbacks.onSuccess?(entity)
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the createdAt field of a Comment.
+  @MainActor
+   func updateCreatedAt(
+    _ id: String,
+    to value: Double,
+    callbacks: MutationCallbacks<Comment> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.createdAt = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the text field of a Comment.
+  @MainActor
+   func updateText(
+    _ id: String,
+    to value: String,
+    callbacks: MutationCallbacks<Comment> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.text = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  // MARK: Delete
+
+  /// Delete a Comment by ID.
+  @MainActor
+   func deleteComment(
+    _ id: String,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.delete(id: id) as Void
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Delete a Comment entity.
+  @MainActor
+   func deleteComment(
+    _ entity: Comment,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    deleteComment(entity.id, callbacks: callbacks)
+  }
+
+  // MARK: Link/Unlink Post
+
+  /// Link a Comment to a Post via 'post'.
+  @MainActor
+   func linkPost(
+    _ id: String,
+    to target: Post,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.link(id, "post", to: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Unlink a Comment from a Post via 'post'.
+  @MainActor
+   func unlinkPost(
+    _ id: String,
+    from target: Post,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.unlink(id, "post", from: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  // MARK: Link/Unlink Author
+
+  /// Link a Comment to a Profile via 'author'.
+  @MainActor
+   func linkAuthor(
+    _ id: String,
+    to target: Profile,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.link(id, "author", to: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Unlink a Comment from a Profile via 'author'.
+  @MainActor
+   func unlinkAuthor(
+    _ id: String,
+    from target: Profile,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.unlink(id, "author", from: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+}
+
+public extension Shared where Value: RangeReplaceableCollection, Value.Element == Comment {
+
+  // MARK: Create
+
+  /// Create a new Comment and sync to InstantDB.
+  @MainActor
+   func createComment(
+    id: String = UUID().uuidString.lowercased(),
+    createdAt: Double,
+    text: String,
+    callbacks: MutationCallbacks<Comment> = .init()
+  ) {
+    callbacks.onMutate?()
+    let entity = Comment(
+      id: id,
+      createdAt: createdAt,
+      text: text
+    )
+    Task {
+      do {
+        try await self.create(entity)
+        callbacks.onSuccess?(entity)
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  // MARK: Delete
+
+  /// Delete a Comment by ID.
+  @MainActor
+   func deleteComment(
+    _ id: String,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.delete(id: id) as Void
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Delete a Comment entity.
+  @MainActor
+   func deleteComment(
+    _ entity: Comment,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    deleteComment(entity.id, callbacks: callbacks)
   }
 }
 
@@ -612,7 +1240,7 @@ public extension Shared where Value == IdentifiedArrayOf<Fact> {
 
   /// Create a new Fact and sync to InstantDB.
   @MainActor
-  public func createFact(
+   func createFact(
     id: String = UUID().uuidString.lowercased(),
     count: Double,
     text: String,
@@ -637,7 +1265,7 @@ public extension Shared where Value == IdentifiedArrayOf<Fact> {
 
   /// Update the count field of a Fact.
   @MainActor
-  public func updateCount(
+   func updateCount(
     _ id: String,
     to value: Double,
     callbacks: MutationCallbacks<Fact> = .init()
@@ -660,7 +1288,7 @@ public extension Shared where Value == IdentifiedArrayOf<Fact> {
 
   /// Increment the count field of a Fact.
   @MainActor
-  public func incrementCount(
+   func incrementCount(
     _ id: String,
     by amount: Double = 1,
     callbacks: MutationCallbacks<Fact> = .init()
@@ -683,7 +1311,7 @@ public extension Shared where Value == IdentifiedArrayOf<Fact> {
 
   /// Decrement the count field of a Fact.
   @MainActor
-  public func decrementCount(
+   func decrementCount(
     _ id: String,
     by amount: Double = 1,
     callbacks: MutationCallbacks<Fact> = .init()
@@ -693,7 +1321,7 @@ public extension Shared where Value == IdentifiedArrayOf<Fact> {
 
   /// Update the text field of a Fact.
   @MainActor
-  public func updateText(
+   func updateText(
     _ id: String,
     to value: String,
     callbacks: MutationCallbacks<Fact> = .init()
@@ -718,7 +1346,7 @@ public extension Shared where Value == IdentifiedArrayOf<Fact> {
 
   /// Delete a Fact by ID.
   @MainActor
-  public func deleteFact(
+   func deleteFact(
     _ id: String,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -736,7 +1364,7 @@ public extension Shared where Value == IdentifiedArrayOf<Fact> {
 
   /// Delete a Fact entity.
   @MainActor
-  public func deleteFact(
+   func deleteFact(
     _ entity: Fact,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -750,7 +1378,7 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Create a new Fact and sync to InstantDB.
   @MainActor
-  public func createFact(
+   func createFact(
     id: String = UUID().uuidString.lowercased(),
     count: Double,
     text: String,
@@ -777,7 +1405,7 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Delete a Fact by ID.
   @MainActor
-  public func deleteFact(
+   func deleteFact(
     _ id: String,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -795,11 +1423,230 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Delete a Fact entity.
   @MainActor
-  public func deleteFact(
+   func deleteFact(
     _ entity: Fact,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
     deleteFact(entity.id, callbacks: callbacks)
+  }
+}
+
+// MARK: - Like Mutations
+
+public extension Shared where Value == IdentifiedArrayOf<Like> {
+
+  // MARK: Create
+
+  /// Create a new Like and sync to InstantDB.
+  @MainActor
+   func createLike(
+    id: String = UUID().uuidString.lowercased(),
+    createdAt: Double,
+    callbacks: MutationCallbacks<Like> = .init()
+  ) {
+    callbacks.onMutate?()
+    let entity = Like(
+      id: id,
+      createdAt: createdAt
+    )
+    Task {
+      do {
+        try await self.create(entity)
+        callbacks.onSuccess?(entity)
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the createdAt field of a Like.
+  @MainActor
+   func updateCreatedAt(
+    _ id: String,
+    to value: Double,
+    callbacks: MutationCallbacks<Like> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.createdAt = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  // MARK: Delete
+
+  /// Delete a Like by ID.
+  @MainActor
+   func deleteLike(
+    _ id: String,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.delete(id: id) as Void
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Delete a Like entity.
+  @MainActor
+   func deleteLike(
+    _ entity: Like,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    deleteLike(entity.id, callbacks: callbacks)
+  }
+
+  // MARK: Link/Unlink Post
+
+  /// Link a Like to a Post via 'post'.
+  @MainActor
+   func linkPost(
+    _ id: String,
+    to target: Post,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.link(id, "post", to: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Unlink a Like from a Post via 'post'.
+  @MainActor
+   func unlinkPost(
+    _ id: String,
+    from target: Post,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.unlink(id, "post", from: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  // MARK: Link/Unlink Profile
+
+  /// Link a Like to a Profile via 'profile'.
+  @MainActor
+   func linkProfile(
+    _ id: String,
+    to target: Profile,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.link(id, "profile", to: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Unlink a Like from a Profile via 'profile'.
+  @MainActor
+   func unlinkProfile(
+    _ id: String,
+    from target: Profile,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.unlink(id, "profile", from: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+}
+
+public extension Shared where Value: RangeReplaceableCollection, Value.Element == Like {
+
+  // MARK: Create
+
+  /// Create a new Like and sync to InstantDB.
+  @MainActor
+   func createLike(
+    id: String = UUID().uuidString.lowercased(),
+    createdAt: Double,
+    callbacks: MutationCallbacks<Like> = .init()
+  ) {
+    callbacks.onMutate?()
+    let entity = Like(
+      id: id,
+      createdAt: createdAt
+    )
+    Task {
+      do {
+        try await self.create(entity)
+        callbacks.onSuccess?(entity)
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  // MARK: Delete
+
+  /// Delete a Like by ID.
+  @MainActor
+   func deleteLike(
+    _ id: String,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.delete(id: id) as Void
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Delete a Like entity.
+  @MainActor
+   func deleteLike(
+    _ entity: Like,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    deleteLike(entity.id, callbacks: callbacks)
   }
 }
 
@@ -811,28 +1658,28 @@ public extension Shared where Value == IdentifiedArrayOf<Log> {
 
   /// Create a new Log and sync to InstantDB.
   @MainActor
-  public func createLog(
+   func createLog(
     id: String = UUID().uuidString.lowercased(),
-    level: String,
-    message: String,
-    jsonPayload: String? = nil,
     file: String,
-    line: Double,
-    timestamp: Double,
     formattedDate: String,
+    jsonPayload: String? = nil,
+    level: String,
+    line: Double,
+    message: String,
+    timestamp: Double,
     timezone: String,
     callbacks: MutationCallbacks<Log> = .init()
   ) {
     callbacks.onMutate?()
     let entity = Log(
       id: id,
-      level: level,
-      message: message,
-      jsonPayload: jsonPayload,
       file: file,
-      line: line,
-      timestamp: timestamp,
       formattedDate: formattedDate,
+      jsonPayload: jsonPayload,
+      level: level,
+      line: line,
+      message: message,
+      timestamp: timestamp,
       timezone: timezone
     )
     Task {
@@ -846,78 +1693,9 @@ public extension Shared where Value == IdentifiedArrayOf<Log> {
     }
   }
 
-  /// Update the level field of a Log.
-  @MainActor
-  public func updateLevel(
-    _ id: String,
-    to value: String,
-    callbacks: MutationCallbacks<Log> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.update(id: id) { entity in
-          entity.level = value
-        }
-        if let updated = self.wrappedValue[id: id] {
-          callbacks.onSuccess?(updated)
-        }
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  /// Update the message field of a Log.
-  @MainActor
-  public func updateMessage(
-    _ id: String,
-    to value: String,
-    callbacks: MutationCallbacks<Log> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.update(id: id) { entity in
-          entity.message = value
-        }
-        if let updated = self.wrappedValue[id: id] {
-          callbacks.onSuccess?(updated)
-        }
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  /// Update the jsonPayload field of a Log.
-  @MainActor
-  public func updateJsonPayload(
-    _ id: String,
-    to value: String?,
-    callbacks: MutationCallbacks<Log> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.update(id: id) { entity in
-          entity.jsonPayload = value
-        }
-        if let updated = self.wrappedValue[id: id] {
-          callbacks.onSuccess?(updated)
-        }
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
   /// Update the file field of a Log.
   @MainActor
-  public func updateFile(
+   func updateFile(
     _ id: String,
     to value: String,
     callbacks: MutationCallbacks<Log> = .init()
@@ -938,55 +1716,9 @@ public extension Shared where Value == IdentifiedArrayOf<Log> {
     }
   }
 
-  /// Update the line field of a Log.
-  @MainActor
-  public func updateLine(
-    _ id: String,
-    to value: Double,
-    callbacks: MutationCallbacks<Log> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.update(id: id) { entity in
-          entity.line = value
-        }
-        if let updated = self.wrappedValue[id: id] {
-          callbacks.onSuccess?(updated)
-        }
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  /// Update the timestamp field of a Log.
-  @MainActor
-  public func updateTimestamp(
-    _ id: String,
-    to value: Double,
-    callbacks: MutationCallbacks<Log> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.update(id: id) { entity in
-          entity.timestamp = value
-        }
-        if let updated = self.wrappedValue[id: id] {
-          callbacks.onSuccess?(updated)
-        }
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
   /// Update the formattedDate field of a Log.
   @MainActor
-  public func updateFormattedDate(
+   func updateFormattedDate(
     _ id: String,
     to value: String,
     callbacks: MutationCallbacks<Log> = .init()
@@ -1007,9 +1739,124 @@ public extension Shared where Value == IdentifiedArrayOf<Log> {
     }
   }
 
+  /// Update the jsonPayload field of a Log.
+  @MainActor
+   func updateJsonPayload(
+    _ id: String,
+    to value: String?,
+    callbacks: MutationCallbacks<Log> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.jsonPayload = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the level field of a Log.
+  @MainActor
+   func updateLevel(
+    _ id: String,
+    to value: String,
+    callbacks: MutationCallbacks<Log> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.level = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the line field of a Log.
+  @MainActor
+   func updateLine(
+    _ id: String,
+    to value: Double,
+    callbacks: MutationCallbacks<Log> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.line = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the message field of a Log.
+  @MainActor
+   func updateMessage(
+    _ id: String,
+    to value: String,
+    callbacks: MutationCallbacks<Log> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.message = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the timestamp field of a Log.
+  @MainActor
+   func updateTimestamp(
+    _ id: String,
+    to value: Double,
+    callbacks: MutationCallbacks<Log> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.timestamp = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
   /// Update the timezone field of a Log.
   @MainActor
-  public func updateTimezone(
+   func updateTimezone(
     _ id: String,
     to value: String,
     callbacks: MutationCallbacks<Log> = .init()
@@ -1034,7 +1881,7 @@ public extension Shared where Value == IdentifiedArrayOf<Log> {
 
   /// Delete a Log by ID.
   @MainActor
-  public func deleteLog(
+   func deleteLog(
     _ id: String,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -1052,7 +1899,7 @@ public extension Shared where Value == IdentifiedArrayOf<Log> {
 
   /// Delete a Log entity.
   @MainActor
-  public func deleteLog(
+   func deleteLog(
     _ entity: Log,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -1066,28 +1913,28 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Create a new Log and sync to InstantDB.
   @MainActor
-  public func createLog(
+   func createLog(
     id: String = UUID().uuidString.lowercased(),
-    level: String,
-    message: String,
-    jsonPayload: String? = nil,
     file: String,
-    line: Double,
-    timestamp: Double,
     formattedDate: String,
+    jsonPayload: String? = nil,
+    level: String,
+    line: Double,
+    message: String,
+    timestamp: Double,
     timezone: String,
     callbacks: MutationCallbacks<Log> = .init()
   ) {
     callbacks.onMutate?()
     let entity = Log(
       id: id,
-      level: level,
-      message: message,
-      jsonPayload: jsonPayload,
       file: file,
-      line: line,
-      timestamp: timestamp,
       formattedDate: formattedDate,
+      jsonPayload: jsonPayload,
+      level: level,
+      line: line,
+      message: message,
+      timestamp: timestamp,
       timezone: timezone
     )
     Task {
@@ -1105,7 +1952,7 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Delete a Log by ID.
   @MainActor
-  public func deleteLog(
+   func deleteLog(
     _ id: String,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -1123,11 +1970,991 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Delete a Log entity.
   @MainActor
-  public func deleteLog(
+   func deleteLog(
     _ entity: Log,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
     deleteLog(entity.id, callbacks: callbacks)
+  }
+}
+
+// MARK: - Post Mutations
+
+public extension Shared where Value == IdentifiedArrayOf<Post> {
+
+  // MARK: Create
+
+  /// Create a new Post and sync to InstantDB.
+  @MainActor
+   func createPost(
+    id: String = UUID().uuidString.lowercased(),
+    content: String,
+    createdAt: Double,
+    imageUrl: String? = nil,
+    callbacks: MutationCallbacks<Post> = .init()
+  ) {
+    callbacks.onMutate?()
+    let entity = Post(
+      id: id,
+      content: content,
+      createdAt: createdAt,
+      imageUrl: imageUrl
+    )
+    Task {
+      do {
+        try await self.create(entity)
+        callbacks.onSuccess?(entity)
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the content field of a Post.
+  @MainActor
+   func updateContent(
+    _ id: String,
+    to value: String,
+    callbacks: MutationCallbacks<Post> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.content = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the createdAt field of a Post.
+  @MainActor
+   func updateCreatedAt(
+    _ id: String,
+    to value: Double,
+    callbacks: MutationCallbacks<Post> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.createdAt = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the imageUrl field of a Post.
+  @MainActor
+   func updateImageUrl(
+    _ id: String,
+    to value: String?,
+    callbacks: MutationCallbacks<Post> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.imageUrl = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  // MARK: Delete
+
+  /// Delete a Post by ID.
+  @MainActor
+   func deletePost(
+    _ id: String,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.delete(id: id) as Void
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Delete a Post entity.
+  @MainActor
+   func deletePost(
+    _ entity: Post,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    deletePost(entity.id, callbacks: callbacks)
+  }
+
+  // MARK: Link/Unlink Comments
+
+  /// Link a Post to a Comment via 'comments'.
+  @MainActor
+   func linkComments(
+    _ id: String,
+    to target: Comment,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.link(id, "comments", to: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Unlink a Post from a Comment via 'comments'.
+  @MainActor
+   func unlinkComments(
+    _ id: String,
+    from target: Comment,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.unlink(id, "comments", from: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  // MARK: Link/Unlink Likes
+
+  /// Link a Post to a Like via 'likes'.
+  @MainActor
+   func linkLikes(
+    _ id: String,
+    to target: Like,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.link(id, "likes", to: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Unlink a Post from a Like via 'likes'.
+  @MainActor
+   func unlinkLikes(
+    _ id: String,
+    from target: Like,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.unlink(id, "likes", from: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  // MARK: Link/Unlink Author
+
+  /// Link a Post to a Profile via 'author'.
+  @MainActor
+   func linkAuthor(
+    _ id: String,
+    to target: Profile,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.link(id, "author", to: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Unlink a Post from a Profile via 'author'.
+  @MainActor
+   func unlinkAuthor(
+    _ id: String,
+    from target: Profile,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.unlink(id, "author", from: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+}
+
+public extension Shared where Value: RangeReplaceableCollection, Value.Element == Post {
+
+  // MARK: Create
+
+  /// Create a new Post and sync to InstantDB.
+  @MainActor
+   func createPost(
+    id: String = UUID().uuidString.lowercased(),
+    content: String,
+    createdAt: Double,
+    imageUrl: String? = nil,
+    callbacks: MutationCallbacks<Post> = .init()
+  ) {
+    callbacks.onMutate?()
+    let entity = Post(
+      id: id,
+      content: content,
+      createdAt: createdAt,
+      imageUrl: imageUrl
+    )
+    Task {
+      do {
+        try await self.create(entity)
+        callbacks.onSuccess?(entity)
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  // MARK: Delete
+
+  /// Delete a Post by ID.
+  @MainActor
+   func deletePost(
+    _ id: String,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.delete(id: id) as Void
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Delete a Post entity.
+  @MainActor
+   func deletePost(
+    _ entity: Post,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    deletePost(entity.id, callbacks: callbacks)
+  }
+}
+
+// MARK: - Profile Mutations
+
+public extension Shared where Value == IdentifiedArrayOf<Profile> {
+
+  // MARK: Create
+
+  /// Create a new Profile and sync to InstantDB.
+  @MainActor
+   func createProfile(
+    id: String = UUID().uuidString.lowercased(),
+    avatarUrl: String? = nil,
+    bio: String? = nil,
+    createdAt: Double,
+    displayName: String,
+    handle: String,
+    callbacks: MutationCallbacks<Profile> = .init()
+  ) {
+    callbacks.onMutate?()
+    let entity = Profile(
+      id: id,
+      avatarUrl: avatarUrl,
+      bio: bio,
+      createdAt: createdAt,
+      displayName: displayName,
+      handle: handle
+    )
+    Task {
+      do {
+        try await self.create(entity)
+        callbacks.onSuccess?(entity)
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the avatarUrl field of a Profile.
+  @MainActor
+   func updateAvatarUrl(
+    _ id: String,
+    to value: String?,
+    callbacks: MutationCallbacks<Profile> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.avatarUrl = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the bio field of a Profile.
+  @MainActor
+   func updateBio(
+    _ id: String,
+    to value: String?,
+    callbacks: MutationCallbacks<Profile> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.bio = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the createdAt field of a Profile.
+  @MainActor
+   func updateCreatedAt(
+    _ id: String,
+    to value: Double,
+    callbacks: MutationCallbacks<Profile> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.createdAt = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the displayName field of a Profile.
+  @MainActor
+   func updateDisplayName(
+    _ id: String,
+    to value: String,
+    callbacks: MutationCallbacks<Profile> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.displayName = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the handle field of a Profile.
+  @MainActor
+   func updateHandle(
+    _ id: String,
+    to value: String,
+    callbacks: MutationCallbacks<Profile> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.handle = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  // MARK: Delete
+
+  /// Delete a Profile by ID.
+  @MainActor
+   func deleteProfile(
+    _ id: String,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.delete(id: id) as Void
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Delete a Profile entity.
+  @MainActor
+   func deleteProfile(
+    _ entity: Profile,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    deleteProfile(entity.id, callbacks: callbacks)
+  }
+
+  // MARK: Link/Unlink Comments
+
+  /// Link a Profile to a Comment via 'comments'.
+  @MainActor
+   func linkComments(
+    _ id: String,
+    to target: Comment,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.link(id, "comments", to: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Unlink a Profile from a Comment via 'comments'.
+  @MainActor
+   func unlinkComments(
+    _ id: String,
+    from target: Comment,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.unlink(id, "comments", from: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  // MARK: Link/Unlink Likes
+
+  /// Link a Profile to a Like via 'likes'.
+  @MainActor
+   func linkLikes(
+    _ id: String,
+    to target: Like,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.link(id, "likes", to: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Unlink a Profile from a Like via 'likes'.
+  @MainActor
+   func unlinkLikes(
+    _ id: String,
+    from target: Like,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.unlink(id, "likes", from: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  // MARK: Link/Unlink Posts
+
+  /// Link a Profile to a Post via 'posts'.
+  @MainActor
+   func linkPosts(
+    _ id: String,
+    to target: Post,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.link(id, "posts", to: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Unlink a Profile from a Post via 'posts'.
+  @MainActor
+   func unlinkPosts(
+    _ id: String,
+    from target: Post,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.unlink(id, "posts", from: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+}
+
+public extension Shared where Value: RangeReplaceableCollection, Value.Element == Profile {
+
+  // MARK: Create
+
+  /// Create a new Profile and sync to InstantDB.
+  @MainActor
+   func createProfile(
+    id: String = UUID().uuidString.lowercased(),
+    avatarUrl: String? = nil,
+    bio: String? = nil,
+    createdAt: Double,
+    displayName: String,
+    handle: String,
+    callbacks: MutationCallbacks<Profile> = .init()
+  ) {
+    callbacks.onMutate?()
+    let entity = Profile(
+      id: id,
+      avatarUrl: avatarUrl,
+      bio: bio,
+      createdAt: createdAt,
+      displayName: displayName,
+      handle: handle
+    )
+    Task {
+      do {
+        try await self.create(entity)
+        callbacks.onSuccess?(entity)
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  // MARK: Delete
+
+  /// Delete a Profile by ID.
+  @MainActor
+   func deleteProfile(
+    _ id: String,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.delete(id: id) as Void
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Delete a Profile entity.
+  @MainActor
+   func deleteProfile(
+    _ entity: Profile,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    deleteProfile(entity.id, callbacks: callbacks)
+  }
+}
+
+// MARK: - Tile Mutations
+
+public extension Shared where Value == IdentifiedArrayOf<Tile> {
+
+  // MARK: Create
+
+  /// Create a new Tile and sync to InstantDB.
+  @MainActor
+   func createTile(
+    id: String = UUID().uuidString.lowercased(),
+    color: String,
+    createdAt: Double,
+    x: Double,
+    y: Double,
+    callbacks: MutationCallbacks<Tile> = .init()
+  ) {
+    callbacks.onMutate?()
+    let entity = Tile(
+      id: id,
+      color: color,
+      createdAt: createdAt,
+      x: x,
+      y: y
+    )
+    Task {
+      do {
+        try await self.create(entity)
+        callbacks.onSuccess?(entity)
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the color field of a Tile.
+  @MainActor
+   func updateColor(
+    _ id: String,
+    to value: String,
+    callbacks: MutationCallbacks<Tile> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.color = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the createdAt field of a Tile.
+  @MainActor
+   func updateCreatedAt(
+    _ id: String,
+    to value: Double,
+    callbacks: MutationCallbacks<Tile> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.createdAt = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the x field of a Tile.
+  @MainActor
+   func updateX(
+    _ id: String,
+    to value: Double,
+    callbacks: MutationCallbacks<Tile> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.x = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the y field of a Tile.
+  @MainActor
+   func updateY(
+    _ id: String,
+    to value: Double,
+    callbacks: MutationCallbacks<Tile> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.y = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  // MARK: Delete
+
+  /// Delete a Tile by ID.
+  @MainActor
+   func deleteTile(
+    _ id: String,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.delete(id: id) as Void
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Delete a Tile entity.
+  @MainActor
+   func deleteTile(
+    _ entity: Tile,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    deleteTile(entity.id, callbacks: callbacks)
+  }
+
+  // MARK: Link/Unlink LinkedBoard
+
+  /// Link a Tile to a Board via 'linkedBoard'.
+  @MainActor
+   func linkLinkedBoard(
+    _ id: String,
+    to target: Board,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.link(id, "linkedBoard", to: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Unlink a Tile from a Board via 'linkedBoard'.
+  @MainActor
+   func unlinkLinkedBoard(
+    _ id: String,
+    from target: Board,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.unlink(id, "linkedBoard", from: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  // MARK: Link/Unlink Board
+
+  /// Link a Tile to a Board via 'board'.
+  @MainActor
+   func linkBoard(
+    _ id: String,
+    to target: Board,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.link(id, "board", to: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Unlink a Tile from a Board via 'board'.
+  @MainActor
+   func unlinkBoard(
+    _ id: String,
+    from target: Board,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.unlink(id, "board", from: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+}
+
+public extension Shared where Value: RangeReplaceableCollection, Value.Element == Tile {
+
+  // MARK: Create
+
+  /// Create a new Tile and sync to InstantDB.
+  @MainActor
+   func createTile(
+    id: String = UUID().uuidString.lowercased(),
+    color: String,
+    createdAt: Double,
+    x: Double,
+    y: Double,
+    callbacks: MutationCallbacks<Tile> = .init()
+  ) {
+    callbacks.onMutate?()
+    let entity = Tile(
+      id: id,
+      color: color,
+      createdAt: createdAt,
+      x: x,
+      y: y
+    )
+    Task {
+      do {
+        try await self.create(entity)
+        callbacks.onSuccess?(entity)
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  // MARK: Delete
+
+  /// Delete a Tile by ID.
+  @MainActor
+   func deleteTile(
+    _ id: String,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.delete(id: id) as Void
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Delete a Tile entity.
+  @MainActor
+   func deleteTile(
+    _ entity: Tile,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    deleteTile(entity.id, callbacks: callbacks)
   }
 }
 
@@ -1139,7 +2966,7 @@ public extension Shared where Value == IdentifiedArrayOf<Todo> {
 
   /// Create a new Todo and sync to InstantDB.
   @MainActor
-  public func createTodo(
+   func createTodo(
     id: String = UUID().uuidString.lowercased(),
     createdAt: Double,
     done: Bool,
@@ -1166,7 +2993,7 @@ public extension Shared where Value == IdentifiedArrayOf<Todo> {
 
   /// Update the createdAt field of a Todo.
   @MainActor
-  public func updateCreatedAt(
+   func updateCreatedAt(
     _ id: String,
     to value: Double,
     callbacks: MutationCallbacks<Todo> = .init()
@@ -1189,7 +3016,7 @@ public extension Shared where Value == IdentifiedArrayOf<Todo> {
 
   /// Update the done field of a Todo.
   @MainActor
-  public func updateDone(
+   func updateDone(
     _ id: String,
     to value: Bool,
     callbacks: MutationCallbacks<Todo> = .init()
@@ -1212,7 +3039,7 @@ public extension Shared where Value == IdentifiedArrayOf<Todo> {
 
   /// Toggle the done field of a Todo.
   @MainActor
-  public func toggleDone(
+   func toggleDone(
     _ id: String,
     callbacks: MutationCallbacks<Todo> = .init()
   ) {
@@ -1234,7 +3061,7 @@ public extension Shared where Value == IdentifiedArrayOf<Todo> {
 
   /// Set done to true for a Todo.
   @MainActor
-  public func markDone(
+   func markDone(
     _ id: String,
     callbacks: MutationCallbacks<Todo> = .init()
   ) {
@@ -1243,7 +3070,7 @@ public extension Shared where Value == IdentifiedArrayOf<Todo> {
 
   /// Set done to false for a Todo.
   @MainActor
-  public func unmarkDone(
+   func unmarkDone(
     _ id: String,
     callbacks: MutationCallbacks<Todo> = .init()
   ) {
@@ -1252,7 +3079,7 @@ public extension Shared where Value == IdentifiedArrayOf<Todo> {
 
   /// Update the title field of a Todo.
   @MainActor
-  public func updateTitle(
+   func updateTitle(
     _ id: String,
     to value: String,
     callbacks: MutationCallbacks<Todo> = .init()
@@ -1277,7 +3104,7 @@ public extension Shared where Value == IdentifiedArrayOf<Todo> {
 
   /// Delete a Todo by ID.
   @MainActor
-  public func deleteTodo(
+   func deleteTodo(
     _ id: String,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -1295,7 +3122,7 @@ public extension Shared where Value == IdentifiedArrayOf<Todo> {
 
   /// Delete a Todo entity.
   @MainActor
-  public func deleteTodo(
+   func deleteTodo(
     _ entity: Todo,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -1309,7 +3136,7 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Create a new Todo and sync to InstantDB.
   @MainActor
-  public func createTodo(
+   func createTodo(
     id: String = UUID().uuidString.lowercased(),
     createdAt: Double,
     done: Bool,
@@ -1338,7 +3165,7 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Delete a Todo by ID.
   @MainActor
-  public func deleteTodo(
+   func deleteTodo(
     _ id: String,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -1356,7 +3183,7 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Delete a Todo entity.
   @MainActor
-  public func deleteTodo(
+   func deleteTodo(
     _ entity: Todo,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -1364,1490 +3191,31 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
   }
 }
 
-// MARK: - Profile Mutations
+// MARK: - Media Mutations
 
-public extension Shared where Value == IdentifiedArrayOf<Profile> {
-
-  // MARK: Create
-
-  /// Create a new Profile and sync to InstantDB.
-  @MainActor
-  public func createProfile(
-    id: String = UUID().uuidString.lowercased(),
-    displayName: String,
-    handle: String,
-    bio: String? = nil,
-    avatarUrl: String? = nil,
-    createdAt: Double,
-    callbacks: MutationCallbacks<Profile> = .init()
-  ) {
-    callbacks.onMutate?()
-    let entity = Profile(
-      id: id,
-      displayName: displayName,
-      handle: handle,
-      bio: bio,
-      avatarUrl: avatarUrl,
-      createdAt: createdAt
-    )
-    Task {
-      do {
-        try await self.create(entity)
-        callbacks.onSuccess?(entity)
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  /// Update the displayName field of a Profile.
-  @MainActor
-  public func updateDisplayName(
-    _ id: String,
-    to value: String,
-    callbacks: MutationCallbacks<Profile> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.update(id: id) { entity in
-          entity.displayName = value
-        }
-        if let updated = self.wrappedValue[id: id] {
-          callbacks.onSuccess?(updated)
-        }
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  /// Update the handle field of a Profile.
-  @MainActor
-  public func updateHandle(
-    _ id: String,
-    to value: String,
-    callbacks: MutationCallbacks<Profile> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.update(id: id) { entity in
-          entity.handle = value
-        }
-        if let updated = self.wrappedValue[id: id] {
-          callbacks.onSuccess?(updated)
-        }
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  /// Update the bio field of a Profile.
-  @MainActor
-  public func updateBio(
-    _ id: String,
-    to value: String?,
-    callbacks: MutationCallbacks<Profile> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.update(id: id) { entity in
-          entity.bio = value
-        }
-        if let updated = self.wrappedValue[id: id] {
-          callbacks.onSuccess?(updated)
-        }
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  /// Update the avatarUrl field of a Profile.
-  @MainActor
-  public func updateAvatarUrl(
-    _ id: String,
-    to value: String?,
-    callbacks: MutationCallbacks<Profile> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.update(id: id) { entity in
-          entity.avatarUrl = value
-        }
-        if let updated = self.wrappedValue[id: id] {
-          callbacks.onSuccess?(updated)
-        }
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  /// Update the createdAt field of a Profile.
-  @MainActor
-  public func updateCreatedAt(
-    _ id: String,
-    to value: Double,
-    callbacks: MutationCallbacks<Profile> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.update(id: id) { entity in
-          entity.createdAt = value
-        }
-        if let updated = self.wrappedValue[id: id] {
-          callbacks.onSuccess?(updated)
-        }
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  // MARK: Delete
-
-  /// Delete a Profile by ID.
-  @MainActor
-  public func deleteProfile(
-    _ id: String,
-    callbacks: MutationCallbacks<Void> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.delete(id: id) as Void
-        callbacks.onSuccess?(())
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  /// Delete a Profile entity.
-  @MainActor
-  public func deleteProfile(
-    _ entity: Profile,
-    callbacks: MutationCallbacks<Void> = .init()
-  ) {
-    deleteProfile(entity.id, callbacks: callbacks)
-  }
-
-  // MARK: Link/Unlink Posts
-
-  /// Link a Profile to a Post via 'posts'.
-  @MainActor
-  public func linkPosts(
-    _ id: String,
-    to target: Post,
-    callbacks: MutationCallbacks<Void> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.link(id, "posts", to: target)
-        callbacks.onSuccess?(())
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  /// Unlink a Profile from a Post via 'posts'.
-  @MainActor
-  public func unlinkPosts(
-    _ id: String,
-    from target: Post,
-    callbacks: MutationCallbacks<Void> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.unlink(id, "posts", from: target)
-        callbacks.onSuccess?(())
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  // MARK: Link/Unlink Comments
-
-  /// Link a Profile to a Comment via 'comments'.
-  @MainActor
-  public func linkComments(
-    _ id: String,
-    to target: Comment,
-    callbacks: MutationCallbacks<Void> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.link(id, "comments", to: target)
-        callbacks.onSuccess?(())
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  /// Unlink a Profile from a Comment via 'comments'.
-  @MainActor
-  public func unlinkComments(
-    _ id: String,
-    from target: Comment,
-    callbacks: MutationCallbacks<Void> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.unlink(id, "comments", from: target)
-        callbacks.onSuccess?(())
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  // MARK: Link/Unlink Likes
-
-  /// Link a Profile to a Like via 'likes'.
-  @MainActor
-  public func linkLikes(
-    _ id: String,
-    to target: Like,
-    callbacks: MutationCallbacks<Void> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.link(id, "likes", to: target)
-        callbacks.onSuccess?(())
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  /// Unlink a Profile from a Like via 'likes'.
-  @MainActor
-  public func unlinkLikes(
-    _ id: String,
-    from target: Like,
-    callbacks: MutationCallbacks<Void> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.unlink(id, "likes", from: target)
-        callbacks.onSuccess?(())
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-}
-
-public extension Shared where Value: RangeReplaceableCollection, Value.Element == Profile {
+public extension Shared where Value == IdentifiedArrayOf<Media> {
 
   // MARK: Create
 
-  /// Create a new Profile and sync to InstantDB.
+  /// Create a new Media and sync to InstantDB.
   @MainActor
-  public func createProfile(
-    id: String = UUID().uuidString.lowercased(),
-    displayName: String,
-    handle: String,
-    bio: String? = nil,
-    avatarUrl: String? = nil,
-    createdAt: Double,
-    callbacks: MutationCallbacks<Profile> = .init()
-  ) {
-    callbacks.onMutate?()
-    let entity = Profile(
-      id: id,
-      displayName: displayName,
-      handle: handle,
-      bio: bio,
-      avatarUrl: avatarUrl,
-      createdAt: createdAt
-    )
-    Task {
-      do {
-        try await self.create(entity)
-        callbacks.onSuccess?(entity)
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  // MARK: Delete
-
-  /// Delete a Profile by ID.
-  @MainActor
-  public func deleteProfile(
-    _ id: String,
-    callbacks: MutationCallbacks<Void> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.delete(id: id) as Void
-        callbacks.onSuccess?(())
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  /// Delete a Profile entity.
-  @MainActor
-  public func deleteProfile(
-    _ entity: Profile,
-    callbacks: MutationCallbacks<Void> = .init()
-  ) {
-    deleteProfile(entity.id, callbacks: callbacks)
-  }
-}
-
-// MARK: - Post Mutations
-
-public extension Shared where Value == IdentifiedArrayOf<Post> {
-
-  // MARK: Create
-
-  /// Create a new Post and sync to InstantDB.
-  @MainActor
-  public func createPost(
-    id: String = UUID().uuidString.lowercased(),
-    content: String,
-    imageUrl: String? = nil,
-    createdAt: Double,
-    likesCount: Double,
-    callbacks: MutationCallbacks<Post> = .init()
-  ) {
-    callbacks.onMutate?()
-    let entity = Post(
-      id: id,
-      content: content,
-      imageUrl: imageUrl,
-      createdAt: createdAt,
-      likesCount: likesCount
-    )
-    Task {
-      do {
-        try await self.create(entity)
-        callbacks.onSuccess?(entity)
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  /// Update the content field of a Post.
-  @MainActor
-  public func updateContent(
-    _ id: String,
-    to value: String,
-    callbacks: MutationCallbacks<Post> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.update(id: id) { entity in
-          entity.content = value
-        }
-        if let updated = self.wrappedValue[id: id] {
-          callbacks.onSuccess?(updated)
-        }
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  /// Update the imageUrl field of a Post.
-  @MainActor
-  public func updateImageUrl(
-    _ id: String,
-    to value: String?,
-    callbacks: MutationCallbacks<Post> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.update(id: id) { entity in
-          entity.imageUrl = value
-        }
-        if let updated = self.wrappedValue[id: id] {
-          callbacks.onSuccess?(updated)
-        }
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  /// Update the createdAt field of a Post.
-  @MainActor
-  public func updateCreatedAt(
-    _ id: String,
-    to value: Double,
-    callbacks: MutationCallbacks<Post> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.update(id: id) { entity in
-          entity.createdAt = value
-        }
-        if let updated = self.wrappedValue[id: id] {
-          callbacks.onSuccess?(updated)
-        }
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  /// Update the likesCount field of a Post.
-  @MainActor
-  public func updateLikesCount(
-    _ id: String,
-    to value: Double,
-    callbacks: MutationCallbacks<Post> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.update(id: id) { entity in
-          entity.likesCount = value
-        }
-        if let updated = self.wrappedValue[id: id] {
-          callbacks.onSuccess?(updated)
-        }
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  /// Increment the likesCount field of a Post.
-  @MainActor
-  public func incrementLikesCount(
-    _ id: String,
-    by amount: Double = 1,
-    callbacks: MutationCallbacks<Post> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.update(id: id) { entity in
-          entity.likesCount += amount
-        }
-        if let updated = self.wrappedValue[id: id] {
-          callbacks.onSuccess?(updated)
-        }
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  /// Decrement the likesCount field of a Post.
-  @MainActor
-  public func decrementLikesCount(
-    _ id: String,
-    by amount: Double = 1,
-    callbacks: MutationCallbacks<Post> = .init()
-  ) {
-    incrementLikesCount(id, by: -amount, callbacks: callbacks)
-  }
-
-  // MARK: Delete
-
-  /// Delete a Post by ID.
-  @MainActor
-  public func deletePost(
-    _ id: String,
-    callbacks: MutationCallbacks<Void> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.delete(id: id) as Void
-        callbacks.onSuccess?(())
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  /// Delete a Post entity.
-  @MainActor
-  public func deletePost(
-    _ entity: Post,
-    callbacks: MutationCallbacks<Void> = .init()
-  ) {
-    deletePost(entity.id, callbacks: callbacks)
-  }
-
-  // MARK: Link/Unlink Comments
-
-  /// Link a Post to a Comment via 'comments'.
-  @MainActor
-  public func linkComments(
-    _ id: String,
-    to target: Comment,
-    callbacks: MutationCallbacks<Void> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.link(id, "comments", to: target)
-        callbacks.onSuccess?(())
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  /// Unlink a Post from a Comment via 'comments'.
-  @MainActor
-  public func unlinkComments(
-    _ id: String,
-    from target: Comment,
-    callbacks: MutationCallbacks<Void> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.unlink(id, "comments", from: target)
-        callbacks.onSuccess?(())
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  // MARK: Link/Unlink Likes
-
-  /// Link a Post to a Like via 'likes'.
-  @MainActor
-  public func linkLikes(
-    _ id: String,
-    to target: Like,
-    callbacks: MutationCallbacks<Void> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.link(id, "likes", to: target)
-        callbacks.onSuccess?(())
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  /// Unlink a Post from a Like via 'likes'.
-  @MainActor
-  public func unlinkLikes(
-    _ id: String,
-    from target: Like,
-    callbacks: MutationCallbacks<Void> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.unlink(id, "likes", from: target)
-        callbacks.onSuccess?(())
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  // MARK: Link/Unlink Author
-
-  /// Link a Post to a Profile via 'author'.
-  @MainActor
-  public func linkAuthor(
-    _ id: String,
-    to target: Profile,
-    callbacks: MutationCallbacks<Void> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.link(id, "author", to: target)
-        callbacks.onSuccess?(())
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  /// Unlink a Post from a Profile via 'author'.
-  @MainActor
-  public func unlinkAuthor(
-    _ id: String,
-    from target: Profile,
-    callbacks: MutationCallbacks<Void> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.unlink(id, "author", from: target)
-        callbacks.onSuccess?(())
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-}
-
-public extension Shared where Value: RangeReplaceableCollection, Value.Element == Post {
-
-  // MARK: Create
-
-  /// Create a new Post and sync to InstantDB.
-  @MainActor
-  public func createPost(
-    id: String = UUID().uuidString.lowercased(),
-    content: String,
-    imageUrl: String? = nil,
-    createdAt: Double,
-    likesCount: Double,
-    callbacks: MutationCallbacks<Post> = .init()
-  ) {
-    callbacks.onMutate?()
-    let entity = Post(
-      id: id,
-      content: content,
-      imageUrl: imageUrl,
-      createdAt: createdAt,
-      likesCount: likesCount
-    )
-    Task {
-      do {
-        try await self.create(entity)
-        callbacks.onSuccess?(entity)
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  // MARK: Delete
-
-  /// Delete a Post by ID.
-  @MainActor
-  public func deletePost(
-    _ id: String,
-    callbacks: MutationCallbacks<Void> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.delete(id: id) as Void
-        callbacks.onSuccess?(())
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  /// Delete a Post entity.
-  @MainActor
-  public func deletePost(
-    _ entity: Post,
-    callbacks: MutationCallbacks<Void> = .init()
-  ) {
-    deletePost(entity.id, callbacks: callbacks)
-  }
-}
-
-// MARK: - Comment Mutations
-
-public extension Shared where Value == IdentifiedArrayOf<Comment> {
-
-  // MARK: Create
-
-  /// Create a new Comment and sync to InstantDB.
-  @MainActor
-  public func createComment(
-    id: String = UUID().uuidString.lowercased(),
-    text: String,
-    createdAt: Double,
-    callbacks: MutationCallbacks<Comment> = .init()
-  ) {
-    callbacks.onMutate?()
-    let entity = Comment(
-      id: id,
-      text: text,
-      createdAt: createdAt
-    )
-    Task {
-      do {
-        try await self.create(entity)
-        callbacks.onSuccess?(entity)
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  /// Update the text field of a Comment.
-  @MainActor
-  public func updateText(
-    _ id: String,
-    to value: String,
-    callbacks: MutationCallbacks<Comment> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.update(id: id) { entity in
-          entity.text = value
-        }
-        if let updated = self.wrappedValue[id: id] {
-          callbacks.onSuccess?(updated)
-        }
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  /// Update the createdAt field of a Comment.
-  @MainActor
-  public func updateCreatedAt(
-    _ id: String,
-    to value: Double,
-    callbacks: MutationCallbacks<Comment> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.update(id: id) { entity in
-          entity.createdAt = value
-        }
-        if let updated = self.wrappedValue[id: id] {
-          callbacks.onSuccess?(updated)
-        }
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  // MARK: Delete
-
-  /// Delete a Comment by ID.
-  @MainActor
-  public func deleteComment(
-    _ id: String,
-    callbacks: MutationCallbacks<Void> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.delete(id: id) as Void
-        callbacks.onSuccess?(())
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  /// Delete a Comment entity.
-  @MainActor
-  public func deleteComment(
-    _ entity: Comment,
-    callbacks: MutationCallbacks<Void> = .init()
-  ) {
-    deleteComment(entity.id, callbacks: callbacks)
-  }
-
-  // MARK: Link/Unlink Author
-
-  /// Link a Comment to a Profile via 'author'.
-  @MainActor
-  public func linkAuthor(
-    _ id: String,
-    to target: Profile,
-    callbacks: MutationCallbacks<Void> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.link(id, "author", to: target)
-        callbacks.onSuccess?(())
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  /// Unlink a Comment from a Profile via 'author'.
-  @MainActor
-  public func unlinkAuthor(
-    _ id: String,
-    from target: Profile,
-    callbacks: MutationCallbacks<Void> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.unlink(id, "author", from: target)
-        callbacks.onSuccess?(())
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  // MARK: Link/Unlink Post
-
-  /// Link a Comment to a Post via 'post'.
-  @MainActor
-  public func linkPost(
-    _ id: String,
-    to target: Post,
-    callbacks: MutationCallbacks<Void> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.link(id, "post", to: target)
-        callbacks.onSuccess?(())
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  /// Unlink a Comment from a Post via 'post'.
-  @MainActor
-  public func unlinkPost(
-    _ id: String,
-    from target: Post,
-    callbacks: MutationCallbacks<Void> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.unlink(id, "post", from: target)
-        callbacks.onSuccess?(())
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-}
-
-public extension Shared where Value: RangeReplaceableCollection, Value.Element == Comment {
-
-  // MARK: Create
-
-  /// Create a new Comment and sync to InstantDB.
-  @MainActor
-  public func createComment(
-    id: String = UUID().uuidString.lowercased(),
-    text: String,
-    createdAt: Double,
-    callbacks: MutationCallbacks<Comment> = .init()
-  ) {
-    callbacks.onMutate?()
-    let entity = Comment(
-      id: id,
-      text: text,
-      createdAt: createdAt
-    )
-    Task {
-      do {
-        try await self.create(entity)
-        callbacks.onSuccess?(entity)
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  // MARK: Delete
-
-  /// Delete a Comment by ID.
-  @MainActor
-  public func deleteComment(
-    _ id: String,
-    callbacks: MutationCallbacks<Void> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.delete(id: id) as Void
-        callbacks.onSuccess?(())
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  /// Delete a Comment entity.
-  @MainActor
-  public func deleteComment(
-    _ entity: Comment,
-    callbacks: MutationCallbacks<Void> = .init()
-  ) {
-    deleteComment(entity.id, callbacks: callbacks)
-  }
-}
-
-// MARK: - Like Mutations
-
-public extension Shared where Value == IdentifiedArrayOf<Like> {
-
-  // MARK: Create
-
-  /// Create a new Like and sync to InstantDB.
-  @MainActor
-  public func createLike(
-    id: String = UUID().uuidString.lowercased(),
-    createdAt: Double,
-    callbacks: MutationCallbacks<Like> = .init()
-  ) {
-    callbacks.onMutate?()
-    let entity = Like(
-      id: id,
-      createdAt: createdAt
-    )
-    Task {
-      do {
-        try await self.create(entity)
-        callbacks.onSuccess?(entity)
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  /// Update the createdAt field of a Like.
-  @MainActor
-  public func updateCreatedAt(
-    _ id: String,
-    to value: Double,
-    callbacks: MutationCallbacks<Like> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.update(id: id) { entity in
-          entity.createdAt = value
-        }
-        if let updated = self.wrappedValue[id: id] {
-          callbacks.onSuccess?(updated)
-        }
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  // MARK: Delete
-
-  /// Delete a Like by ID.
-  @MainActor
-  public func deleteLike(
-    _ id: String,
-    callbacks: MutationCallbacks<Void> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.delete(id: id) as Void
-        callbacks.onSuccess?(())
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  /// Delete a Like entity.
-  @MainActor
-  public func deleteLike(
-    _ entity: Like,
-    callbacks: MutationCallbacks<Void> = .init()
-  ) {
-    deleteLike(entity.id, callbacks: callbacks)
-  }
-
-  // MARK: Link/Unlink Profile
-
-  /// Link a Like to a Profile via 'profile'.
-  @MainActor
-  public func linkProfile(
-    _ id: String,
-    to target: Profile,
-    callbacks: MutationCallbacks<Void> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.link(id, "profile", to: target)
-        callbacks.onSuccess?(())
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  /// Unlink a Like from a Profile via 'profile'.
-  @MainActor
-  public func unlinkProfile(
-    _ id: String,
-    from target: Profile,
-    callbacks: MutationCallbacks<Void> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.unlink(id, "profile", from: target)
-        callbacks.onSuccess?(())
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  // MARK: Link/Unlink Post
-
-  /// Link a Like to a Post via 'post'.
-  @MainActor
-  public func linkPost(
-    _ id: String,
-    to target: Post,
-    callbacks: MutationCallbacks<Void> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.link(id, "post", to: target)
-        callbacks.onSuccess?(())
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  /// Unlink a Like from a Post via 'post'.
-  @MainActor
-  public func unlinkPost(
-    _ id: String,
-    from target: Post,
-    callbacks: MutationCallbacks<Void> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.unlink(id, "post", from: target)
-        callbacks.onSuccess?(())
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-}
-
-public extension Shared where Value: RangeReplaceableCollection, Value.Element == Like {
-
-  // MARK: Create
-
-  /// Create a new Like and sync to InstantDB.
-  @MainActor
-  public func createLike(
-    id: String = UUID().uuidString.lowercased(),
-    createdAt: Double,
-    callbacks: MutationCallbacks<Like> = .init()
-  ) {
-    callbacks.onMutate?()
-    let entity = Like(
-      id: id,
-      createdAt: createdAt
-    )
-    Task {
-      do {
-        try await self.create(entity)
-        callbacks.onSuccess?(entity)
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  // MARK: Delete
-
-  /// Delete a Like by ID.
-  @MainActor
-  public func deleteLike(
-    _ id: String,
-    callbacks: MutationCallbacks<Void> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.delete(id: id) as Void
-        callbacks.onSuccess?(())
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  /// Delete a Like entity.
-  @MainActor
-  public func deleteLike(
-    _ entity: Like,
-    callbacks: MutationCallbacks<Void> = .init()
-  ) {
-    deleteLike(entity.id, callbacks: callbacks)
-  }
-}
-
-// MARK: - Tile Mutations
-
-public extension Shared where Value == IdentifiedArrayOf<Tile> {
-
-  // MARK: Create
-
-  /// Create a new Tile and sync to InstantDB.
-  @MainActor
-  public func createTile(
-    id: String = UUID().uuidString.lowercased(),
-    x: Double,
-    y: Double,
-    color: String,
-    createdAt: Double,
-    callbacks: MutationCallbacks<Tile> = .init()
-  ) {
-    callbacks.onMutate?()
-    let entity = Tile(
-      id: id,
-      x: x,
-      y: y,
-      color: color,
-      createdAt: createdAt
-    )
-    Task {
-      do {
-        try await self.create(entity)
-        callbacks.onSuccess?(entity)
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  /// Update the x field of a Tile.
-  @MainActor
-  public func updateX(
-    _ id: String,
-    to value: Double,
-    callbacks: MutationCallbacks<Tile> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.update(id: id) { entity in
-          entity.x = value
-        }
-        if let updated = self.wrappedValue[id: id] {
-          callbacks.onSuccess?(updated)
-        }
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  /// Update the y field of a Tile.
-  @MainActor
-  public func updateY(
-    _ id: String,
-    to value: Double,
-    callbacks: MutationCallbacks<Tile> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.update(id: id) { entity in
-          entity.y = value
-        }
-        if let updated = self.wrappedValue[id: id] {
-          callbacks.onSuccess?(updated)
-        }
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  /// Update the color field of a Tile.
-  @MainActor
-  public func updateColor(
-    _ id: String,
-    to value: String,
-    callbacks: MutationCallbacks<Tile> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.update(id: id) { entity in
-          entity.color = value
-        }
-        if let updated = self.wrappedValue[id: id] {
-          callbacks.onSuccess?(updated)
-        }
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  /// Update the createdAt field of a Tile.
-  @MainActor
-  public func updateCreatedAt(
-    _ id: String,
-    to value: Double,
-    callbacks: MutationCallbacks<Tile> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.update(id: id) { entity in
-          entity.createdAt = value
-        }
-        if let updated = self.wrappedValue[id: id] {
-          callbacks.onSuccess?(updated)
-        }
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  // MARK: Delete
-
-  /// Delete a Tile by ID.
-  @MainActor
-  public func deleteTile(
-    _ id: String,
-    callbacks: MutationCallbacks<Void> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.delete(id: id) as Void
-        callbacks.onSuccess?(())
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  /// Delete a Tile entity.
-  @MainActor
-  public func deleteTile(
-    _ entity: Tile,
-    callbacks: MutationCallbacks<Void> = .init()
-  ) {
-    deleteTile(entity.id, callbacks: callbacks)
-  }
-
-  // MARK: Link/Unlink Board
-
-  /// Link a Tile to a Board via 'board'.
-  @MainActor
-  public func linkBoard(
-    _ id: String,
-    to target: Board,
-    callbacks: MutationCallbacks<Void> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.link(id, "board", to: target)
-        callbacks.onSuccess?(())
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  /// Unlink a Tile from a Board via 'board'.
-  @MainActor
-  public func unlinkBoard(
-    _ id: String,
-    from target: Board,
-    callbacks: MutationCallbacks<Void> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.unlink(id, "board", from: target)
-        callbacks.onSuccess?(())
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-}
-
-public extension Shared where Value: RangeReplaceableCollection, Value.Element == Tile {
-
-  // MARK: Create
-
-  /// Create a new Tile and sync to InstantDB.
-  @MainActor
-  public func createTile(
-    id: String = UUID().uuidString.lowercased(),
-    x: Double,
-    y: Double,
-    color: String,
-    createdAt: Double,
-    callbacks: MutationCallbacks<Tile> = .init()
-  ) {
-    callbacks.onMutate?()
-    let entity = Tile(
-      id: id,
-      x: x,
-      y: y,
-      color: color,
-      createdAt: createdAt
-    )
-    Task {
-      do {
-        try await self.create(entity)
-        callbacks.onSuccess?(entity)
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  // MARK: Delete
-
-  /// Delete a Tile by ID.
-  @MainActor
-  public func deleteTile(
-    _ id: String,
-    callbacks: MutationCallbacks<Void> = .init()
-  ) {
-    callbacks.onMutate?()
-    Task {
-      do {
-        try await self.delete(id: id) as Void
-        callbacks.onSuccess?(())
-      } catch {
-        callbacks.onError?(error)
-      }
-      callbacks.onSettled?()
-    }
-  }
-
-  /// Delete a Tile entity.
-  @MainActor
-  public func deleteTile(
-    _ entity: Tile,
-    callbacks: MutationCallbacks<Void> = .init()
-  ) {
-    deleteTile(entity.id, callbacks: callbacks)
-  }
-}
-
-// MARK: - Board Mutations
-
-public extension Shared where Value == IdentifiedArrayOf<Board> {
-
-  // MARK: Create
-
-  /// Create a new Board and sync to InstantDB.
-  @MainActor
-  public func createBoard(
+   func createMedia(
     id: String = UUID().uuidString.lowercased(),
     title: String,
-    createdAt: Double,
-    callbacks: MutationCallbacks<Board> = .init()
+    durationSeconds: Double,
+    mediaType: String,
+    ingestedAt: String,
+    description: String? = nil,
+    callbacks: MutationCallbacks<Media> = .init()
   ) {
     callbacks.onMutate?()
-    let entity = Board(
+    let entity = Media(
       id: id,
       title: title,
-      createdAt: createdAt
+      durationSeconds: durationSeconds,
+      mediaType: mediaType,
+      ingestedAt: ingestedAt,
+      description: description
     )
     Task {
       do {
@@ -2860,12 +3228,12 @@ public extension Shared where Value == IdentifiedArrayOf<Board> {
     }
   }
 
-  /// Update the title field of a Board.
+  /// Update the title field of a Media.
   @MainActor
-  public func updateTitle(
+   func updateTitle(
     _ id: String,
     to value: String,
-    callbacks: MutationCallbacks<Board> = .init()
+    callbacks: MutationCallbacks<Media> = .init()
   ) {
     callbacks.onMutate?()
     Task {
@@ -2883,18 +3251,120 @@ public extension Shared where Value == IdentifiedArrayOf<Board> {
     }
   }
 
-  /// Update the createdAt field of a Board.
+  /// Update the durationSeconds field of a Media.
   @MainActor
-  public func updateCreatedAt(
+   func updateDurationSeconds(
     _ id: String,
     to value: Double,
-    callbacks: MutationCallbacks<Board> = .init()
+    callbacks: MutationCallbacks<Media> = .init()
   ) {
     callbacks.onMutate?()
     Task {
       do {
         try await self.update(id: id) { entity in
-          entity.createdAt = value
+          entity.durationSeconds = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Increment the durationSeconds field of a Media.
+  @MainActor
+   func incrementDurationSeconds(
+    _ id: String,
+    by amount: Double = 1,
+    callbacks: MutationCallbacks<Media> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.durationSeconds += amount
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Decrement the durationSeconds field of a Media.
+  @MainActor
+   func decrementDurationSeconds(
+    _ id: String,
+    by amount: Double = 1,
+    callbacks: MutationCallbacks<Media> = .init()
+  ) {
+    incrementDurationSeconds(id, by: -amount, callbacks: callbacks)
+  }
+
+  /// Update the mediaType field of a Media.
+  @MainActor
+   func updateMediaType(
+    _ id: String,
+    to value: String,
+    callbacks: MutationCallbacks<Media> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.mediaType = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the ingestedAt field of a Media.
+  @MainActor
+   func updateIngestedAt(
+    _ id: String,
+    to value: String,
+    callbacks: MutationCallbacks<Media> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.ingestedAt = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the description field of a Media.
+  @MainActor
+   func updateDescription(
+    _ id: String,
+    to value: String?,
+    callbacks: MutationCallbacks<Media> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.description = value
         }
         if let updated = self.wrappedValue[id: id] {
           callbacks.onSuccess?(updated)
@@ -2908,9 +3378,9 @@ public extension Shared where Value == IdentifiedArrayOf<Board> {
 
   // MARK: Delete
 
-  /// Delete a Board by ID.
+  /// Delete a Media by ID.
   @MainActor
-  public func deleteBoard(
+   func deleteMedia(
     _ id: String,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -2926,28 +3396,28 @@ public extension Shared where Value == IdentifiedArrayOf<Board> {
     }
   }
 
-  /// Delete a Board entity.
+  /// Delete a Media entity.
   @MainActor
-  public func deleteBoard(
-    _ entity: Board,
+   func deleteMedia(
+    _ entity: Media,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
-    deleteBoard(entity.id, callbacks: callbacks)
+    deleteMedia(entity.id, callbacks: callbacks)
   }
 
-  // MARK: Link/Unlink Tiles
+  // MARK: Link/Unlink TranscriptionRuns
 
-  /// Link a Board to a Tile via 'tiles'.
+  /// Link a Media to a TranscriptionRun via 'transcriptionRuns'.
   @MainActor
-  public func linkTiles(
+   func linkTranscriptionRuns(
     _ id: String,
-    to target: Tile,
+    to target: TranscriptionRun,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
     callbacks.onMutate?()
     Task {
       do {
-        try await self.link(id, "tiles", to: target)
+        try await self.link(id, "transcriptionRuns", to: target)
         callbacks.onSuccess?(())
       } catch {
         callbacks.onError?(error)
@@ -2956,17 +3426,17 @@ public extension Shared where Value == IdentifiedArrayOf<Board> {
     }
   }
 
-  /// Unlink a Board from a Tile via 'tiles'.
+  /// Unlink a Media from a TranscriptionRun via 'transcriptionRuns'.
   @MainActor
-  public func unlinkTiles(
+   func unlinkTranscriptionRuns(
     _ id: String,
-    from target: Tile,
+    from target: TranscriptionRun,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
     callbacks.onMutate?()
     Task {
       do {
-        try await self.unlink(id, "tiles", from: target)
+        try await self.unlink(id, "transcriptionRuns", from: target)
         callbacks.onSuccess?(())
       } catch {
         callbacks.onError?(error)
@@ -2976,23 +3446,29 @@ public extension Shared where Value == IdentifiedArrayOf<Board> {
   }
 }
 
-public extension Shared where Value: RangeReplaceableCollection, Value.Element == Board {
+public extension Shared where Value: RangeReplaceableCollection, Value.Element == Media {
 
   // MARK: Create
 
-  /// Create a new Board and sync to InstantDB.
+  /// Create a new Media and sync to InstantDB.
   @MainActor
-  public func createBoard(
+   func createMedia(
     id: String = UUID().uuidString.lowercased(),
     title: String,
-    createdAt: Double,
-    callbacks: MutationCallbacks<Board> = .init()
+    durationSeconds: Double,
+    mediaType: String,
+    ingestedAt: String,
+    description: String? = nil,
+    callbacks: MutationCallbacks<Media> = .init()
   ) {
     callbacks.onMutate?()
-    let entity = Board(
+    let entity = Media(
       id: id,
       title: title,
-      createdAt: createdAt
+      durationSeconds: durationSeconds,
+      mediaType: mediaType,
+      ingestedAt: ingestedAt,
+      description: description
     )
     Task {
       do {
@@ -3007,9 +3483,9 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   // MARK: Delete
 
-  /// Delete a Board by ID.
+  /// Delete a Media by ID.
   @MainActor
-  public func deleteBoard(
+   func deleteMedia(
     _ id: String,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -3025,13 +3501,761 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
     }
   }
 
-  /// Delete a Board entity.
+  /// Delete a Media entity.
   @MainActor
-  public func deleteBoard(
-    _ entity: Board,
+   func deleteMedia(
+    _ entity: Media,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
-    deleteBoard(entity.id, callbacks: callbacks)
+    deleteMedia(entity.id, callbacks: callbacks)
+  }
+}
+
+// MARK: - TranscriptionRun Mutations
+
+public extension Shared where Value == IdentifiedArrayOf<TranscriptionRun> {
+
+  // MARK: Create
+
+  /// Create a new TranscriptionRun and sync to InstantDB.
+  @MainActor
+   func createTranscriptionRun(
+    id: String = UUID().uuidString.lowercased(),
+    toolVersion: String,
+    executedAt: String,
+    runType: String? = nil,
+    isActive: Bool? = nil,
+    callbacks: MutationCallbacks<TranscriptionRun> = .init()
+  ) {
+    callbacks.onMutate?()
+    let entity = TranscriptionRun(
+      id: id,
+      toolVersion: toolVersion,
+      executedAt: executedAt,
+      runType: runType,
+      isActive: isActive
+    )
+    Task {
+      do {
+        try await self.create(entity)
+        callbacks.onSuccess?(entity)
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the toolVersion field of a TranscriptionRun.
+  @MainActor
+   func updateToolVersion(
+    _ id: String,
+    to value: String,
+    callbacks: MutationCallbacks<TranscriptionRun> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.toolVersion = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the executedAt field of a TranscriptionRun.
+  @MainActor
+   func updateExecutedAt(
+    _ id: String,
+    to value: String,
+    callbacks: MutationCallbacks<TranscriptionRun> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.executedAt = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the runType field of a TranscriptionRun.
+  @MainActor
+   func updateRunType(
+    _ id: String,
+    to value: String?,
+    callbacks: MutationCallbacks<TranscriptionRun> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.runType = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the isActive field of a TranscriptionRun.
+  @MainActor
+   func updateIsActive(
+    _ id: String,
+    to value: Bool?,
+    callbacks: MutationCallbacks<TranscriptionRun> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.isActive = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Toggle the isActive field of a TranscriptionRun.
+  @MainActor
+   func toggleIsActive(
+    _ id: String,
+    callbacks: MutationCallbacks<TranscriptionRun> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.isActive = !(entity.isActive ?? false)
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Set isActive to true for a TranscriptionRun.
+  @MainActor
+   func markIsActive(
+    _ id: String,
+    callbacks: MutationCallbacks<TranscriptionRun> = .init()
+  ) {
+    updateIsActive(id, to: true, callbacks: callbacks)
+  }
+
+  /// Set isActive to false for a TranscriptionRun.
+  @MainActor
+   func unmarkIsActive(
+    _ id: String,
+    callbacks: MutationCallbacks<TranscriptionRun> = .init()
+  ) {
+    updateIsActive(id, to: false, callbacks: callbacks)
+  }
+
+  // MARK: Delete
+
+  /// Delete a TranscriptionRun by ID.
+  @MainActor
+   func deleteTranscriptionRun(
+    _ id: String,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.delete(id: id) as Void
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Delete a TranscriptionRun entity.
+  @MainActor
+   func deleteTranscriptionRun(
+    _ entity: TranscriptionRun,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    deleteTranscriptionRun(entity.id, callbacks: callbacks)
+  }
+
+  // MARK: Link/Unlink TranscriptionSegments
+
+  /// Link a TranscriptionRun to a TranscriptionSegment via 'transcriptionSegments'.
+  @MainActor
+   func linkTranscriptionSegments(
+    _ id: String,
+    to target: TranscriptionSegment,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.link(id, "transcriptionSegments", to: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Unlink a TranscriptionRun from a TranscriptionSegment via 'transcriptionSegments'.
+  @MainActor
+   func unlinkTranscriptionSegments(
+    _ id: String,
+    from target: TranscriptionSegment,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.unlink(id, "transcriptionSegments", from: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  // MARK: Link/Unlink Media
+
+  /// Link a TranscriptionRun to a Media via 'media'.
+  @MainActor
+   func linkMedia(
+    _ id: String,
+    to target: Media,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.link(id, "media", to: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Unlink a TranscriptionRun from a Media via 'media'.
+  @MainActor
+   func unlinkMedia(
+    _ id: String,
+    from target: Media,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.unlink(id, "media", from: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+}
+
+public extension Shared where Value: RangeReplaceableCollection, Value.Element == TranscriptionRun {
+
+  // MARK: Create
+
+  /// Create a new TranscriptionRun and sync to InstantDB.
+  @MainActor
+   func createTranscriptionRun(
+    id: String = UUID().uuidString.lowercased(),
+    toolVersion: String,
+    executedAt: String,
+    runType: String? = nil,
+    isActive: Bool? = nil,
+    callbacks: MutationCallbacks<TranscriptionRun> = .init()
+  ) {
+    callbacks.onMutate?()
+    let entity = TranscriptionRun(
+      id: id,
+      toolVersion: toolVersion,
+      executedAt: executedAt,
+      runType: runType,
+      isActive: isActive
+    )
+    Task {
+      do {
+        try await self.create(entity)
+        callbacks.onSuccess?(entity)
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  // MARK: Delete
+
+  /// Delete a TranscriptionRun by ID.
+  @MainActor
+   func deleteTranscriptionRun(
+    _ id: String,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.delete(id: id) as Void
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Delete a TranscriptionRun entity.
+  @MainActor
+   func deleteTranscriptionRun(
+    _ entity: TranscriptionRun,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    deleteTranscriptionRun(entity.id, callbacks: callbacks)
+  }
+}
+
+// MARK: - TranscriptionSegment Mutations
+
+public extension Shared where Value == IdentifiedArrayOf<TranscriptionSegment> {
+
+  // MARK: Create
+
+  /// Create a new TranscriptionSegment and sync to InstantDB.
+  @MainActor
+   func createTranscriptionSegment(
+    id: String = UUID().uuidString.lowercased(),
+    startTime: Double,
+    endTime: Double,
+    text: String,
+    segmentIndex: Double,
+    isFinalized: Bool,
+    ingestedAt: String,
+    speaker: Double? = nil,
+    words: [TranscriptionSegmentWords]? = nil,
+    callbacks: MutationCallbacks<TranscriptionSegment> = .init()
+  ) {
+    callbacks.onMutate?()
+    let entity = TranscriptionSegment(
+      id: id,
+      startTime: startTime,
+      endTime: endTime,
+      text: text,
+      segmentIndex: segmentIndex,
+      isFinalized: isFinalized,
+      ingestedAt: ingestedAt,
+      speaker: speaker,
+      words: words
+    )
+    Task {
+      do {
+        try await self.create(entity)
+        callbacks.onSuccess?(entity)
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the startTime field of a TranscriptionSegment.
+  @MainActor
+   func updateStartTime(
+    _ id: String,
+    to value: Double,
+    callbacks: MutationCallbacks<TranscriptionSegment> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.startTime = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the endTime field of a TranscriptionSegment.
+  @MainActor
+   func updateEndTime(
+    _ id: String,
+    to value: Double,
+    callbacks: MutationCallbacks<TranscriptionSegment> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.endTime = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the text field of a TranscriptionSegment.
+  @MainActor
+   func updateText(
+    _ id: String,
+    to value: String,
+    callbacks: MutationCallbacks<TranscriptionSegment> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.text = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the segmentIndex field of a TranscriptionSegment.
+  @MainActor
+   func updateSegmentIndex(
+    _ id: String,
+    to value: Double,
+    callbacks: MutationCallbacks<TranscriptionSegment> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.segmentIndex = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the isFinalized field of a TranscriptionSegment.
+  @MainActor
+   func updateIsFinalized(
+    _ id: String,
+    to value: Bool,
+    callbacks: MutationCallbacks<TranscriptionSegment> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.isFinalized = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Toggle the isFinalized field of a TranscriptionSegment.
+  @MainActor
+   func toggleIsFinalized(
+    _ id: String,
+    callbacks: MutationCallbacks<TranscriptionSegment> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.isFinalized.toggle()
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Set isFinalized to true for a TranscriptionSegment.
+  @MainActor
+   func markIsFinalized(
+    _ id: String,
+    callbacks: MutationCallbacks<TranscriptionSegment> = .init()
+  ) {
+    updateIsFinalized(id, to: true, callbacks: callbacks)
+  }
+
+  /// Set isFinalized to false for a TranscriptionSegment.
+  @MainActor
+   func unmarkIsFinalized(
+    _ id: String,
+    callbacks: MutationCallbacks<TranscriptionSegment> = .init()
+  ) {
+    updateIsFinalized(id, to: false, callbacks: callbacks)
+  }
+
+  /// Update the ingestedAt field of a TranscriptionSegment.
+  @MainActor
+   func updateIngestedAt(
+    _ id: String,
+    to value: String,
+    callbacks: MutationCallbacks<TranscriptionSegment> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.ingestedAt = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the speaker field of a TranscriptionSegment.
+  @MainActor
+   func updateSpeaker(
+    _ id: String,
+    to value: Double?,
+    callbacks: MutationCallbacks<TranscriptionSegment> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.speaker = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Update the words field of a TranscriptionSegment.
+  @MainActor
+   func updateWords(
+    _ id: String,
+    to value: [TranscriptionSegmentWords]?,
+    callbacks: MutationCallbacks<TranscriptionSegment> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.update(id: id) { entity in
+          entity.words = value
+        }
+        if let updated = self.wrappedValue[id: id] {
+          callbacks.onSuccess?(updated)
+        }
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  // MARK: Delete
+
+  /// Delete a TranscriptionSegment by ID.
+  @MainActor
+   func deleteTranscriptionSegment(
+    _ id: String,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.delete(id: id) as Void
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Delete a TranscriptionSegment entity.
+  @MainActor
+   func deleteTranscriptionSegment(
+    _ entity: TranscriptionSegment,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    deleteTranscriptionSegment(entity.id, callbacks: callbacks)
+  }
+
+  // MARK: Link/Unlink TranscriptionRun
+
+  /// Link a TranscriptionSegment to a TranscriptionRun via 'transcriptionRun'.
+  @MainActor
+   func linkTranscriptionRun(
+    _ id: String,
+    to target: TranscriptionRun,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.link(id, "transcriptionRun", to: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Unlink a TranscriptionSegment from a TranscriptionRun via 'transcriptionRun'.
+  @MainActor
+   func unlinkTranscriptionRun(
+    _ id: String,
+    from target: TranscriptionRun,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.unlink(id, "transcriptionRun", from: target)
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+}
+
+public extension Shared where Value: RangeReplaceableCollection, Value.Element == TranscriptionSegment {
+
+  // MARK: Create
+
+  /// Create a new TranscriptionSegment and sync to InstantDB.
+  @MainActor
+   func createTranscriptionSegment(
+    id: String = UUID().uuidString.lowercased(),
+    startTime: Double,
+    endTime: Double,
+    text: String,
+    segmentIndex: Double,
+    isFinalized: Bool,
+    ingestedAt: String,
+    speaker: Double? = nil,
+    words: [TranscriptionSegmentWords]? = nil,
+    callbacks: MutationCallbacks<TranscriptionSegment> = .init()
+  ) {
+    callbacks.onMutate?()
+    let entity = TranscriptionSegment(
+      id: id,
+      startTime: startTime,
+      endTime: endTime,
+      text: text,
+      segmentIndex: segmentIndex,
+      isFinalized: isFinalized,
+      ingestedAt: ingestedAt,
+      speaker: speaker,
+      words: words
+    )
+    Task {
+      do {
+        try await self.create(entity)
+        callbacks.onSuccess?(entity)
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  // MARK: Delete
+
+  /// Delete a TranscriptionSegment by ID.
+  @MainActor
+   func deleteTranscriptionSegment(
+    _ id: String,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    callbacks.onMutate?()
+    Task {
+      do {
+        try await self.delete(id: id) as Void
+        callbacks.onSuccess?(())
+      } catch {
+        callbacks.onError?(error)
+      }
+      callbacks.onSettled?()
+    }
+  }
+
+  /// Delete a TranscriptionSegment entity.
+  @MainActor
+   func deleteTranscriptionSegment(
+    _ entity: TranscriptionSegment,
+    callbacks: MutationCallbacks<Void> = .init()
+  ) {
+    deleteTranscriptionSegment(entity.id, callbacks: callbacks)
   }
 }
 

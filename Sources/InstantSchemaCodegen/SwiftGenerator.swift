@@ -997,11 +997,112 @@ public struct SwiftCodeGenerator {
       output += generateSchemaProperty(for: entity)
     }
     
-    output += "}\n"
-    
+    output += "}\n\n"
+
+    // Generate EntityKey extensions for link-based where clauses
+    output += generateLinkWhereExtensions(from: schema)
+
     return output
   }
-  
+
+  // MARK: - Link-Based Where Clause Extensions
+
+  /// Generates type-safe EntityKey extensions for filtering by linked entity IDs.
+  ///
+  /// For each entity that has links (forward or reverse), this generates methods like:
+  /// - `whereBoard(id:)` - Filter by the linked board's ID
+  /// - `whereBoard(_ predicate:)` - Filter by the linked board using a predicate
+  ///
+  /// Usage:
+  /// ```swift
+  /// // Type-safe filtering by linked entity ID
+  /// Schema.tiles.whereBoard(id: boardId)
+  ///
+  /// // Or with predicate for more flexibility
+  /// Schema.tiles.whereBoard(.eq(boardId))
+  /// ```
+  private func generateLinkWhereExtensions(from schema: SchemaIR) -> String {
+    let access = configuration.accessLevel.rawValue
+    var output = "// MARK: - Link-Based Where Clause Extensions\n\n"
+
+    // Group links by entity to avoid duplicate extensions
+    var linksByEntity: [String: [(label: String, targetEntity: String, isReverse: Bool)]] = [:]
+
+    for link in schema.links {
+      // Forward links (entity has link to another entity)
+      let forwardEntityName = link.forward.entityName
+      if linksByEntity[forwardEntityName] == nil {
+        linksByEntity[forwardEntityName] = []
+      }
+      linksByEntity[forwardEntityName]?.append((
+        label: link.forward.label,
+        targetEntity: link.reverse.entityName,
+        isReverse: false
+      ))
+
+      // Reverse links (entity is linked from another entity)
+      let reverseEntityName = link.reverse.entityName
+      if linksByEntity[reverseEntityName] == nil {
+        linksByEntity[reverseEntityName] = []
+      }
+      linksByEntity[reverseEntityName]?.append((
+        label: link.reverse.label,
+        targetEntity: link.forward.entityName,
+        isReverse: true
+      ))
+    }
+
+    // Generate extension for each entity that has links
+    for entity in schema.entities {
+      guard let links = linksByEntity[entity.name], !links.isEmpty else { continue }
+
+      output += "\(access) extension EntityKey where Entity == \(entity.swiftTypeName) {\n"
+
+      for link in links {
+        guard let targetEntity = schema.entity(named: link.targetEntity) else { continue }
+
+        let capitalizedLabel = link.label.prefix(1).uppercased() + link.label.dropFirst()
+        let linkLabel = link.label
+
+        // Generate whereX(id:) method
+        output += """
+
+          /// Filter \(entity.swiftTypeName.lowercased())s by their linked \(targetEntity.swiftTypeName)'s ID.
+          ///
+          /// This enables type-safe filtering by linked entity relationships:
+          /// ```swift
+          /// Schema.\(entity.swiftPropertyName).where\(capitalizedLabel)(id: someId)
+          /// ```
+          ///
+          /// - Parameter id: The ID of the linked \(targetEntity.swiftTypeName) to filter by
+          /// - Returns: A new EntityKey with the filter applied
+          func where\(capitalizedLabel)(id: String) -> EntityKey<\(entity.swiftTypeName)> {
+            self.where("\(linkLabel).id", .eq(id))
+          }
+
+          /// Filter \(entity.swiftTypeName.lowercased())s by their linked \(targetEntity.swiftTypeName) using a predicate.
+          ///
+          /// This enables flexible filtering using various predicates:
+          /// ```swift
+          /// Schema.\(entity.swiftPropertyName).where\(capitalizedLabel)(.eq(someId))
+          /// Schema.\(entity.swiftPropertyName).where\(capitalizedLabel)(.in([id1, id2]))
+          /// ```
+          ///
+          /// - Parameter predicate: The predicate to apply to the linked \(targetEntity.swiftTypeName)'s ID
+          /// - Returns: A new EntityKey with the filter applied
+          func where\(capitalizedLabel)(_ predicate: EntityKeyPredicate) -> EntityKey<\(entity.swiftTypeName)> {
+            self.where("\(linkLabel).id", predicate)
+          }
+
+        """
+      }
+
+      output += "}\n\n"
+    }
+
+    return output
+  }
+
   private func generateSchemaProperty(for entity: EntityIR) -> String {
     let access = configuration.accessLevel.rawValue
     var output = ""
@@ -2134,58 +2235,61 @@ public struct SwiftCodeGenerator {
   
   private func generateEntityMutations(_ entity: EntityIR, schema: SchemaIR, access: String) -> String {
     var output = "// MARK: - \(entity.swiftTypeName) Mutations\n\n"
-    
+
     // Generate extension for IdentifiedArray
     output += "\(access) extension Shared where Value == IdentifiedArrayOf<\(entity.swiftTypeName)> {\n"
-    
+
+    // Inside a public extension, methods don't need explicit access modifiers
+    let methodAccess = ""
+
     // Create method
-    output += generateCreateMethod(entity, access: access)
-    
+    output += generateCreateMethod(entity, access: methodAccess)
+
     // Field-specific update methods
     for field in entity.fields {
-      output += generateFieldUpdateMethod(entity, field: field, access: access)
-      
+      output += generateFieldUpdateMethod(entity, field: field, access: methodAccess)
+
       // Semantic methods for booleans
       if field.type == .boolean {
-        output += generateBooleanSemanticMethods(entity, field: field, access: access)
+        output += generateBooleanSemanticMethods(entity, field: field, access: methodAccess)
       }
-      
+
       // Semantic methods for count fields
       if field.type == .number && (field.name.lowercased().contains("count") || field.name.lowercased().hasSuffix("s")) {
-        output += generateCountSemanticMethods(entity, field: field, access: access)
+        output += generateCountSemanticMethods(entity, field: field, access: methodAccess)
       }
     }
-    
+
     // Delete methods
-    output += generateDeleteMethods(entity, access: access)
-    
+    output += generateDeleteMethods(entity, access: methodAccess)
+
     // Link/unlink methods
     let forwardLinks = schema.links.filter { $0.forward.entityName == entity.name }
     let reverseLinks = schema.links.filter { $0.reverse.entityName == entity.name }
-    
+
     for link in forwardLinks {
       if let targetEntity = schema.entity(named: link.reverse.entityName) {
-        output += generateLinkMethods(entity, link: link.forward, targetEntity: targetEntity, access: access)
+        output += generateLinkMethods(entity, link: link.forward, targetEntity: targetEntity, access: methodAccess)
       }
     }
-    
+
     for link in reverseLinks {
       if let targetEntity = schema.entity(named: link.forward.entityName) {
-        output += generateLinkMethods(entity, link: link.reverse, targetEntity: targetEntity, access: access)
+        output += generateLinkMethods(entity, link: link.reverse, targetEntity: targetEntity, access: methodAccess)
       }
     }
-    
+
     output += "}\n"
-    
+
     // Also generate extension for RangeReplaceableCollection (Array)
     output += "\n\(access) extension Shared where Value: RangeReplaceableCollection, Value.Element == \(entity.swiftTypeName) {\n"
-    
+
     // Create method for arrays
-    output += generateCreateMethodForArray(entity, access: access)
-    
+    output += generateCreateMethodForArray(entity, access: methodAccess)
+
     // Delete methods for arrays
-    output += generateDeleteMethodsForArray(entity, access: access)
-    
+    output += generateDeleteMethodsForArray(entity, access: methodAccess)
+
     output += "}\n"
     
     return output

@@ -190,21 +190,33 @@ private struct PostComposerView: View {
           let author = profiles[id: authorId] else {
       return
     }
-    
+
     let content = newPostContent.trimmingCharacters(in: .whitespaces)
     guard !content.isEmpty else { return }
-    
-    let post = Post(
+
+    let postId = UUID().uuidString.lowercased()
+    let now = Date().timeIntervalSince1970 * 1_000
+
+    // Use explicit mutation methods instead of withLock
+    // withLock does NOT send mutations to the server (save() is a no-op)
+    $posts.createPost(
+      id: postId,
       content: content,
-      createdAt: Date().timeIntervalSince1970 * 1_000,
-      likesCount: 42, author: author
+      createdAt: now,
+      callbacks: .init(
+        onSuccess: { post in
+          print("🔵 [Composer] Created post: \(post.id)")
+        },
+        onError: { error in
+          print("🔵 [Composer] Error creating post: \(error)")
+        }
+      )
     )
-    
-    // Insert into THIS subscription (with author only)
-    _ = $posts.withLock { $0.insert(post, at: 0) }
+
+    // Link the author to the post
+    $posts.linkAuthor(postId, to: author)
+
     newPostContent = ""
-    
-    print("🔵 [Composer] Created post: \(post.id)")
     print("🔵 [Composer] Posts count after insert: \(posts.count)")
   }
 }

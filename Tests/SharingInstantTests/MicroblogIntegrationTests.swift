@@ -138,10 +138,10 @@ final class MicroblogIntegrationTests: XCTestCase {
     let now = Date().timeIntervalSince1970 * 1_000
     let alice = Profile(
       id: aliceId,
-      displayName: "Alice",
-      handle: "alice",
       bio: "Swift enthusiast",
-      createdAt: now
+      createdAt: now,
+      displayName: "Alice",
+      handle: "alice"
     )
     
     // Use withLock to add (same pattern as MicroblogDemo)
@@ -187,10 +187,10 @@ final class MicroblogIntegrationTests: XCTestCase {
     let now = Date().timeIntervalSince1970 * 1_000
     let alice = Profile(
       id: aliceId,
-      displayName: "Alice",
-      handle: "alice",
       bio: "Swift enthusiast",
-      createdAt: now
+      createdAt: now,
+      displayName: "Alice",
+      handle: "alice"
     )
     
     _ = $profiles.withLock { $0.append(alice) }
@@ -220,7 +220,6 @@ final class MicroblogIntegrationTests: XCTestCase {
       id: postId,
       content: "Hello from integration test! 🚀",
       createdAt: now,
-      likesCount: 0,
       // The author link - this connects the post to its profile
       author: alice
     )
@@ -277,10 +276,10 @@ final class MicroblogIntegrationTests: XCTestCase {
     
     let alice = Profile(
       id: aliceId,
-      displayName: "Alice",
-      handle: "alice",
       bio: "Swift enthusiast",
-      createdAt: Date().timeIntervalSince1970 * 1_000
+      createdAt: Date().timeIntervalSince1970 * 1_000,
+      displayName: "Alice",
+      handle: "alice"
     )
     _ = $profiles.withLock { $0.append(alice) }
     
@@ -298,7 +297,6 @@ final class MicroblogIntegrationTests: XCTestCase {
       id: postId,
       content: "Persistence test post",
       createdAt: Date().timeIntervalSince1970 * 1_000,
-      likesCount: 0,
       author: alice
     )
     _ = $posts.withLock { $0.append(post) }
@@ -373,8 +371,7 @@ final class MicroblogIntegrationTests: XCTestCase {
       id: postId,
       ops: [["update", "posts", postId, [
         "content": "Reverse link test",
-        "createdAt": Date().timeIntervalSince1970 * 1_000,
-        "likesCount": 0
+        "createdAt": Date().timeIntervalSince1970 * 1_000
       ] as [String: Any]]]
     )
     try client.transact(postChunk)
@@ -441,18 +438,18 @@ final class MicroblogIntegrationTests: XCTestCase {
     // Create Alice and Bob (same as MicroblogDemo.ensureProfilesExist())
     let alice = Profile(
       id: aliceId,
-      displayName: "Alice",
-      handle: "alice",
       bio: "Swift enthusiast",
-      createdAt: Date().timeIntervalSince1970 * 1_000
+      createdAt: Date().timeIntervalSince1970 * 1_000,
+      displayName: "Alice",
+      handle: "alice"
     )
-    
+
     let bob = Profile(
       id: bobId,
-      displayName: "Bob",
-      handle: "bob",
       bio: "InstantDB fan",
-      createdAt: Date().timeIntervalSince1970 * 1_000 + 1_000
+      createdAt: Date().timeIntervalSince1970 * 1_000 + 1_000,
+      displayName: "Bob",
+      handle: "bob"
     )
     
     _ = $profiles.withLock { $0.append(alice) }
@@ -468,21 +465,19 @@ final class MicroblogIntegrationTests: XCTestCase {
       id: alicePostId,
       content: "Just shipped a new feature! 🚀",
       createdAt: Date().timeIntervalSince1970 * 1_000,
-      likesCount: 0,
       author: alice
     )
-    
+
     _ = $posts.withLock { $0.insert(alicePost, at: 0) }
-    
+
     try await Task.sleep(nanoseconds: 2_000_000_000)
-    
+
     // Bob creates a post
     let bobPostId = UUID().uuidString.lowercased()
     let bobPost = Post(
       id: bobPostId,
       content: "InstantDB makes building apps so much easier",
       createdAt: Date().timeIntervalSince1970 * 1_000 + 1_000,
-      likesCount: 0,
       author: bob
     )
     

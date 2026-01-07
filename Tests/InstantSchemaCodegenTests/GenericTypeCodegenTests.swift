@@ -21,7 +21,15 @@ import SnapshotTesting
 @testable import InstantSchemaCodegen
 
 final class GenericTypeCodegenTests: XCTestCase {
-  
+
+  // Enable recording mode to update snapshots
+  // To record new snapshots, uncomment this method and run tests
+  // override func invokeTest() {
+  //   withSnapshotTesting(record: .all) {
+  //     super.invokeTest()
+  //   }
+  // }
+
   // MARK: - Enum Generation Tests
   
   /// Test generating Swift enum from inline string union

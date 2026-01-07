@@ -488,9 +488,9 @@ final class MutationCallbacksIntegrationTests: XCTestCase {
       let createProfileExpectation = XCTestExpectation(description: "Profile created")
       $profiles.createProfile(
         id: profileId,
+        createdAt: Date().timeIntervalSince1970 * 1_000,
         displayName: "Alice",
         handle: "alice_\(profileId.prefix(8))",
-        createdAt: Date().timeIntervalSince1970 * 1_000,
         callbacks: MutationCallbacks(
           onSettled: { createProfileExpectation.fulfill() }
         )
@@ -509,7 +509,6 @@ final class MutationCallbacksIntegrationTests: XCTestCase {
         id: postId,
         content: "Hello from Alice!",
         createdAt: Date().timeIntervalSince1970 * 1_000,
-        likesCount: 0,
         callbacks: MutationCallbacks(
           onSettled: { createPostExpectation.fulfill() }
         )
@@ -613,21 +612,20 @@ final class MutationCallbacksIntegrationTests: XCTestCase {
       let profileExp = XCTestExpectation(description: "Profile created")
       $profiles.createProfile(
         id: profileId,
+        createdAt: Date().timeIntervalSince1970 * 1_000,
         displayName: "Bob",
         handle: "bob_\(profileId.prefix(8))",
-        createdAt: Date().timeIntervalSince1970 * 1_000,
         callbacks: MutationCallbacks(onSettled: { profileExp.fulfill() })
       )
       await fulfillment(of: [profileExp], timeout: 10.0)
       try await Task.sleep(nanoseconds: 500_000_000)
-      
+
       // Create post
       let postExp = XCTestExpectation(description: "Post created")
       $posts.createPost(
         id: postId,
         content: "Bob's first post",
         createdAt: Date().timeIntervalSince1970 * 1_000,
-        likesCount: 0,
         callbacks: MutationCallbacks(onSettled: { postExp.fulfill() })
       )
       await fulfillment(of: [postExp], timeout: 10.0)
@@ -743,26 +741,25 @@ final class MutationCallbacksIntegrationTests: XCTestCase {
       // 1. Create Profile and Post, then link them
       let profileId = UUID().uuidString.lowercased()
       let postId = UUID().uuidString.lowercased()
-      
+
       // Create profile
       let profileExp = XCTestExpectation(description: "Profile created")
       $profiles.createProfile(
         id: profileId,
+        createdAt: Date().timeIntervalSince1970 * 1_000,
         displayName: "Initial Name",
         handle: "rapid_\(profileId.prefix(8))",
-        createdAt: Date().timeIntervalSince1970 * 1_000,
         callbacks: MutationCallbacks(onSettled: { profileExp.fulfill() })
       )
       await fulfillment(of: [profileExp], timeout: 10.0)
       try await Task.sleep(nanoseconds: 500_000_000)
-      
+
       // Create post
       let postExp = XCTestExpectation(description: "Post created")
       $posts.createPost(
         id: postId,
         content: "Test post for rapid updates",
         createdAt: Date().timeIntervalSince1970 * 1_000,
-        likesCount: 0,
         callbacks: MutationCallbacks(onSettled: { postExp.fulfill() })
       )
       await fulfillment(of: [postExp], timeout: 10.0)
@@ -920,20 +917,19 @@ final class MutationCallbacksIntegrationTests: XCTestCase {
       let profileExp = XCTestExpectation(description: "Profile created")
       $profiles.createProfile(
         id: profileId,
+        createdAt: Date().timeIntervalSince1970 * 1_000,
         displayName: "Carol",
         handle: "carol_\(profileId.prefix(8))",
-        createdAt: Date().timeIntervalSince1970 * 1_000,
         callbacks: MutationCallbacks(onSettled: { profileExp.fulfill() })
       )
       await fulfillment(of: [profileExp], timeout: 10.0)
       try await Task.sleep(nanoseconds: 500_000_000)
-      
+
       let postExp = XCTestExpectation(description: "Post created")
       $posts.createPost(
         id: postId,
         content: "Carol's post",
         createdAt: Date().timeIntervalSince1970 * 1_000,
-        likesCount: 0,
         callbacks: MutationCallbacks(onSettled: { postExp.fulfill() })
       )
       await fulfillment(of: [postExp], timeout: 10.0)

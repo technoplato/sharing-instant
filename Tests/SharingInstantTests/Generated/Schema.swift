@@ -22,12 +22,12 @@
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// Use `Schema.<entityName>` with `@Shared` for bidirectional sync:
-///   @Shared(Schema.facts)
-///   private var items: IdentifiedArrayOf<Fact> = []
+///   @Shared(Schema.boards)
+///   private var items: IdentifiedArrayOf<Board> = []
 /// Chain modifiers for ordering, filtering, and limiting:
-///   Schema.facts.orderBy(\.count, .desc)
-///   Schema.facts.where(\.count, .eq("value"))
-///   Schema.facts.limit(10)
+///   Schema.boards.orderBy(\.createdAt, .desc)
+///   Schema.boards.where(\.createdAt, .eq("value"))
+///   Schema.boards.limit(10)
 ///
 /// ─────────────────────────────────────────────────────────────────────────────────
 /// QUICK START - Copy & Paste Example
@@ -39,10 +39,10 @@ import SwiftUI
 import SharingInstant
 import IdentifiedCollections
 
-struct FactContentView: View {
+struct BoardContentView: View {
   /// Bidirectional sync with InstantDB - changes sync automatically!
-  @Shared(Schema.facts.orderBy(\.count, .desc))
-  private var items: IdentifiedArrayOf<Fact> = []
+  @Shared(Schema.boards.orderBy(\.createdAt, .desc))
+  private var items: IdentifiedArrayOf<Board> = []
 
   @State private var newValue = ""
 
@@ -70,13 +70,13 @@ struct FactContentView: View {
           }
         }
       }
-      .navigationTitle("Facts")
+      .navigationTitle("Boards")
     }
   }
 
   private func addItem() {
     // Create and add - syncs automatically!
-    let item = Fact(/* ... */)
+    let item = Board(/* ... */)
     $items.withLock { $0.append(item) }
     newValue = ""
   }
@@ -103,22 +103,63 @@ struct FactContentView: View {
 ///   // Note: InstantDB system entity
 /// }
 ///
+/// Schema.boards → Board {
+///   id: String
+///   createdAt: Double
+///   title: String
+/// }
+///
+/// Schema.comments → Comment {
+///   id: String
+///   createdAt: Double
+///   text: String
+/// }
+///
 /// Schema.facts → Fact {
 ///   id: String
 ///   count: Double
 ///   text: String
 /// }
 ///
+/// Schema.likes → Like {
+///   id: String
+///   createdAt: Double
+/// }
+///
 /// Schema.logs → Log {
 ///   id: String
-///   level: String
-///   message: String
-///   jsonPayload: String?
 ///   file: String
-///   line: Double
-///   timestamp: Double
 ///   formattedDate: String
+///   jsonPayload: String?
+///   level: String
+///   line: Double
+///   message: String
+///   timestamp: Double
 ///   timezone: String
+/// }
+///
+/// Schema.posts → Post {
+///   id: String
+///   content: String
+///   createdAt: Double
+///   imageUrl: String?
+/// }
+///
+/// Schema.profiles → Profile {
+///   id: String
+///   avatarUrl: String?
+///   bio: String?
+///   createdAt: Double
+///   displayName: String
+///   handle: String
+/// }
+///
+/// Schema.tiles → Tile {
+///   id: String
+///   color: String
+///   createdAt: Double
+///   x: Double
+///   y: Double
 /// }
 ///
 /// Schema.todos → Todo {
@@ -128,46 +169,33 @@ struct FactContentView: View {
 ///   title: String
 /// }
 ///
-/// Schema.profiles → Profile {
-///   id: String
-///   displayName: String
-///   handle: String
-///   bio: String?
-///   avatarUrl: String?
-///   createdAt: Double
-/// }
-///
-/// Schema.posts → Post {
-///   id: String
-///   content: String
-///   imageUrl: String?
-///   createdAt: Double
-///   likesCount: Double
-/// }
-///
-/// Schema.comments → Comment {
-///   id: String
-///   text: String
-///   createdAt: Double
-/// }
-///
-/// Schema.likes → Like {
-///   id: String
-///   createdAt: Double
-/// }
-///
-/// Schema.tiles → Tile {
-///   id: String
-///   x: Double
-///   y: Double
-///   color: String
-///   createdAt: Double
-/// }
-///
-/// Schema.boards → Board {
+/// Schema.media → Media {
 ///   id: String
 ///   title: String
-///   createdAt: Double
+///   durationSeconds: Double
+///   mediaType: String
+///   ingestedAt: String
+///   description: String?
+/// }
+///
+/// Schema.transcriptionRuns → TranscriptionRun {
+///   id: String
+///   toolVersion: String
+///   executedAt: String
+///   runType: String?
+///   isActive: Bool?
+/// }
+///
+/// Schema.transcriptionSegments → TranscriptionSegment {
+///   id: String
+///   startTime: Double
+///   endTime: Double
+///   text: String
+///   segmentIndex: Double
+///   isFinalized: Bool
+///   ingestedAt: String
+///   speaker: Double?
+///   words: AnyCodable?
 /// }
 ///
 
@@ -177,15 +205,15 @@ struct FactContentView: View {
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// Mode:            Production (full traceability)
-/// Generated:       December 30, 2025 at 9:29 PM EST
+/// Generated:       January 7, 2026 at 10:21 AM EST
 /// Machine:         mlustig-hy7l9xrd61.local (Apple M4 Pro, macOS 26.2)
 /// Generator:       Sources/instant-schema/main.swift
-/// Source Schema:   Examples/CaseStudies/instant.schema.ts
+/// Source Schema:   instant.schema.ts
 
 /* To regenerate this file, run:
 
 swift run instant-schema generate \
-  --from Examples/CaseStudies/instant.schema.ts \
+  --from instant.schema.ts \
   --to Tests/SharingInstantTests/Generated
 */
 /// ─────────────────────────────────────────────────────────────────────────────────
@@ -193,16 +221,16 @@ swift run instant-schema generate \
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// HEAD Commit:
-///   SHA:      409fdf941059f57f1f9c7ebdac98ed4999bc3af3
-///   Date:     December 30, 2025 at 9:29 PM EST
+///   SHA:      7984aa49f6505dc5906a550adc3f0c4d362a2d1d
+///   Date:     January 6, 2026 at 9:55 PM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  chore: Regenerate CaseStudies schema with fixed public modifiers
+///   Message:  feat: Add transcription entities to test schema
 ///
 /// Schema File Last Modified:
-///   SHA:      522ffbf617207b60ecfa647b2d1dc6b9bfa3a7ff
-///   Date:     December 22, 2025 at 6:46 AM EST
+///   SHA:      7984aa49f6505dc5906a550adc3f0c4d362a2d1d
+///   Date:     January 6, 2026 at 9:55 PM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  fix: Remove recursive self-link to fix Swift compilation
+///   Message:  feat: Add transcription entities to test schema
 ///
 /// ═══════════════════════════════════════════════════════════════════════════════
 
@@ -222,31 +250,613 @@ public enum Schema {
   /// - Note: This is an InstantDB system entity.
   public static let instantUsers = EntityKey<InstantUser>(namespace: "$users")
 
-  /// Fact entity - bidirectional sync
-  public static let facts = EntityKey<Fact>(namespace: "facts")
-
-  /// Log entity - bidirectional sync
-  public static let logs = EntityKey<Log>(namespace: "logs")
-
-  /// Todo entity - bidirectional sync
-  public static let todos = EntityKey<Todo>(namespace: "todos")
-
-  /// Profile entity - bidirectional sync
-  public static let profiles = EntityKey<Profile>(namespace: "profiles")
-
-  /// Post entity - bidirectional sync
-  public static let posts = EntityKey<Post>(namespace: "posts")
+  /// Board entity - bidirectional sync
+  public static let boards = EntityKey<Board>(namespace: "boards")
 
   /// Comment entity - bidirectional sync
   public static let comments = EntityKey<Comment>(namespace: "comments")
 
+  /// Fact entity - bidirectional sync
+  public static let facts = EntityKey<Fact>(namespace: "facts")
+
   /// Like entity - bidirectional sync
   public static let likes = EntityKey<Like>(namespace: "likes")
+
+  /// Log entity - bidirectional sync
+  public static let logs = EntityKey<Log>(namespace: "logs")
+
+  /// Post entity - bidirectional sync
+  public static let posts = EntityKey<Post>(namespace: "posts")
+
+  /// Profile entity - bidirectional sync
+  public static let profiles = EntityKey<Profile>(namespace: "profiles")
 
   /// Tile entity - bidirectional sync
   public static let tiles = EntityKey<Tile>(namespace: "tiles")
 
-  /// Board entity - bidirectional sync
-  public static let boards = EntityKey<Board>(namespace: "boards")
+  /// Todo entity - bidirectional sync
+  public static let todos = EntityKey<Todo>(namespace: "todos")
+
+  /// Media entity - bidirectional sync
+  public static let media = EntityKey<Media>(namespace: "media")
+
+  /// TranscriptionRun entity - bidirectional sync
+  public static let transcriptionRuns = EntityKey<TranscriptionRun>(namespace: "transcriptionRuns")
+
+  /// TranscriptionSegment entity - bidirectional sync
+  public static let transcriptionSegments = EntityKey<TranscriptionSegment>(namespace: "transcriptionSegments")
 
 }
+
+// MARK: - Link-Based Where Clause Extensions
+
+public extension EntityKey where Entity == InstantUser {
+
+  /// Filter instantusers by their linked InstantUser's ID.
+  ///
+  /// This enables type-safe filtering by linked entity relationships:
+  /// ```swift
+  /// Schema.instantUsers.whereLinkedPrimaryUser(id: someId)
+  /// ```
+  ///
+  /// - Parameter id: The ID of the linked InstantUser to filter by
+  /// - Returns: A new EntityKey with the filter applied
+  func whereLinkedPrimaryUser(id: String) -> EntityKey<InstantUser> {
+    self.where("linkedPrimaryUser.id", .eq(id))
+  }
+
+  /// Filter instantusers by their linked InstantUser using a predicate.
+  ///
+  /// This enables flexible filtering using various predicates:
+  /// ```swift
+  /// Schema.instantUsers.whereLinkedPrimaryUser(.eq(someId))
+  /// Schema.instantUsers.whereLinkedPrimaryUser(.in([id1, id2]))
+  /// ```
+  ///
+  /// - Parameter predicate: The predicate to apply to the linked InstantUser's ID
+  /// - Returns: A new EntityKey with the filter applied
+  func whereLinkedPrimaryUser(_ predicate: EntityKeyPredicate) -> EntityKey<InstantUser> {
+    self.where("linkedPrimaryUser.id", predicate)
+  }
+
+  /// Filter instantusers by their linked InstantUser's ID.
+  ///
+  /// This enables type-safe filtering by linked entity relationships:
+  /// ```swift
+  /// Schema.instantUsers.whereLinkedGuestUsers(id: someId)
+  /// ```
+  ///
+  /// - Parameter id: The ID of the linked InstantUser to filter by
+  /// - Returns: A new EntityKey with the filter applied
+  func whereLinkedGuestUsers(id: String) -> EntityKey<InstantUser> {
+    self.where("linkedGuestUsers.id", .eq(id))
+  }
+
+  /// Filter instantusers by their linked InstantUser using a predicate.
+  ///
+  /// This enables flexible filtering using various predicates:
+  /// ```swift
+  /// Schema.instantUsers.whereLinkedGuestUsers(.eq(someId))
+  /// Schema.instantUsers.whereLinkedGuestUsers(.in([id1, id2]))
+  /// ```
+  ///
+  /// - Parameter predicate: The predicate to apply to the linked InstantUser's ID
+  /// - Returns: A new EntityKey with the filter applied
+  func whereLinkedGuestUsers(_ predicate: EntityKeyPredicate) -> EntityKey<InstantUser> {
+    self.where("linkedGuestUsers.id", predicate)
+  }
+}
+
+public extension EntityKey where Entity == Board {
+
+  /// Filter boards by their linked Tile's ID.
+  ///
+  /// This enables type-safe filtering by linked entity relationships:
+  /// ```swift
+  /// Schema.boards.whereLinkedTiles(id: someId)
+  /// ```
+  ///
+  /// - Parameter id: The ID of the linked Tile to filter by
+  /// - Returns: A new EntityKey with the filter applied
+  func whereLinkedTiles(id: String) -> EntityKey<Board> {
+    self.where("linkedTiles.id", .eq(id))
+  }
+
+  /// Filter boards by their linked Tile using a predicate.
+  ///
+  /// This enables flexible filtering using various predicates:
+  /// ```swift
+  /// Schema.boards.whereLinkedTiles(.eq(someId))
+  /// Schema.boards.whereLinkedTiles(.in([id1, id2]))
+  /// ```
+  ///
+  /// - Parameter predicate: The predicate to apply to the linked Tile's ID
+  /// - Returns: A new EntityKey with the filter applied
+  func whereLinkedTiles(_ predicate: EntityKeyPredicate) -> EntityKey<Board> {
+    self.where("linkedTiles.id", predicate)
+  }
+
+  /// Filter boards by their linked Tile's ID.
+  ///
+  /// This enables type-safe filtering by linked entity relationships:
+  /// ```swift
+  /// Schema.boards.whereTiles(id: someId)
+  /// ```
+  ///
+  /// - Parameter id: The ID of the linked Tile to filter by
+  /// - Returns: A new EntityKey with the filter applied
+  func whereTiles(id: String) -> EntityKey<Board> {
+    self.where("tiles.id", .eq(id))
+  }
+
+  /// Filter boards by their linked Tile using a predicate.
+  ///
+  /// This enables flexible filtering using various predicates:
+  /// ```swift
+  /// Schema.boards.whereTiles(.eq(someId))
+  /// Schema.boards.whereTiles(.in([id1, id2]))
+  /// ```
+  ///
+  /// - Parameter predicate: The predicate to apply to the linked Tile's ID
+  /// - Returns: A new EntityKey with the filter applied
+  func whereTiles(_ predicate: EntityKeyPredicate) -> EntityKey<Board> {
+    self.where("tiles.id", predicate)
+  }
+}
+
+public extension EntityKey where Entity == Comment {
+
+  /// Filter comments by their linked Post's ID.
+  ///
+  /// This enables type-safe filtering by linked entity relationships:
+  /// ```swift
+  /// Schema.comments.wherePost(id: someId)
+  /// ```
+  ///
+  /// - Parameter id: The ID of the linked Post to filter by
+  /// - Returns: A new EntityKey with the filter applied
+  func wherePost(id: String) -> EntityKey<Comment> {
+    self.where("post.id", .eq(id))
+  }
+
+  /// Filter comments by their linked Post using a predicate.
+  ///
+  /// This enables flexible filtering using various predicates:
+  /// ```swift
+  /// Schema.comments.wherePost(.eq(someId))
+  /// Schema.comments.wherePost(.in([id1, id2]))
+  /// ```
+  ///
+  /// - Parameter predicate: The predicate to apply to the linked Post's ID
+  /// - Returns: A new EntityKey with the filter applied
+  func wherePost(_ predicate: EntityKeyPredicate) -> EntityKey<Comment> {
+    self.where("post.id", predicate)
+  }
+
+  /// Filter comments by their linked Profile's ID.
+  ///
+  /// This enables type-safe filtering by linked entity relationships:
+  /// ```swift
+  /// Schema.comments.whereAuthor(id: someId)
+  /// ```
+  ///
+  /// - Parameter id: The ID of the linked Profile to filter by
+  /// - Returns: A new EntityKey with the filter applied
+  func whereAuthor(id: String) -> EntityKey<Comment> {
+    self.where("author.id", .eq(id))
+  }
+
+  /// Filter comments by their linked Profile using a predicate.
+  ///
+  /// This enables flexible filtering using various predicates:
+  /// ```swift
+  /// Schema.comments.whereAuthor(.eq(someId))
+  /// Schema.comments.whereAuthor(.in([id1, id2]))
+  /// ```
+  ///
+  /// - Parameter predicate: The predicate to apply to the linked Profile's ID
+  /// - Returns: A new EntityKey with the filter applied
+  func whereAuthor(_ predicate: EntityKeyPredicate) -> EntityKey<Comment> {
+    self.where("author.id", predicate)
+  }
+}
+
+public extension EntityKey where Entity == Like {
+
+  /// Filter likes by their linked Post's ID.
+  ///
+  /// This enables type-safe filtering by linked entity relationships:
+  /// ```swift
+  /// Schema.likes.wherePost(id: someId)
+  /// ```
+  ///
+  /// - Parameter id: The ID of the linked Post to filter by
+  /// - Returns: A new EntityKey with the filter applied
+  func wherePost(id: String) -> EntityKey<Like> {
+    self.where("post.id", .eq(id))
+  }
+
+  /// Filter likes by their linked Post using a predicate.
+  ///
+  /// This enables flexible filtering using various predicates:
+  /// ```swift
+  /// Schema.likes.wherePost(.eq(someId))
+  /// Schema.likes.wherePost(.in([id1, id2]))
+  /// ```
+  ///
+  /// - Parameter predicate: The predicate to apply to the linked Post's ID
+  /// - Returns: A new EntityKey with the filter applied
+  func wherePost(_ predicate: EntityKeyPredicate) -> EntityKey<Like> {
+    self.where("post.id", predicate)
+  }
+
+  /// Filter likes by their linked Profile's ID.
+  ///
+  /// This enables type-safe filtering by linked entity relationships:
+  /// ```swift
+  /// Schema.likes.whereProfile(id: someId)
+  /// ```
+  ///
+  /// - Parameter id: The ID of the linked Profile to filter by
+  /// - Returns: A new EntityKey with the filter applied
+  func whereProfile(id: String) -> EntityKey<Like> {
+    self.where("profile.id", .eq(id))
+  }
+
+  /// Filter likes by their linked Profile using a predicate.
+  ///
+  /// This enables flexible filtering using various predicates:
+  /// ```swift
+  /// Schema.likes.whereProfile(.eq(someId))
+  /// Schema.likes.whereProfile(.in([id1, id2]))
+  /// ```
+  ///
+  /// - Parameter predicate: The predicate to apply to the linked Profile's ID
+  /// - Returns: A new EntityKey with the filter applied
+  func whereProfile(_ predicate: EntityKeyPredicate) -> EntityKey<Like> {
+    self.where("profile.id", predicate)
+  }
+}
+
+public extension EntityKey where Entity == Post {
+
+  /// Filter posts by their linked Comment's ID.
+  ///
+  /// This enables type-safe filtering by linked entity relationships:
+  /// ```swift
+  /// Schema.posts.whereComments(id: someId)
+  /// ```
+  ///
+  /// - Parameter id: The ID of the linked Comment to filter by
+  /// - Returns: A new EntityKey with the filter applied
+  func whereComments(id: String) -> EntityKey<Post> {
+    self.where("comments.id", .eq(id))
+  }
+
+  /// Filter posts by their linked Comment using a predicate.
+  ///
+  /// This enables flexible filtering using various predicates:
+  /// ```swift
+  /// Schema.posts.whereComments(.eq(someId))
+  /// Schema.posts.whereComments(.in([id1, id2]))
+  /// ```
+  ///
+  /// - Parameter predicate: The predicate to apply to the linked Comment's ID
+  /// - Returns: A new EntityKey with the filter applied
+  func whereComments(_ predicate: EntityKeyPredicate) -> EntityKey<Post> {
+    self.where("comments.id", predicate)
+  }
+
+  /// Filter posts by their linked Like's ID.
+  ///
+  /// This enables type-safe filtering by linked entity relationships:
+  /// ```swift
+  /// Schema.posts.whereLikes(id: someId)
+  /// ```
+  ///
+  /// - Parameter id: The ID of the linked Like to filter by
+  /// - Returns: A new EntityKey with the filter applied
+  func whereLikes(id: String) -> EntityKey<Post> {
+    self.where("likes.id", .eq(id))
+  }
+
+  /// Filter posts by their linked Like using a predicate.
+  ///
+  /// This enables flexible filtering using various predicates:
+  /// ```swift
+  /// Schema.posts.whereLikes(.eq(someId))
+  /// Schema.posts.whereLikes(.in([id1, id2]))
+  /// ```
+  ///
+  /// - Parameter predicate: The predicate to apply to the linked Like's ID
+  /// - Returns: A new EntityKey with the filter applied
+  func whereLikes(_ predicate: EntityKeyPredicate) -> EntityKey<Post> {
+    self.where("likes.id", predicate)
+  }
+
+  /// Filter posts by their linked Profile's ID.
+  ///
+  /// This enables type-safe filtering by linked entity relationships:
+  /// ```swift
+  /// Schema.posts.whereAuthor(id: someId)
+  /// ```
+  ///
+  /// - Parameter id: The ID of the linked Profile to filter by
+  /// - Returns: A new EntityKey with the filter applied
+  func whereAuthor(id: String) -> EntityKey<Post> {
+    self.where("author.id", .eq(id))
+  }
+
+  /// Filter posts by their linked Profile using a predicate.
+  ///
+  /// This enables flexible filtering using various predicates:
+  /// ```swift
+  /// Schema.posts.whereAuthor(.eq(someId))
+  /// Schema.posts.whereAuthor(.in([id1, id2]))
+  /// ```
+  ///
+  /// - Parameter predicate: The predicate to apply to the linked Profile's ID
+  /// - Returns: A new EntityKey with the filter applied
+  func whereAuthor(_ predicate: EntityKeyPredicate) -> EntityKey<Post> {
+    self.where("author.id", predicate)
+  }
+}
+
+public extension EntityKey where Entity == Profile {
+
+  /// Filter profiles by their linked Comment's ID.
+  ///
+  /// This enables type-safe filtering by linked entity relationships:
+  /// ```swift
+  /// Schema.profiles.whereComments(id: someId)
+  /// ```
+  ///
+  /// - Parameter id: The ID of the linked Comment to filter by
+  /// - Returns: A new EntityKey with the filter applied
+  func whereComments(id: String) -> EntityKey<Profile> {
+    self.where("comments.id", .eq(id))
+  }
+
+  /// Filter profiles by their linked Comment using a predicate.
+  ///
+  /// This enables flexible filtering using various predicates:
+  /// ```swift
+  /// Schema.profiles.whereComments(.eq(someId))
+  /// Schema.profiles.whereComments(.in([id1, id2]))
+  /// ```
+  ///
+  /// - Parameter predicate: The predicate to apply to the linked Comment's ID
+  /// - Returns: A new EntityKey with the filter applied
+  func whereComments(_ predicate: EntityKeyPredicate) -> EntityKey<Profile> {
+    self.where("comments.id", predicate)
+  }
+
+  /// Filter profiles by their linked Like's ID.
+  ///
+  /// This enables type-safe filtering by linked entity relationships:
+  /// ```swift
+  /// Schema.profiles.whereLikes(id: someId)
+  /// ```
+  ///
+  /// - Parameter id: The ID of the linked Like to filter by
+  /// - Returns: A new EntityKey with the filter applied
+  func whereLikes(id: String) -> EntityKey<Profile> {
+    self.where("likes.id", .eq(id))
+  }
+
+  /// Filter profiles by their linked Like using a predicate.
+  ///
+  /// This enables flexible filtering using various predicates:
+  /// ```swift
+  /// Schema.profiles.whereLikes(.eq(someId))
+  /// Schema.profiles.whereLikes(.in([id1, id2]))
+  /// ```
+  ///
+  /// - Parameter predicate: The predicate to apply to the linked Like's ID
+  /// - Returns: A new EntityKey with the filter applied
+  func whereLikes(_ predicate: EntityKeyPredicate) -> EntityKey<Profile> {
+    self.where("likes.id", predicate)
+  }
+
+  /// Filter profiles by their linked Post's ID.
+  ///
+  /// This enables type-safe filtering by linked entity relationships:
+  /// ```swift
+  /// Schema.profiles.wherePosts(id: someId)
+  /// ```
+  ///
+  /// - Parameter id: The ID of the linked Post to filter by
+  /// - Returns: A new EntityKey with the filter applied
+  func wherePosts(id: String) -> EntityKey<Profile> {
+    self.where("posts.id", .eq(id))
+  }
+
+  /// Filter profiles by their linked Post using a predicate.
+  ///
+  /// This enables flexible filtering using various predicates:
+  /// ```swift
+  /// Schema.profiles.wherePosts(.eq(someId))
+  /// Schema.profiles.wherePosts(.in([id1, id2]))
+  /// ```
+  ///
+  /// - Parameter predicate: The predicate to apply to the linked Post's ID
+  /// - Returns: A new EntityKey with the filter applied
+  func wherePosts(_ predicate: EntityKeyPredicate) -> EntityKey<Profile> {
+    self.where("posts.id", predicate)
+  }
+}
+
+public extension EntityKey where Entity == Tile {
+
+  /// Filter tiles by their linked Board's ID.
+  ///
+  /// This enables type-safe filtering by linked entity relationships:
+  /// ```swift
+  /// Schema.tiles.whereLinkedBoard(id: someId)
+  /// ```
+  ///
+  /// - Parameter id: The ID of the linked Board to filter by
+  /// - Returns: A new EntityKey with the filter applied
+  func whereLinkedBoard(id: String) -> EntityKey<Tile> {
+    self.where("linkedBoard.id", .eq(id))
+  }
+
+  /// Filter tiles by their linked Board using a predicate.
+  ///
+  /// This enables flexible filtering using various predicates:
+  /// ```swift
+  /// Schema.tiles.whereLinkedBoard(.eq(someId))
+  /// Schema.tiles.whereLinkedBoard(.in([id1, id2]))
+  /// ```
+  ///
+  /// - Parameter predicate: The predicate to apply to the linked Board's ID
+  /// - Returns: A new EntityKey with the filter applied
+  func whereLinkedBoard(_ predicate: EntityKeyPredicate) -> EntityKey<Tile> {
+    self.where("linkedBoard.id", predicate)
+  }
+
+  /// Filter tiles by their linked Board's ID.
+  ///
+  /// This enables type-safe filtering by linked entity relationships:
+  /// ```swift
+  /// Schema.tiles.whereBoard(id: someId)
+  /// ```
+  ///
+  /// - Parameter id: The ID of the linked Board to filter by
+  /// - Returns: A new EntityKey with the filter applied
+  func whereBoard(id: String) -> EntityKey<Tile> {
+    self.where("board.id", .eq(id))
+  }
+
+  /// Filter tiles by their linked Board using a predicate.
+  ///
+  /// This enables flexible filtering using various predicates:
+  /// ```swift
+  /// Schema.tiles.whereBoard(.eq(someId))
+  /// Schema.tiles.whereBoard(.in([id1, id2]))
+  /// ```
+  ///
+  /// - Parameter predicate: The predicate to apply to the linked Board's ID
+  /// - Returns: A new EntityKey with the filter applied
+  func whereBoard(_ predicate: EntityKeyPredicate) -> EntityKey<Tile> {
+    self.where("board.id", predicate)
+  }
+}
+
+public extension EntityKey where Entity == Media {
+
+  /// Filter medias by their linked TranscriptionRun's ID.
+  ///
+  /// This enables type-safe filtering by linked entity relationships:
+  /// ```swift
+  /// Schema.media.whereTranscriptionRuns(id: someId)
+  /// ```
+  ///
+  /// - Parameter id: The ID of the linked TranscriptionRun to filter by
+  /// - Returns: A new EntityKey with the filter applied
+  func whereTranscriptionRuns(id: String) -> EntityKey<Media> {
+    self.where("transcriptionRuns.id", .eq(id))
+  }
+
+  /// Filter medias by their linked TranscriptionRun using a predicate.
+  ///
+  /// This enables flexible filtering using various predicates:
+  /// ```swift
+  /// Schema.media.whereTranscriptionRuns(.eq(someId))
+  /// Schema.media.whereTranscriptionRuns(.in([id1, id2]))
+  /// ```
+  ///
+  /// - Parameter predicate: The predicate to apply to the linked TranscriptionRun's ID
+  /// - Returns: A new EntityKey with the filter applied
+  func whereTranscriptionRuns(_ predicate: EntityKeyPredicate) -> EntityKey<Media> {
+    self.where("transcriptionRuns.id", predicate)
+  }
+}
+
+public extension EntityKey where Entity == TranscriptionRun {
+
+  /// Filter transcriptionruns by their linked Media's ID.
+  ///
+  /// This enables type-safe filtering by linked entity relationships:
+  /// ```swift
+  /// Schema.transcriptionRuns.whereMedia(id: someId)
+  /// ```
+  ///
+  /// - Parameter id: The ID of the linked Media to filter by
+  /// - Returns: A new EntityKey with the filter applied
+  func whereMedia(id: String) -> EntityKey<TranscriptionRun> {
+    self.where("media.id", .eq(id))
+  }
+
+  /// Filter transcriptionruns by their linked Media using a predicate.
+  ///
+  /// This enables flexible filtering using various predicates:
+  /// ```swift
+  /// Schema.transcriptionRuns.whereMedia(.eq(someId))
+  /// Schema.transcriptionRuns.whereMedia(.in([id1, id2]))
+  /// ```
+  ///
+  /// - Parameter predicate: The predicate to apply to the linked Media's ID
+  /// - Returns: A new EntityKey with the filter applied
+  func whereMedia(_ predicate: EntityKeyPredicate) -> EntityKey<TranscriptionRun> {
+    self.where("media.id", predicate)
+  }
+
+  /// Filter transcriptionruns by their linked TranscriptionSegment's ID.
+  ///
+  /// This enables type-safe filtering by linked entity relationships:
+  /// ```swift
+  /// Schema.transcriptionRuns.whereTranscriptionSegments(id: someId)
+  /// ```
+  ///
+  /// - Parameter id: The ID of the linked TranscriptionSegment to filter by
+  /// - Returns: A new EntityKey with the filter applied
+  func whereTranscriptionSegments(id: String) -> EntityKey<TranscriptionRun> {
+    self.where("transcriptionSegments.id", .eq(id))
+  }
+
+  /// Filter transcriptionruns by their linked TranscriptionSegment using a predicate.
+  ///
+  /// This enables flexible filtering using various predicates:
+  /// ```swift
+  /// Schema.transcriptionRuns.whereTranscriptionSegments(.eq(someId))
+  /// Schema.transcriptionRuns.whereTranscriptionSegments(.in([id1, id2]))
+  /// ```
+  ///
+  /// - Parameter predicate: The predicate to apply to the linked TranscriptionSegment's ID
+  /// - Returns: A new EntityKey with the filter applied
+  func whereTranscriptionSegments(_ predicate: EntityKeyPredicate) -> EntityKey<TranscriptionRun> {
+    self.where("transcriptionSegments.id", predicate)
+  }
+}
+
+public extension EntityKey where Entity == TranscriptionSegment {
+
+  /// Filter transcriptionsegments by their linked TranscriptionRun's ID.
+  ///
+  /// This enables type-safe filtering by linked entity relationships:
+  /// ```swift
+  /// Schema.transcriptionSegments.whereTranscriptionRun(id: someId)
+  /// ```
+  ///
+  /// - Parameter id: The ID of the linked TranscriptionRun to filter by
+  /// - Returns: A new EntityKey with the filter applied
+  func whereTranscriptionRun(id: String) -> EntityKey<TranscriptionSegment> {
+    self.where("transcriptionRun.id", .eq(id))
+  }
+
+  /// Filter transcriptionsegments by their linked TranscriptionRun using a predicate.
+  ///
+  /// This enables flexible filtering using various predicates:
+  /// ```swift
+  /// Schema.transcriptionSegments.whereTranscriptionRun(.eq(someId))
+  /// Schema.transcriptionSegments.whereTranscriptionRun(.in([id1, id2]))
+  /// ```
+  ///
+  /// - Parameter predicate: The predicate to apply to the linked TranscriptionRun's ID
+  /// - Returns: A new EntityKey with the filter applied
+  func whereTranscriptionRun(_ predicate: EntityKeyPredicate) -> EntityKey<TranscriptionSegment> {
+    self.where("transcriptionRun.id", predicate)
+  }
+}
+

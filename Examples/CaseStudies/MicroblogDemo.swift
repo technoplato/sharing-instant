@@ -270,7 +270,6 @@ private struct MicroblogView: View {
       id: postId,
       content: content,
       createdAt: now,
-      likesCount: 0,
       callbacks: .init(
         onSuccess: { _ in
           withAnimation {
@@ -327,8 +326,7 @@ private struct MicroblogView: View {
     $posts.createPost(
       id: postId,
       content: randomContent,
-      createdAt: now,
-      likesCount: 0
+      createdAt: now
     )
     
     // #region agent log
