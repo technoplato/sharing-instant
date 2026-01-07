@@ -153,3 +153,66 @@ public enum Schema {
   public static let users = EntityKey<User>(namespace: "users")
 
 }
+
+// MARK: - Link-Based Where Clause Extensions
+
+public extension EntityKey where Entity == Todo {
+
+  /// Filter todos by their linked User's ID.
+  ///
+  /// This enables type-safe filtering by linked entity relationships:
+  /// ```swift
+  /// Schema.todos.whereOwner(id: someId)
+  /// ```
+  ///
+  /// - Parameter id: The ID of the linked User to filter by
+  /// - Returns: A new EntityKey with the filter applied
+  func whereOwner(id: String) -> EntityKey<Todo> {
+    self.where("owner.id", .eq(id))
+  }
+
+  /// Filter todos by their linked User using a predicate.
+  ///
+  /// This enables flexible filtering using various predicates:
+  /// ```swift
+  /// Schema.todos.whereOwner(.eq(someId))
+  /// Schema.todos.whereOwner(.in([id1, id2]))
+  /// ```
+  ///
+  /// - Parameter predicate: The predicate to apply to the linked User's ID
+  /// - Returns: A new EntityKey with the filter applied
+  func whereOwner(_ predicate: EntityKeyPredicate) -> EntityKey<Todo> {
+    self.where("owner.id", predicate)
+  }
+}
+
+public extension EntityKey where Entity == User {
+
+  /// Filter users by their linked Todo's ID.
+  ///
+  /// This enables type-safe filtering by linked entity relationships:
+  /// ```swift
+  /// Schema.users.whereTodos(id: someId)
+  /// ```
+  ///
+  /// - Parameter id: The ID of the linked Todo to filter by
+  /// - Returns: A new EntityKey with the filter applied
+  func whereTodos(id: String) -> EntityKey<User> {
+    self.where("todos.id", .eq(id))
+  }
+
+  /// Filter users by their linked Todo using a predicate.
+  ///
+  /// This enables flexible filtering using various predicates:
+  /// ```swift
+  /// Schema.users.whereTodos(.eq(someId))
+  /// Schema.users.whereTodos(.in([id1, id2]))
+  /// ```
+  ///
+  /// - Parameter predicate: The predicate to apply to the linked Todo's ID
+  /// - Returns: A new EntityKey with the filter applied
+  func whereTodos(_ predicate: EntityKeyPredicate) -> EntityKey<User> {
+    self.where("todos.id", predicate)
+  }
+}
+

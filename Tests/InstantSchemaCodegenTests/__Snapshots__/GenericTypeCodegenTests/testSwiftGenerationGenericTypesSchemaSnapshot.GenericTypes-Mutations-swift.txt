@@ -130,7 +130,7 @@ public extension Shared where Value == IdentifiedArrayOf<Task> {
 
   /// Create a new Task and sync to InstantDB.
   @MainActor
-  public func createTask(
+   func createTask(
     id: String = UUID().uuidString.lowercased(),
     title: String,
     statusInline: TaskStatusInline,
@@ -165,7 +165,7 @@ public extension Shared where Value == IdentifiedArrayOf<Task> {
 
   /// Update the title field of a Task.
   @MainActor
-  public func updateTitle(
+   func updateTitle(
     _ id: String,
     to value: String,
     callbacks: MutationCallbacks<Task> = .init()
@@ -188,7 +188,7 @@ public extension Shared where Value == IdentifiedArrayOf<Task> {
 
   /// Update the statusInline field of a Task.
   @MainActor
-  public func updateStatusInline(
+   func updateStatusInline(
     _ id: String,
     to value: TaskStatusInline,
     callbacks: MutationCallbacks<Task> = .init()
@@ -211,7 +211,7 @@ public extension Shared where Value == IdentifiedArrayOf<Task> {
 
   /// Update the statusAlias field of a Task.
   @MainActor
-  public func updateStatusAlias(
+   func updateStatusAlias(
     _ id: String,
     to value: TaskStatus,
     callbacks: MutationCallbacks<Task> = .init()
@@ -234,7 +234,7 @@ public extension Shared where Value == IdentifiedArrayOf<Task> {
 
   /// Update the priority field of a Task.
   @MainActor
-  public func updatePriority(
+   func updatePriority(
     _ id: String,
     to value: TaskPriority,
     callbacks: MutationCallbacks<Task> = .init()
@@ -257,7 +257,7 @@ public extension Shared where Value == IdentifiedArrayOf<Task> {
 
   /// Update the metadataInline field of a Task.
   @MainActor
-  public func updateMetadataInline(
+   func updateMetadataInline(
     _ id: String,
     to value: TaskMetadataInline,
     callbacks: MutationCallbacks<Task> = .init()
@@ -280,7 +280,7 @@ public extension Shared where Value == IdentifiedArrayOf<Task> {
 
   /// Update the timestamp field of a Task.
   @MainActor
-  public func updateTimestamp(
+   func updateTimestamp(
     _ id: String,
     to value: Timestamp,
     callbacks: MutationCallbacks<Task> = .init()
@@ -303,7 +303,7 @@ public extension Shared where Value == IdentifiedArrayOf<Task> {
 
   /// Update the speaker field of a Task.
   @MainActor
-  public func updateSpeaker(
+   func updateSpeaker(
     _ id: String,
     to value: Speaker?,
     callbacks: MutationCallbacks<Task> = .init()
@@ -328,7 +328,7 @@ public extension Shared where Value == IdentifiedArrayOf<Task> {
 
   /// Delete a Task by ID.
   @MainActor
-  public func deleteTask(
+   func deleteTask(
     _ id: String,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -346,7 +346,7 @@ public extension Shared where Value == IdentifiedArrayOf<Task> {
 
   /// Delete a Task entity.
   @MainActor
-  public func deleteTask(
+   func deleteTask(
     _ entity: Task,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -357,7 +357,7 @@ public extension Shared where Value == IdentifiedArrayOf<Task> {
 
   /// Link a Task to a Media via 'media'.
   @MainActor
-  public func linkMedia(
+   func linkMedia(
     _ id: String,
     to target: Media,
     callbacks: MutationCallbacks<Void> = .init()
@@ -376,7 +376,7 @@ public extension Shared where Value == IdentifiedArrayOf<Task> {
 
   /// Unlink a Task from a Media via 'media'.
   @MainActor
-  public func unlinkMedia(
+   func unlinkMedia(
     _ id: String,
     from target: Media,
     callbacks: MutationCallbacks<Void> = .init()
@@ -400,7 +400,7 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Create a new Task and sync to InstantDB.
   @MainActor
-  public func createTask(
+   func createTask(
     id: String = UUID().uuidString.lowercased(),
     title: String,
     statusInline: TaskStatusInline,
@@ -437,7 +437,7 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Delete a Task by ID.
   @MainActor
-  public func deleteTask(
+   func deleteTask(
     _ id: String,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -455,7 +455,7 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Delete a Task entity.
   @MainActor
-  public func deleteTask(
+   func deleteTask(
     _ entity: Task,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -471,7 +471,7 @@ public extension Shared where Value == IdentifiedArrayOf<Media> {
 
   /// Create a new Media and sync to InstantDB.
   @MainActor
-  public func createMedia(
+   func createMedia(
     id: String = UUID().uuidString.lowercased(),
     title: String,
     mediaType: MediaType,
@@ -504,7 +504,7 @@ public extension Shared where Value == IdentifiedArrayOf<Media> {
 
   /// Update the title field of a Media.
   @MainActor
-  public func updateTitle(
+   func updateTitle(
     _ id: String,
     to value: String,
     callbacks: MutationCallbacks<Media> = .init()
@@ -527,7 +527,7 @@ public extension Shared where Value == IdentifiedArrayOf<Media> {
 
   /// Update the mediaType field of a Media.
   @MainActor
-  public func updateMediaType(
+   func updateMediaType(
     _ id: String,
     to value: MediaType,
     callbacks: MutationCallbacks<Media> = .init()
@@ -550,7 +550,7 @@ public extension Shared where Value == IdentifiedArrayOf<Media> {
 
   /// Update the wordsBracket field of a Media.
   @MainActor
-  public func updateWordsBracket(
+   func updateWordsBracket(
     _ id: String,
     to value: [Word],
     callbacks: MutationCallbacks<Media> = .init()
@@ -573,7 +573,7 @@ public extension Shared where Value == IdentifiedArrayOf<Media> {
 
   /// Update the wordsGeneric field of a Media.
   @MainActor
-  public func updateWordsGeneric(
+   func updateWordsGeneric(
     _ id: String,
     to value: [Word],
     callbacks: MutationCallbacks<Media> = .init()
@@ -596,7 +596,7 @@ public extension Shared where Value == IdentifiedArrayOf<Media> {
 
   /// Update the timestampsInline field of a Media.
   @MainActor
-  public func updateTimestampsInline(
+   func updateTimestampsInline(
     _ id: String,
     to value: [MediaTimestampsInline],
     callbacks: MutationCallbacks<Media> = .init()
@@ -619,7 +619,7 @@ public extension Shared where Value == IdentifiedArrayOf<Media> {
 
   /// Update the speakers field of a Media.
   @MainActor
-  public func updateSpeakers(
+   func updateSpeakers(
     _ id: String,
     to value: [Speaker]?,
     callbacks: MutationCallbacks<Media> = .init()
@@ -644,7 +644,7 @@ public extension Shared where Value == IdentifiedArrayOf<Media> {
 
   /// Delete a Media by ID.
   @MainActor
-  public func deleteMedia(
+   func deleteMedia(
     _ id: String,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -662,7 +662,7 @@ public extension Shared where Value == IdentifiedArrayOf<Media> {
 
   /// Delete a Media entity.
   @MainActor
-  public func deleteMedia(
+   func deleteMedia(
     _ entity: Media,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -673,7 +673,7 @@ public extension Shared where Value == IdentifiedArrayOf<Media> {
 
   /// Link a Media to a Transcription via 'transcription'.
   @MainActor
-  public func linkTranscription(
+   func linkTranscription(
     _ id: String,
     to target: Transcription,
     callbacks: MutationCallbacks<Void> = .init()
@@ -692,7 +692,7 @@ public extension Shared where Value == IdentifiedArrayOf<Media> {
 
   /// Unlink a Media from a Transcription via 'transcription'.
   @MainActor
-  public func unlinkTranscription(
+   func unlinkTranscription(
     _ id: String,
     from target: Transcription,
     callbacks: MutationCallbacks<Void> = .init()
@@ -713,7 +713,7 @@ public extension Shared where Value == IdentifiedArrayOf<Media> {
 
   /// Link a Media to a Task via 'task'.
   @MainActor
-  public func linkTask(
+   func linkTask(
     _ id: String,
     to target: Task,
     callbacks: MutationCallbacks<Void> = .init()
@@ -732,7 +732,7 @@ public extension Shared where Value == IdentifiedArrayOf<Media> {
 
   /// Unlink a Media from a Task via 'task'.
   @MainActor
-  public func unlinkTask(
+   func unlinkTask(
     _ id: String,
     from target: Task,
     callbacks: MutationCallbacks<Void> = .init()
@@ -756,7 +756,7 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Create a new Media and sync to InstantDB.
   @MainActor
-  public func createMedia(
+   func createMedia(
     id: String = UUID().uuidString.lowercased(),
     title: String,
     mediaType: MediaType,
@@ -791,7 +791,7 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Delete a Media by ID.
   @MainActor
-  public func deleteMedia(
+   func deleteMedia(
     _ id: String,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -809,7 +809,7 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Delete a Media entity.
   @MainActor
-  public func deleteMedia(
+   func deleteMedia(
     _ entity: Media,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -825,7 +825,7 @@ public extension Shared where Value == IdentifiedArrayOf<Transcription> {
 
   /// Create a new Transcription and sync to InstantDB.
   @MainActor
-  public func createTranscription(
+   func createTranscription(
     id: String = UUID().uuidString.lowercased(),
     text: String,
     metadata: TranscriptionMetadata,
@@ -852,7 +852,7 @@ public extension Shared where Value == IdentifiedArrayOf<Transcription> {
 
   /// Update the text field of a Transcription.
   @MainActor
-  public func updateText(
+   func updateText(
     _ id: String,
     to value: String,
     callbacks: MutationCallbacks<Transcription> = .init()
@@ -875,7 +875,7 @@ public extension Shared where Value == IdentifiedArrayOf<Transcription> {
 
   /// Update the metadata field of a Transcription.
   @MainActor
-  public func updateMetadata(
+   func updateMetadata(
     _ id: String,
     to value: TranscriptionMetadata,
     callbacks: MutationCallbacks<Transcription> = .init()
@@ -898,7 +898,7 @@ public extension Shared where Value == IdentifiedArrayOf<Transcription> {
 
   /// Update the segments field of a Transcription.
   @MainActor
-  public func updateSegments(
+   func updateSegments(
     _ id: String,
     to value: [TranscriptionSegments],
     callbacks: MutationCallbacks<Transcription> = .init()
@@ -923,7 +923,7 @@ public extension Shared where Value == IdentifiedArrayOf<Transcription> {
 
   /// Delete a Transcription by ID.
   @MainActor
-  public func deleteTranscription(
+   func deleteTranscription(
     _ id: String,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -941,7 +941,7 @@ public extension Shared where Value == IdentifiedArrayOf<Transcription> {
 
   /// Delete a Transcription entity.
   @MainActor
-  public func deleteTranscription(
+   func deleteTranscription(
     _ entity: Transcription,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -952,7 +952,7 @@ public extension Shared where Value == IdentifiedArrayOf<Transcription> {
 
   /// Link a Transcription to a Media via 'media'.
   @MainActor
-  public func linkMedia(
+   func linkMedia(
     _ id: String,
     to target: Media,
     callbacks: MutationCallbacks<Void> = .init()
@@ -971,7 +971,7 @@ public extension Shared where Value == IdentifiedArrayOf<Transcription> {
 
   /// Unlink a Transcription from a Media via 'media'.
   @MainActor
-  public func unlinkMedia(
+   func unlinkMedia(
     _ id: String,
     from target: Media,
     callbacks: MutationCallbacks<Void> = .init()
@@ -995,7 +995,7 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Create a new Transcription and sync to InstantDB.
   @MainActor
-  public func createTranscription(
+   func createTranscription(
     id: String = UUID().uuidString.lowercased(),
     text: String,
     metadata: TranscriptionMetadata,
@@ -1024,7 +1024,7 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Delete a Transcription by ID.
   @MainActor
-  public func deleteTranscription(
+   func deleteTranscription(
     _ id: String,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -1042,7 +1042,7 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Delete a Transcription entity.
   @MainActor
-  public func deleteTranscription(
+   func deleteTranscription(
     _ entity: Transcription,
     callbacks: MutationCallbacks<Void> = .init()
   ) {

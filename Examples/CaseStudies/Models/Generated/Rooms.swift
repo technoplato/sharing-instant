@@ -148,15 +148,15 @@ struct EmojiTopicView: View {
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// Mode:            Production (full traceability)
-/// Generated:       December 30, 2025 at 11:23 PM EST
+/// Generated:       January 6, 2026 at 9:51 PM EST
 /// Machine:         mlustig-hy7l9xrd61.local (Apple M4 Pro, macOS 26.2)
 /// Generator:       Sources/instant-schema/main.swift
-/// Source Schema:   Examples/CaseStudies/instant.schema.ts
+/// Source Schema:   Examples/instant.schema.ts
 
 /* To regenerate this file, run:
 
 swift run instant-schema generate \
-  --from Examples/CaseStudies/instant.schema.ts \
+  --from Examples/instant.schema.ts \
   --to Examples/CaseStudies/Models/Generated
 */
 /// ─────────────────────────────────────────────────────────────────────────────────
@@ -164,16 +164,16 @@ swift run instant-schema generate \
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// HEAD Commit:
-///   SHA:      1c4c66bedb72039ba775a89156a75e35561bf9e5
-///   Date:     December 30, 2025 at 11:23 PM EST
+///   SHA:      f638771bea036ebc8ee4b51bf4762bb111f77cc6
+///   Date:     January 6, 2026 at 9:51 PM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  WIP: TileGameDemo debugging and other demo updates
+///   Message:  feat: Add transcription entities for rapid update testing
 ///
 /// Schema File Last Modified:
-///   SHA:      522ffbf617207b60ecfa647b2d1dc6b9bfa3a7ff
-///   Date:     December 22, 2025 at 6:46 AM EST
+///   SHA:      f638771bea036ebc8ee4b51bf4762bb111f77cc6
+///   Date:     January 6, 2026 at 9:51 PM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  fix: Remove recursive self-link to fix Swift compilation
+///   Message:  feat: Add transcription entities for rapid update testing
 ///
 /// ═══════════════════════════════════════════════════════════════════════════════
 

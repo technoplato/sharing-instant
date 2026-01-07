@@ -74,13 +74,6 @@ final class TripleStoreReverseLinkResolutionTests: XCTestCase {
       cardinality: "one"
     )
 
-    let postLikesCount = try makeAttribute(
-      id: "attr-posts-likesCount",
-      forwardIdentity: ["ident-posts-likesCount", "posts", "likesCount"],
-      valueType: "number",
-      cardinality: "one"
-    )
-
     let profilePosts = try makeAttribute(
       id: "attr-profiles-posts",
       forwardIdentity: ["ident-profiles-posts", "profiles", "posts"],
@@ -94,7 +87,6 @@ final class TripleStoreReverseLinkResolutionTests: XCTestCase {
     attrsStore.addAttr(profileCreatedAt)
     attrsStore.addAttr(postContent)
     attrsStore.addAttr(postCreatedAt)
-    attrsStore.addAttr(postLikesCount)
     attrsStore.addAttr(profilePosts)
 
     let store = InstantDB.TripleStore()
@@ -147,16 +139,6 @@ final class TripleStoreReverseLinkResolutionTests: XCTestCase {
         entityId: postId,
         attributeId: postCreatedAt.id,
         value: .double(456),
-        createdAt: timestamp
-      ),
-      hasCardinalityOne: true
-    )
-
-    store.addTriple(
-      Triple(
-        entityId: postId,
-        attributeId: postLikesCount.id,
-        value: .double(0),
         createdAt: timestamp
       ),
       hasCardinalityOne: true

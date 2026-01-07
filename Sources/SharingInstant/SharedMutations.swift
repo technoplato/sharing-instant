@@ -214,8 +214,9 @@ extension Shared {
   /// 3. Reactor notifies subscriptions to update @Shared value
   /// 4. Server transaction is sent
   ///
-  /// Unlike `withLock { $0[id].field = value }`, this does NOT compute diffs.
-  /// It sends exactly one update transaction.
+  /// **Important**: This method sends only the CHANGED fields, not the entire entity.
+  /// This prevents concurrent updates from clobbering each other (e.g., updating
+  /// `text` and `words` simultaneously on a transcription segment).
   ///
   /// ## Example
   ///
@@ -232,6 +233,11 @@ extension Shared {
   ///   - id: The ID of the entity to update
   ///   - modify: A closure that modifies the entity
   /// - Throws: If the entity is not found or the transaction fails
+  ///
+  /// ## Why We Read From TripleStore
+  /// See the IdentifiedArrayOf version for detailed explanation. In short:
+  /// we read from TripleStore to get optimistic updates that may not have
+  /// propagated to wrappedValue yet due to AsyncStream timing.
   @MainActor
   public func update<Element: EntityIdentifiable & Encodable & Sendable>(
     id: String,
@@ -239,25 +245,45 @@ extension Shared {
   ) async throws where Value: RangeReplaceableCollection, Value.Element == Element {
     @Dependency(\.instantReactor) var reactor
     @Dependency(\.instantAppID) var appID
-    
-    // Read current entity (without triggering save)
-    guard var entity = wrappedValue.first(where: { $0.id == id }) else {
+
+    // Read from TripleStore directly to get optimistic updates that may not have
+    // propagated to wrappedValue yet. Fall back to wrappedValue for backward compat.
+    var entity: Element
+    if let storeEntity: Element = await reactor.getEntity(id: id) {
+      entity = storeEntity
+    } else if let wrappedEntity = wrappedValue.first(where: { $0.id == id }) {
+      entity = wrappedEntity
+    } else {
       throw InstantMutationError.entityNotFound(id: id, namespace: Element.namespace)
     }
-    
+
+    // Encode BEFORE modification to compare
+    let beforeAttrs = try encodeEntityAttributes(entity)
+
     // Apply modification locally
     modify(&entity)
-    
-    // Generate explicit update chunk
+
+    // Encode AFTER modification
+    let afterAttrs = try encodeEntityAttributes(entity)
+
+    // Compute only the changed fields (field-level update)
+    // This prevents concurrent updates from clobbering each other
+    let changedAttrs = computeChangedFields(before: beforeAttrs, after: afterAttrs)
+
+    guard !changedAttrs.isEmpty else {
+      // No actual changes - nothing to do
+      return
+    }
+
+    // Generate explicit update chunk with ONLY changed fields
     let namespace = Element.namespace
-    let attrs = try encodeEntityAttributes(entity)
-    
+
     let chunk = TransactionChunk(
       namespace: namespace,
       id: id,
-      ops: [["update", namespace, id, attrs]]
+      ops: [["update", namespace, id, changedAttrs]]
     )
-    
+
     // Send to Reactor which handles optimistic update + server transaction
     try await reactor.transact(appID: appID, chunks: [chunk])
   }
@@ -430,17 +456,17 @@ extension Shared {
   ) async throws where Value == IdentifiedArrayOf<Element> {
     @Dependency(\.instantReactor) var reactor
     @Dependency(\.instantAppID) var appID
-    
+
     // 1. Generate explicit transaction chunk
     let namespace = Element.namespace
     let attrs = try encodeEntityAttributes(entity)
-    
+
     let chunk = TransactionChunk(
       namespace: namespace,
       id: entity.id,
       ops: [["update", namespace, entity.id, attrs]]
     )
-    
+
     // 2. Send to Reactor which handles:
     //    - Optimistic update to triple store
     //    - Subscription notification (updates @Shared value)
@@ -475,6 +501,20 @@ extension Shared {
   ///
   /// Following TypeScript SDK pattern - we need to read the current entity to apply
   /// the modification, but we don't use withLock to avoid triggering diff-based save.
+  ///
+  /// **Important**: This method sends only the CHANGED fields, not the entire entity.
+  /// This prevents concurrent updates from clobbering each other (e.g., updating
+  /// `text` and `words` simultaneously on a transcription segment).
+  ///
+  /// ## Why We Read From TripleStore
+  /// The `wrappedValue` is updated asynchronously via AsyncStream. When `create()`
+  /// and `update()` are called in rapid succession:
+  /// 1. `create()` applies optimistic update to TripleStore (synchronous)
+  /// 2. `create()` yields to AsyncStream (asynchronous delivery)
+  /// 3. `update()` reads `wrappedValue` → entity not found (stream not consumed yet)
+  ///
+  /// By reading from the TripleStore directly, we get the latest state including
+  /// optimistic updates that haven't yet flowed through to `wrappedValue`.
   @MainActor
   public func update<Element: EntityIdentifiable & Encodable & Sendable>(
     id: String,
@@ -482,26 +522,119 @@ extension Shared {
   ) async throws where Value == IdentifiedArrayOf<Element> {
     @Dependency(\.instantReactor) var reactor
     @Dependency(\.instantAppID) var appID
-    
-    // Read current entity (without triggering save)
-    guard var entity = wrappedValue[id: id] else {
+
+    // Read from TripleStore directly to get optimistic updates that may not have
+    // propagated to wrappedValue yet. Fall back to wrappedValue for backward compat.
+    var entity: Element
+    if let storeEntity: Element = await reactor.getEntity(id: id) {
+      entity = storeEntity
+    } else if let wrappedEntity = wrappedValue[id: id] {
+      entity = wrappedEntity
+    } else {
       throw InstantMutationError.entityNotFound(id: id, namespace: Element.namespace)
     }
-    
+
+    // Encode BEFORE modification to compare
+    let beforeAttrs = try encodeEntityAttributes(entity)
+
     // Apply modification locally
     modify(&entity)
-    
-    // Generate explicit update chunk
+
+    // Encode AFTER modification
+    let afterAttrs = try encodeEntityAttributes(entity)
+
+    // Compute only the changed fields (field-level update)
+    // This prevents concurrent updates from clobbering each other
+    let changedAttrs = computeChangedFields(before: beforeAttrs, after: afterAttrs)
+
+    guard !changedAttrs.isEmpty else {
+      // No actual changes - nothing to do
+      return
+    }
+
+    // Generate explicit update chunk with ONLY changed fields
     let namespace = Element.namespace
-    let attrs = try encodeEntityAttributes(entity)
-    
+
     let chunk = TransactionChunk(
       namespace: namespace,
       id: id,
-      ops: [["update", namespace, id, attrs]]
+      ops: [["update", namespace, id, changedAttrs]]
     )
-    
+
     // Send to Reactor which handles optimistic update + server transaction
+    try await reactor.transact(appID: appID, chunks: [chunk])
+  }
+
+  /// Update a single field of an entity without reading the full entity first.
+  ///
+  /// This is the safest method for concurrent updates because it:
+  /// 1. Does NOT read the current entity (avoids stale snapshots)
+  /// 2. Sends ONLY the specified field to the server
+  /// 3. Cannot clobber other fields being updated concurrently
+  ///
+  /// ## Example
+  ///
+  /// ```swift
+  /// // Update just the text field - safe even if words is being updated concurrently
+  /// try await $segments.updateField(id: segmentId, field: "text", value: "New text")
+  /// ```
+  ///
+  /// - Parameters:
+  ///   - id: The ID of the entity to update
+  ///   - field: The field name to update
+  ///   - value: The new value for the field
+  /// - Throws: If the transaction fails
+  @MainActor
+  public func updateField<Element: EntityIdentifiable & Sendable>(
+    id: String,
+    field: String,
+    value: Any
+  ) async throws where Value == IdentifiedArrayOf<Element> {
+    @Dependency(\.instantReactor) var reactor
+    @Dependency(\.instantAppID) var appID
+
+    let namespace = Element.namespace
+
+    let chunk = TransactionChunk(
+      namespace: namespace,
+      id: id,
+      ops: [["update", namespace, id, [field: value]]]
+    )
+
+    try await reactor.transact(appID: appID, chunks: [chunk])
+  }
+
+  /// Update multiple fields of an entity without reading the full entity first.
+  ///
+  /// This method sends ONLY the specified fields, preventing concurrent updates
+  /// from clobbering each other.
+  ///
+  /// ## Example
+  ///
+  /// ```swift
+  /// try await $segments.updateFields(id: segmentId, fields: [
+  ///   "text": "New text",
+  ///   "endTime": 1.5
+  /// ])
+  /// ```
+  @MainActor
+  public func updateFields<Element: EntityIdentifiable & Sendable>(
+    id: String,
+    fields: [String: Any]
+  ) async throws where Value == IdentifiedArrayOf<Element> {
+    @Dependency(\.instantReactor) var reactor
+    @Dependency(\.instantAppID) var appID
+
+    guard !fields.isEmpty else { return }
+
+    let namespace = Element.namespace
+
+    let chunk = TransactionChunk(
+      namespace: namespace,
+      id: id,
+      ops: [["update", namespace, id, fields]]
+    )
+
     try await reactor.transact(appID: appID, chunks: [chunk])
   }
   
@@ -517,14 +650,7 @@ extension Shared {
     @Dependency(\.instantAppID) var appID
     
     let namespace = Element.namespace
-    
-    // #region agent log
-    let linkPayload: [String: Any] = [label: ["id": targetId, "namespace": targetNamespace]]
-    let ops: [[Any]] = [["link", namespace, id, linkPayload]]
-    print("[SharedMutations] Link operation - namespace: \(namespace), id: \(id), label: \(label), targetId: \(targetId), targetNamespace: \(targetNamespace)")
-    print("[SharedMutations] Link ops: \(ops)")
-    // #endregion
-    
+
     let chunk = TransactionChunk(
       namespace: namespace,
       id: id,
@@ -596,6 +722,97 @@ public enum InstantMutationError: Error, LocalizedError {
 
 // MARK: - Helpers
 
+/// Compute only the fields that changed between two encoded attribute dictionaries.
+///
+/// This is critical for preventing concurrent update clobbering. When two updates
+/// run simultaneously:
+/// - Update A reads entity, modifies `text`, encodes all attrs including stale `words`
+/// - Update B reads entity, modifies `words`, encodes all attrs including stale `text`
+///
+/// Without field-level diffing, whichever update arrives at the server last
+/// clobbers the other's changes.
+///
+/// With field-level diffing:
+/// - Update A sends only `{text: "new text"}`
+/// - Update B sends only `{words: [...]}`
+/// - Both updates succeed without clobbering
+private func computeChangedFields(
+  before: [String: Any],
+  after: [String: Any]
+) -> [String: Any] {
+  var changed: [String: Any] = [:]
+
+  for (key, afterValue) in after {
+    if let beforeValue = before[key] {
+      // Field existed before - check if it changed
+      if !valuesAreEqual(beforeValue, afterValue) {
+        changed[key] = afterValue
+      }
+    } else {
+      // New field
+      changed[key] = afterValue
+    }
+  }
+
+  // Also check for removed fields (set to nil)
+  for key in before.keys {
+    if after[key] == nil {
+      changed[key] = NSNull()
+    }
+  }
+
+  return changed
+}
+
+/// Compare two values for equality.
+///
+/// This handles the various types that can appear in encoded entity attributes.
+private func valuesAreEqual(_ lhs: Any, _ rhs: Any) -> Bool {
+  // Handle NSNull
+  if lhs is NSNull && rhs is NSNull {
+    return true
+  }
+
+  // Handle primitives
+  if let l = lhs as? String, let r = rhs as? String {
+    return l == r
+  }
+  if let l = lhs as? Double, let r = rhs as? Double {
+    return l == r
+  }
+  if let l = lhs as? Int, let r = rhs as? Int {
+    return l == r
+  }
+  if let l = lhs as? Bool, let r = rhs as? Bool {
+    return l == r
+  }
+
+  // Handle arrays (JSON fields like `words`)
+  if let l = lhs as? [Any], let r = rhs as? [Any] {
+    guard l.count == r.count else { return false }
+    for (i, lVal) in l.enumerated() {
+      if !valuesAreEqual(lVal, r[i]) {
+        return false
+      }
+    }
+    return true
+  }
+
+  // Handle dictionaries (nested objects)
+  if let l = lhs as? [String: Any], let r = rhs as? [String: Any] {
+    guard l.count == r.count else { return false }
+    for (key, lVal) in l {
+      guard let rVal = r[key], valuesAreEqual(lVal, rVal) else {
+        return false
+      }
+    }
+    return true
+  }
+
+  // Different types = not equal
+  return false
+}
+
 /// Encode an entity's attributes to a dictionary for the transaction.
 ///
 /// This extracts all properties except `id` and link properties (which are
@@ -612,26 +829,23 @@ public enum InstantMutationError: Error, LocalizedError {
 private func encodeEntityAttributes<E: Encodable>(_ entity: E) throws -> [String: Any] {
   let encoder = DictionaryEncoder()
   let dict = try encoder.encode(entity)
-  
-  // Filter out id (handled separately) and link properties (arrays/objects)
-  // Links should be handled via explicit link() calls
+
+  // Filter out id (handled separately)
+  // Note: We NO LONGER filter out arrays/objects - they can be JSON fields!
+  // The TypeScript SDK sends JSON arrays (like `words: [{text, startTime, endTime}]`)
+  // as regular attributes, not as links.
   var attrs: [String: Any] = [:]
   for (key, value) in dict {
     // Skip id - it's handled separately
     if key == "id" { continue }
-    
-    // Skip link properties (arrays and nested objects)
-    // These should be handled via explicit link() calls
-    if value is [Any] { continue }
-    if value is [String: Any] { continue }
-    
+
     // Skip nil values
     if case Optional<Any>.none = value { continue }
     if value is NSNull { continue }
-    
+
     attrs[key] = value
   }
-  
+
   return attrs
 }
 
@@ -871,7 +1085,12 @@ private class _UnkeyedEncodingContainer: UnkeyedEncodingContainer {
   func encode<T: Encodable>(_ value: T) throws {
     let nestedEncoder = _DictionaryEncoder()
     try value.encode(to: nestedEncoder)
-    storage.append(nestedEncoder.result as Any)
+    // Unwrap the optional to avoid storing Optional wrapper in the array
+    if let result = nestedEncoder.result {
+      storage.append(result)
+    } else {
+      storage.append(NSNull())
+    }
     count += 1
   }
   

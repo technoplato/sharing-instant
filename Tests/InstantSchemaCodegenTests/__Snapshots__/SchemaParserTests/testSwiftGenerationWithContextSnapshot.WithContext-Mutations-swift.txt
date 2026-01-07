@@ -145,7 +145,7 @@ public extension Shared where Value == IdentifiedArrayOf<Todo> {
 
   /// Create a new Todo and sync to InstantDB.
   @MainActor
-  public func createTodo(
+   func createTodo(
     id: String = UUID().uuidString.lowercased(),
     title: String,
     done: Bool,
@@ -172,7 +172,7 @@ public extension Shared where Value == IdentifiedArrayOf<Todo> {
 
   /// Update the title field of a Todo.
   @MainActor
-  public func updateTitle(
+   func updateTitle(
     _ id: String,
     to value: String,
     callbacks: MutationCallbacks<Todo> = .init()
@@ -195,7 +195,7 @@ public extension Shared where Value == IdentifiedArrayOf<Todo> {
 
   /// Update the done field of a Todo.
   @MainActor
-  public func updateDone(
+   func updateDone(
     _ id: String,
     to value: Bool,
     callbacks: MutationCallbacks<Todo> = .init()
@@ -218,7 +218,7 @@ public extension Shared where Value == IdentifiedArrayOf<Todo> {
 
   /// Toggle the done field of a Todo.
   @MainActor
-  public func toggleDone(
+   func toggleDone(
     _ id: String,
     callbacks: MutationCallbacks<Todo> = .init()
   ) {
@@ -240,7 +240,7 @@ public extension Shared where Value == IdentifiedArrayOf<Todo> {
 
   /// Set done to true for a Todo.
   @MainActor
-  public func markDone(
+   func markDone(
     _ id: String,
     callbacks: MutationCallbacks<Todo> = .init()
   ) {
@@ -249,7 +249,7 @@ public extension Shared where Value == IdentifiedArrayOf<Todo> {
 
   /// Set done to false for a Todo.
   @MainActor
-  public func unmarkDone(
+   func unmarkDone(
     _ id: String,
     callbacks: MutationCallbacks<Todo> = .init()
   ) {
@@ -258,7 +258,7 @@ public extension Shared where Value == IdentifiedArrayOf<Todo> {
 
   /// Update the priority field of a Todo.
   @MainActor
-  public func updatePriority(
+   func updatePriority(
     _ id: String,
     to value: Double?,
     callbacks: MutationCallbacks<Todo> = .init()
@@ -283,7 +283,7 @@ public extension Shared where Value == IdentifiedArrayOf<Todo> {
 
   /// Delete a Todo by ID.
   @MainActor
-  public func deleteTodo(
+   func deleteTodo(
     _ id: String,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -301,7 +301,7 @@ public extension Shared where Value == IdentifiedArrayOf<Todo> {
 
   /// Delete a Todo entity.
   @MainActor
-  public func deleteTodo(
+   func deleteTodo(
     _ entity: Todo,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -312,7 +312,7 @@ public extension Shared where Value == IdentifiedArrayOf<Todo> {
 
   /// Link a Todo to a User via 'owner'.
   @MainActor
-  public func linkOwner(
+   func linkOwner(
     _ id: String,
     to target: User,
     callbacks: MutationCallbacks<Void> = .init()
@@ -331,7 +331,7 @@ public extension Shared where Value == IdentifiedArrayOf<Todo> {
 
   /// Unlink a Todo from a User via 'owner'.
   @MainActor
-  public func unlinkOwner(
+   func unlinkOwner(
     _ id: String,
     from target: User,
     callbacks: MutationCallbacks<Void> = .init()
@@ -355,7 +355,7 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Create a new Todo and sync to InstantDB.
   @MainActor
-  public func createTodo(
+   func createTodo(
     id: String = UUID().uuidString.lowercased(),
     title: String,
     done: Bool,
@@ -384,7 +384,7 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Delete a Todo by ID.
   @MainActor
-  public func deleteTodo(
+   func deleteTodo(
     _ id: String,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -402,7 +402,7 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Delete a Todo entity.
   @MainActor
-  public func deleteTodo(
+   func deleteTodo(
     _ entity: Todo,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -418,7 +418,7 @@ public extension Shared where Value == IdentifiedArrayOf<User> {
 
   /// Create a new User and sync to InstantDB.
   @MainActor
-  public func createUser(
+   func createUser(
     id: String = UUID().uuidString.lowercased(),
     name: String,
     email: String,
@@ -445,7 +445,7 @@ public extension Shared where Value == IdentifiedArrayOf<User> {
 
   /// Update the name field of a User.
   @MainActor
-  public func updateName(
+   func updateName(
     _ id: String,
     to value: String,
     callbacks: MutationCallbacks<User> = .init()
@@ -468,7 +468,7 @@ public extension Shared where Value == IdentifiedArrayOf<User> {
 
   /// Update the email field of a User.
   @MainActor
-  public func updateEmail(
+   func updateEmail(
     _ id: String,
     to value: String,
     callbacks: MutationCallbacks<User> = .init()
@@ -491,7 +491,7 @@ public extension Shared where Value == IdentifiedArrayOf<User> {
 
   /// Update the createdAt field of a User.
   @MainActor
-  public func updateCreatedAt(
+   func updateCreatedAt(
     _ id: String,
     to value: Date,
     callbacks: MutationCallbacks<User> = .init()
@@ -516,7 +516,7 @@ public extension Shared where Value == IdentifiedArrayOf<User> {
 
   /// Delete a User by ID.
   @MainActor
-  public func deleteUser(
+   func deleteUser(
     _ id: String,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -534,7 +534,7 @@ public extension Shared where Value == IdentifiedArrayOf<User> {
 
   /// Delete a User entity.
   @MainActor
-  public func deleteUser(
+   func deleteUser(
     _ entity: User,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -545,7 +545,7 @@ public extension Shared where Value == IdentifiedArrayOf<User> {
 
   /// Link a User to a Todo via 'todos'.
   @MainActor
-  public func linkTodos(
+   func linkTodos(
     _ id: String,
     to target: Todo,
     callbacks: MutationCallbacks<Void> = .init()
@@ -564,7 +564,7 @@ public extension Shared where Value == IdentifiedArrayOf<User> {
 
   /// Unlink a User from a Todo via 'todos'.
   @MainActor
-  public func unlinkTodos(
+   func unlinkTodos(
     _ id: String,
     from target: Todo,
     callbacks: MutationCallbacks<Void> = .init()
@@ -588,7 +588,7 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Create a new User and sync to InstantDB.
   @MainActor
-  public func createUser(
+   func createUser(
     id: String = UUID().uuidString.lowercased(),
     name: String,
     email: String,
@@ -617,7 +617,7 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Delete a User by ID.
   @MainActor
-  public func deleteUser(
+   func deleteUser(
     _ id: String,
     callbacks: MutationCallbacks<Void> = .init()
   ) {
@@ -635,7 +635,7 @@ public extension Shared where Value: RangeReplaceableCollection, Value.Element =
 
   /// Delete a User entity.
   @MainActor
-  public func deleteUser(
+   func deleteUser(
     _ entity: User,
     callbacks: MutationCallbacks<Void> = .init()
   ) {

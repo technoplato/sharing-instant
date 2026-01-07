@@ -25,7 +25,12 @@ public final class SharedTripleStore: @unchecked Sendable {
     
     public func addTriple(_ triple: Triple, hasCardinalityOne: Bool, isRef: Bool) {
         inner.addTriple(triple, hasCardinalityOne: hasCardinalityOne, isRef: isRef)
-        notifyObservers(for: [triple.entityId])
+        var changedIDs: Set<String> = [triple.entityId]
+        // For ref triples, also notify the target entity so reverse link views update.
+        if isRef, case .ref(let targetId) = triple.value {
+            changedIDs.insert(targetId)
+        }
+        notifyObservers(for: changedIDs)
     }
     
     public func addTriples(_ triples: [Triple]) {
@@ -36,13 +41,27 @@ public final class SharedTripleStore: @unchecked Sendable {
             let isRef = attr?.valueType == .ref
             inner.addTriple(triple, hasCardinalityOne: hasCardinalityOne, isRef: isRef)
             changedIDs.insert(triple.entityId)
+
+            // For ref triples, also notify the target entity so reverse link views update.
+            // When a ref triple [subject, refAttr, target] is added, the target entity's
+            // "resolved view" changes (it now has an inbound link from subject).
+            // Without this, subscriptions driven by reverse links (e.g., media.transcriptionRuns)
+            // won't see new links until a server refresh.
+            if isRef, case .ref(let targetId) = triple.value {
+                changedIDs.insert(targetId)
+            }
         }
         notifyObservers(for: changedIDs)
     }
     
     public func retractTriple(_ triple: Triple, isRef: Bool) {
         inner.retractTriple(triple, isRef: isRef)
-        notifyObservers(for: [triple.entityId])
+        var changedIDs: Set<String> = [triple.entityId]
+        // For ref triples, also notify the target entity so reverse link views update.
+        if isRef, case .ref(let targetId) = triple.value {
+            changedIDs.insert(targetId)
+        }
+        notifyObservers(for: changedIDs)
     }
     
     public func deleteEntity(id: String) {

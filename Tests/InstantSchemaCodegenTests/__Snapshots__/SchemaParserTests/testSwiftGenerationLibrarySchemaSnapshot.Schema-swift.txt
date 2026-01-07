@@ -164,3 +164,399 @@ public enum Schema {
   public static let borrowRecords = EntityKey<BorrowRecord>(namespace: "borrowRecords")
 
 }
+
+// MARK: - Link-Based Where Clause Extensions
+
+public extension EntityKey where Entity == Member {
+
+  /// Filter members by their linked Book's ID.
+  ///
+  /// This enables type-safe filtering by linked entity relationships:
+  /// ```swift
+  /// Schema.members.whereBorrowedBooks(id: someId)
+  /// ```
+  ///
+  /// - Parameter id: The ID of the linked Book to filter by
+  /// - Returns: A new EntityKey with the filter applied
+  func whereBorrowedBooks(id: String) -> EntityKey<Member> {
+    self.where("borrowedBooks.id", .eq(id))
+  }
+
+  /// Filter members by their linked Book using a predicate.
+  ///
+  /// This enables flexible filtering using various predicates:
+  /// ```swift
+  /// Schema.members.whereBorrowedBooks(.eq(someId))
+  /// Schema.members.whereBorrowedBooks(.in([id1, id2]))
+  /// ```
+  ///
+  /// - Parameter predicate: The predicate to apply to the linked Book's ID
+  /// - Returns: A new EntityKey with the filter applied
+  func whereBorrowedBooks(_ predicate: EntityKeyPredicate) -> EntityKey<Member> {
+    self.where("borrowedBooks.id", predicate)
+  }
+
+  /// Filter members by their linked Author's ID.
+  ///
+  /// This enables type-safe filtering by linked entity relationships:
+  /// ```swift
+  /// Schema.members.whereFavoriteAuthor(id: someId)
+  /// ```
+  ///
+  /// - Parameter id: The ID of the linked Author to filter by
+  /// - Returns: A new EntityKey with the filter applied
+  func whereFavoriteAuthor(id: String) -> EntityKey<Member> {
+    self.where("favoriteAuthor.id", .eq(id))
+  }
+
+  /// Filter members by their linked Author using a predicate.
+  ///
+  /// This enables flexible filtering using various predicates:
+  /// ```swift
+  /// Schema.members.whereFavoriteAuthor(.eq(someId))
+  /// Schema.members.whereFavoriteAuthor(.in([id1, id2]))
+  /// ```
+  ///
+  /// - Parameter predicate: The predicate to apply to the linked Author's ID
+  /// - Returns: A new EntityKey with the filter applied
+  func whereFavoriteAuthor(_ predicate: EntityKeyPredicate) -> EntityKey<Member> {
+    self.where("favoriteAuthor.id", predicate)
+  }
+
+  /// Filter members by their linked Genre's ID.
+  ///
+  /// This enables type-safe filtering by linked entity relationships:
+  /// ```swift
+  /// Schema.members.whereGenreInterests(id: someId)
+  /// ```
+  ///
+  /// - Parameter id: The ID of the linked Genre to filter by
+  /// - Returns: A new EntityKey with the filter applied
+  func whereGenreInterests(id: String) -> EntityKey<Member> {
+    self.where("genreInterests.id", .eq(id))
+  }
+
+  /// Filter members by their linked Genre using a predicate.
+  ///
+  /// This enables flexible filtering using various predicates:
+  /// ```swift
+  /// Schema.members.whereGenreInterests(.eq(someId))
+  /// Schema.members.whereGenreInterests(.in([id1, id2]))
+  /// ```
+  ///
+  /// - Parameter predicate: The predicate to apply to the linked Genre's ID
+  /// - Returns: A new EntityKey with the filter applied
+  func whereGenreInterests(_ predicate: EntityKeyPredicate) -> EntityKey<Member> {
+    self.where("genreInterests.id", predicate)
+  }
+
+  /// Filter members by their linked BorrowRecord's ID.
+  ///
+  /// This enables type-safe filtering by linked entity relationships:
+  /// ```swift
+  /// Schema.members.whereBorrowHistory(id: someId)
+  /// ```
+  ///
+  /// - Parameter id: The ID of the linked BorrowRecord to filter by
+  /// - Returns: A new EntityKey with the filter applied
+  func whereBorrowHistory(id: String) -> EntityKey<Member> {
+    self.where("borrowHistory.id", .eq(id))
+  }
+
+  /// Filter members by their linked BorrowRecord using a predicate.
+  ///
+  /// This enables flexible filtering using various predicates:
+  /// ```swift
+  /// Schema.members.whereBorrowHistory(.eq(someId))
+  /// Schema.members.whereBorrowHistory(.in([id1, id2]))
+  /// ```
+  ///
+  /// - Parameter predicate: The predicate to apply to the linked BorrowRecord's ID
+  /// - Returns: A new EntityKey with the filter applied
+  func whereBorrowHistory(_ predicate: EntityKeyPredicate) -> EntityKey<Member> {
+    self.where("borrowHistory.id", predicate)
+  }
+}
+
+public extension EntityKey where Entity == Author {
+
+  /// Filter authors by their linked Book's ID.
+  ///
+  /// This enables type-safe filtering by linked entity relationships:
+  /// ```swift
+  /// Schema.authors.whereBooks(id: someId)
+  /// ```
+  ///
+  /// - Parameter id: The ID of the linked Book to filter by
+  /// - Returns: A new EntityKey with the filter applied
+  func whereBooks(id: String) -> EntityKey<Author> {
+    self.where("books.id", .eq(id))
+  }
+
+  /// Filter authors by their linked Book using a predicate.
+  ///
+  /// This enables flexible filtering using various predicates:
+  /// ```swift
+  /// Schema.authors.whereBooks(.eq(someId))
+  /// Schema.authors.whereBooks(.in([id1, id2]))
+  /// ```
+  ///
+  /// - Parameter predicate: The predicate to apply to the linked Book's ID
+  /// - Returns: A new EntityKey with the filter applied
+  func whereBooks(_ predicate: EntityKeyPredicate) -> EntityKey<Author> {
+    self.where("books.id", predicate)
+  }
+
+  /// Filter authors by their linked Member's ID.
+  ///
+  /// This enables type-safe filtering by linked entity relationships:
+  /// ```swift
+  /// Schema.authors.whereFans(id: someId)
+  /// ```
+  ///
+  /// - Parameter id: The ID of the linked Member to filter by
+  /// - Returns: A new EntityKey with the filter applied
+  func whereFans(id: String) -> EntityKey<Author> {
+    self.where("fans.id", .eq(id))
+  }
+
+  /// Filter authors by their linked Member using a predicate.
+  ///
+  /// This enables flexible filtering using various predicates:
+  /// ```swift
+  /// Schema.authors.whereFans(.eq(someId))
+  /// Schema.authors.whereFans(.in([id1, id2]))
+  /// ```
+  ///
+  /// - Parameter predicate: The predicate to apply to the linked Member's ID
+  /// - Returns: A new EntityKey with the filter applied
+  func whereFans(_ predicate: EntityKeyPredicate) -> EntityKey<Author> {
+    self.where("fans.id", predicate)
+  }
+}
+
+public extension EntityKey where Entity == Book {
+
+  /// Filter books by their linked Author's ID.
+  ///
+  /// This enables type-safe filtering by linked entity relationships:
+  /// ```swift
+  /// Schema.books.whereAuthor(id: someId)
+  /// ```
+  ///
+  /// - Parameter id: The ID of the linked Author to filter by
+  /// - Returns: A new EntityKey with the filter applied
+  func whereAuthor(id: String) -> EntityKey<Book> {
+    self.where("author.id", .eq(id))
+  }
+
+  /// Filter books by their linked Author using a predicate.
+  ///
+  /// This enables flexible filtering using various predicates:
+  /// ```swift
+  /// Schema.books.whereAuthor(.eq(someId))
+  /// Schema.books.whereAuthor(.in([id1, id2]))
+  /// ```
+  ///
+  /// - Parameter predicate: The predicate to apply to the linked Author's ID
+  /// - Returns: A new EntityKey with the filter applied
+  func whereAuthor(_ predicate: EntityKeyPredicate) -> EntityKey<Book> {
+    self.where("author.id", predicate)
+  }
+
+  /// Filter books by their linked Genre's ID.
+  ///
+  /// This enables type-safe filtering by linked entity relationships:
+  /// ```swift
+  /// Schema.books.whereGenres(id: someId)
+  /// ```
+  ///
+  /// - Parameter id: The ID of the linked Genre to filter by
+  /// - Returns: A new EntityKey with the filter applied
+  func whereGenres(id: String) -> EntityKey<Book> {
+    self.where("genres.id", .eq(id))
+  }
+
+  /// Filter books by their linked Genre using a predicate.
+  ///
+  /// This enables flexible filtering using various predicates:
+  /// ```swift
+  /// Schema.books.whereGenres(.eq(someId))
+  /// Schema.books.whereGenres(.in([id1, id2]))
+  /// ```
+  ///
+  /// - Parameter predicate: The predicate to apply to the linked Genre's ID
+  /// - Returns: A new EntityKey with the filter applied
+  func whereGenres(_ predicate: EntityKeyPredicate) -> EntityKey<Book> {
+    self.where("genres.id", predicate)
+  }
+
+  /// Filter books by their linked Member's ID.
+  ///
+  /// This enables type-safe filtering by linked entity relationships:
+  /// ```swift
+  /// Schema.books.whereCurrentBorrower(id: someId)
+  /// ```
+  ///
+  /// - Parameter id: The ID of the linked Member to filter by
+  /// - Returns: A new EntityKey with the filter applied
+  func whereCurrentBorrower(id: String) -> EntityKey<Book> {
+    self.where("currentBorrower.id", .eq(id))
+  }
+
+  /// Filter books by their linked Member using a predicate.
+  ///
+  /// This enables flexible filtering using various predicates:
+  /// ```swift
+  /// Schema.books.whereCurrentBorrower(.eq(someId))
+  /// Schema.books.whereCurrentBorrower(.in([id1, id2]))
+  /// ```
+  ///
+  /// - Parameter predicate: The predicate to apply to the linked Member's ID
+  /// - Returns: A new EntityKey with the filter applied
+  func whereCurrentBorrower(_ predicate: EntityKeyPredicate) -> EntityKey<Book> {
+    self.where("currentBorrower.id", predicate)
+  }
+
+  /// Filter books by their linked BorrowRecord's ID.
+  ///
+  /// This enables type-safe filtering by linked entity relationships:
+  /// ```swift
+  /// Schema.books.whereBorrowHistory(id: someId)
+  /// ```
+  ///
+  /// - Parameter id: The ID of the linked BorrowRecord to filter by
+  /// - Returns: A new EntityKey with the filter applied
+  func whereBorrowHistory(id: String) -> EntityKey<Book> {
+    self.where("borrowHistory.id", .eq(id))
+  }
+
+  /// Filter books by their linked BorrowRecord using a predicate.
+  ///
+  /// This enables flexible filtering using various predicates:
+  /// ```swift
+  /// Schema.books.whereBorrowHistory(.eq(someId))
+  /// Schema.books.whereBorrowHistory(.in([id1, id2]))
+  /// ```
+  ///
+  /// - Parameter predicate: The predicate to apply to the linked BorrowRecord's ID
+  /// - Returns: A new EntityKey with the filter applied
+  func whereBorrowHistory(_ predicate: EntityKeyPredicate) -> EntityKey<Book> {
+    self.where("borrowHistory.id", predicate)
+  }
+}
+
+public extension EntityKey where Entity == Genre {
+
+  /// Filter genres by their linked Book's ID.
+  ///
+  /// This enables type-safe filtering by linked entity relationships:
+  /// ```swift
+  /// Schema.genres.whereBooks(id: someId)
+  /// ```
+  ///
+  /// - Parameter id: The ID of the linked Book to filter by
+  /// - Returns: A new EntityKey with the filter applied
+  func whereBooks(id: String) -> EntityKey<Genre> {
+    self.where("books.id", .eq(id))
+  }
+
+  /// Filter genres by their linked Book using a predicate.
+  ///
+  /// This enables flexible filtering using various predicates:
+  /// ```swift
+  /// Schema.genres.whereBooks(.eq(someId))
+  /// Schema.genres.whereBooks(.in([id1, id2]))
+  /// ```
+  ///
+  /// - Parameter predicate: The predicate to apply to the linked Book's ID
+  /// - Returns: A new EntityKey with the filter applied
+  func whereBooks(_ predicate: EntityKeyPredicate) -> EntityKey<Genre> {
+    self.where("books.id", predicate)
+  }
+
+  /// Filter genres by their linked Member's ID.
+  ///
+  /// This enables type-safe filtering by linked entity relationships:
+  /// ```swift
+  /// Schema.genres.whereInterestedMembers(id: someId)
+  /// ```
+  ///
+  /// - Parameter id: The ID of the linked Member to filter by
+  /// - Returns: A new EntityKey with the filter applied
+  func whereInterestedMembers(id: String) -> EntityKey<Genre> {
+    self.where("interestedMembers.id", .eq(id))
+  }
+
+  /// Filter genres by their linked Member using a predicate.
+  ///
+  /// This enables flexible filtering using various predicates:
+  /// ```swift
+  /// Schema.genres.whereInterestedMembers(.eq(someId))
+  /// Schema.genres.whereInterestedMembers(.in([id1, id2]))
+  /// ```
+  ///
+  /// - Parameter predicate: The predicate to apply to the linked Member's ID
+  /// - Returns: A new EntityKey with the filter applied
+  func whereInterestedMembers(_ predicate: EntityKeyPredicate) -> EntityKey<Genre> {
+    self.where("interestedMembers.id", predicate)
+  }
+}
+
+public extension EntityKey where Entity == BorrowRecord {
+
+  /// Filter borrowrecords by their linked Book's ID.
+  ///
+  /// This enables type-safe filtering by linked entity relationships:
+  /// ```swift
+  /// Schema.borrowRecords.whereBook(id: someId)
+  /// ```
+  ///
+  /// - Parameter id: The ID of the linked Book to filter by
+  /// - Returns: A new EntityKey with the filter applied
+  func whereBook(id: String) -> EntityKey<BorrowRecord> {
+    self.where("book.id", .eq(id))
+  }
+
+  /// Filter borrowrecords by their linked Book using a predicate.
+  ///
+  /// This enables flexible filtering using various predicates:
+  /// ```swift
+  /// Schema.borrowRecords.whereBook(.eq(someId))
+  /// Schema.borrowRecords.whereBook(.in([id1, id2]))
+  /// ```
+  ///
+  /// - Parameter predicate: The predicate to apply to the linked Book's ID
+  /// - Returns: A new EntityKey with the filter applied
+  func whereBook(_ predicate: EntityKeyPredicate) -> EntityKey<BorrowRecord> {
+    self.where("book.id", predicate)
+  }
+
+  /// Filter borrowrecords by their linked Member's ID.
+  ///
+  /// This enables type-safe filtering by linked entity relationships:
+  /// ```swift
+  /// Schema.borrowRecords.whereMember(id: someId)
+  /// ```
+  ///
+  /// - Parameter id: The ID of the linked Member to filter by
+  /// - Returns: A new EntityKey with the filter applied
+  func whereMember(id: String) -> EntityKey<BorrowRecord> {
+    self.where("member.id", .eq(id))
+  }
+
+  /// Filter borrowrecords by their linked Member using a predicate.
+  ///
+  /// This enables flexible filtering using various predicates:
+  /// ```swift
+  /// Schema.borrowRecords.whereMember(.eq(someId))
+  /// Schema.borrowRecords.whereMember(.in([id1, id2]))
+  /// ```
+  ///
+  /// - Parameter predicate: The predicate to apply to the linked Member's ID
+  /// - Returns: A new EntityKey with the filter applied
+  func whereMember(_ predicate: EntityKeyPredicate) -> EntityKey<BorrowRecord> {
+    self.where("member.id", predicate)
+  }
+}
+

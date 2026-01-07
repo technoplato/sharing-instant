@@ -234,7 +234,6 @@ enum EphemeralAppFactory {
           attrs: [
             "content": dataAttr(valueType: "string", required: true),
             "createdAt": dataAttr(valueType: "number", required: true, indexed: true),
-            "likesCount": dataAttr(valueType: "number", required: true),
           ],
           links: [
             "author": [

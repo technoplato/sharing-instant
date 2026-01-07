@@ -226,6 +226,19 @@ struct CaseStudiesApp: App {
                   .foregroundStyle(.secondary)
               }
             }
+
+            NavigationLink {
+              CaseStudyView {
+                RapidTranscriptionDemo()
+              }
+            } label: {
+              VStack(alignment: .leading, spacing: 4) {
+                Label("Rapid Updates", systemImage: "waveform")
+                Text("Rapid text updates like speech transcription")
+                  .font(.caption)
+                  .foregroundStyle(.secondary)
+              }
+            }
           }
           
           Section("Authentication") {

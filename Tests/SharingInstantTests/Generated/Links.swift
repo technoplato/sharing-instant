@@ -23,9 +23,9 @@
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// Include linked entities in your queries using the `.with()` modifier:
-///   Schema.boards.with(\.tiles)
+///   Schema.boards.with(\.linkedTiles)
 /// Chain multiple links:
-///   Schema.boards.with(\.tiles).with(\.otherLink)
+///   Schema.boards.with(\.linkedTiles).with(\.otherLink)
 /// The compiler ensures you only request links that actually exist!
 ///
 /// ─────────────────────────────────────────────────────────────────────────────────
@@ -39,8 +39,8 @@ import SharingInstant
 import IdentifiedCollections
 
 struct BoardWithLinksView: View {
-  /// Query boards and include their linked tiles
-  @Shared(Schema.boards.with(\.tiles))
+  /// Query boards and include their linked linkedTiles
+  @Shared(Schema.boards.with(\.linkedTiles))
   private var items: IdentifiedArrayOf<Board> = []
 
   var body: some View {
@@ -51,7 +51,7 @@ struct BoardWithLinksView: View {
 
         // Type-safe access to linked entity!
         // This is Optional because the link may not exist
-        if let linked = item.tiles {
+        if let linked = item.linkedTiles {
           HStack {
             Image(systemName: "link")
             Text("Linked: \(linked.id)")
@@ -75,8 +75,8 @@ struct BoardWithLinksView: View {
 ///
 /// The link system is fully type-safe. The compiler catches errors at build time:
 ///
-/// ✅ COMPILES - tiles exists on Board:
-///    Schema.boards.with(\.tiles)
+/// ✅ COMPILES - linkedTiles exists on Board:
+///    Schema.boards.with(\.linkedTiles)
 ///
 /// ❌ COMPILE ERROR - "nonexistent" is not a link on Board:
 ///    Schema.boards.with(\.nonexistent)
@@ -84,8 +84,44 @@ struct BoardWithLinksView: View {
 ///
 ///
 
-/// boardTiles {
-///   name: "boardTiles"
+/// $usersLinkedPrimaryUser {
+///   name: "$usersLinkedPrimaryUser"
+///
+///   forward: {
+///     on: InstantUser
+///     label: "linkedPrimaryUser"
+///     has: one
+///   }
+///   // Access: InstantUser.linkedPrimaryUser → InstantUser?
+///
+///   reverse: {
+///     on: InstantUser
+///     label: "linkedGuestUsers"
+///     has: many
+///   }
+///   // Access: InstantUser.linkedGuestUsers → [InstantUser]?
+/// }
+///
+/// boardsLinkedTiles {
+///   name: "boardsLinkedTiles"
+///
+///   forward: {
+///     on: Board
+///     label: "linkedTiles"
+///     has: many
+///   }
+///   // Access: Board.linkedTiles → [Tile]?
+///
+///   reverse: {
+///     on: Tile
+///     label: "linkedBoard"
+///     has: many
+///   }
+///   // Access: Tile.linkedBoard → [Board]?
+/// }
+///
+/// boardsTiles {
+///   name: "boardsTiles"
 ///
 ///   forward: {
 ///     on: Board
@@ -102,44 +138,8 @@ struct BoardWithLinksView: View {
 ///   // Access: Tile.board → Board?
 /// }
 ///
-/// profilePosts {
-///   name: "profilePosts"
-///
-///   forward: {
-///     on: Profile
-///     label: "posts"
-///     has: many
-///   }
-///   // Access: Profile.posts → [Post]?
-///
-///   reverse: {
-///     on: Post
-///     label: "author"
-///     has: one
-///   }
-///   // Access: Post.author → Profile?
-/// }
-///
-/// profileComments {
-///   name: "profileComments"
-///
-///   forward: {
-///     on: Profile
-///     label: "comments"
-///     has: many
-///   }
-///   // Access: Profile.comments → [Comment]?
-///
-///   reverse: {
-///     on: Comment
-///     label: "author"
-///     has: one
-///   }
-///   // Access: Comment.author → Profile?
-/// }
-///
-/// postComments {
-///   name: "postComments"
+/// postsComments {
+///   name: "postsComments"
 ///
 ///   forward: {
 ///     on: Post
@@ -156,26 +156,8 @@ struct BoardWithLinksView: View {
 ///   // Access: Comment.post → Post?
 /// }
 ///
-/// profileLikes {
-///   name: "profileLikes"
-///
-///   forward: {
-///     on: Profile
-///     label: "likes"
-///     has: many
-///   }
-///   // Access: Profile.likes → [Like]?
-///
-///   reverse: {
-///     on: Like
-///     label: "profile"
-///     has: one
-///   }
-///   // Access: Like.profile → Profile?
-/// }
-///
-/// postLikes {
-///   name: "postLikes"
+/// postsLikes {
+///   name: "postsLikes"
 ///
 ///   forward: {
 ///     on: Post
@@ -192,21 +174,111 @@ struct BoardWithLinksView: View {
 ///   // Access: Like.post → Post?
 /// }
 ///
+/// profilesComments {
+///   name: "profilesComments"
+///
+///   forward: {
+///     on: Profile
+///     label: "comments"
+///     has: many
+///   }
+///   // Access: Profile.comments → [Comment]?
+///
+///   reverse: {
+///     on: Comment
+///     label: "author"
+///     has: one
+///   }
+///   // Access: Comment.author → Profile?
+/// }
+///
+/// profilesLikes {
+///   name: "profilesLikes"
+///
+///   forward: {
+///     on: Profile
+///     label: "likes"
+///     has: many
+///   }
+///   // Access: Profile.likes → [Like]?
+///
+///   reverse: {
+///     on: Like
+///     label: "profile"
+///     has: one
+///   }
+///   // Access: Like.profile → Profile?
+/// }
+///
+/// profilesPosts {
+///   name: "profilesPosts"
+///
+///   forward: {
+///     on: Profile
+///     label: "posts"
+///     has: many
+///   }
+///   // Access: Profile.posts → [Post]?
+///
+///   reverse: {
+///     on: Post
+///     label: "author"
+///     has: one
+///   }
+///   // Access: Post.author → Profile?
+/// }
+///
+/// mediaTranscriptionRuns {
+///   name: "mediaTranscriptionRuns"
+///
+///   forward: {
+///     on: Media
+///     label: "transcriptionRuns"
+///     has: many
+///   }
+///   // Access: Media.transcriptionRuns → [TranscriptionRun]?
+///
+///   reverse: {
+///     on: TranscriptionRun
+///     label: "media"
+///     has: one
+///   }
+///   // Access: TranscriptionRun.media → Media?
+/// }
+///
+/// transcriptionRunsSegments {
+///   name: "transcriptionRunsSegments"
+///
+///   forward: {
+///     on: TranscriptionRun
+///     label: "transcriptionSegments"
+///     has: many
+///   }
+///   // Access: TranscriptionRun.transcriptionSegments → [TranscriptionSegment]?
+///
+///   reverse: {
+///     on: TranscriptionSegment
+///     label: "transcriptionRun"
+///     has: one
+///   }
+///   // Access: TranscriptionSegment.transcriptionRun → TranscriptionRun?
+/// }
+///
 ///
 /// ─────────────────────────────────────────────────────────────────────────────────
 /// GENERATION INFO
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// Mode:            Production (full traceability)
-/// Generated:       December 30, 2025 at 9:29 PM EST
+/// Generated:       January 7, 2026 at 10:21 AM EST
 /// Machine:         mlustig-hy7l9xrd61.local (Apple M4 Pro, macOS 26.2)
 /// Generator:       Sources/instant-schema/main.swift
-/// Source Schema:   Examples/CaseStudies/instant.schema.ts
+/// Source Schema:   instant.schema.ts
 
 /* To regenerate this file, run:
 
 swift run instant-schema generate \
-  --from Examples/CaseStudies/instant.schema.ts \
+  --from instant.schema.ts \
   --to Tests/SharingInstantTests/Generated
 */
 /// ─────────────────────────────────────────────────────────────────────────────────
@@ -214,16 +286,16 @@ swift run instant-schema generate \
 /// ─────────────────────────────────────────────────────────────────────────────────
 ///
 /// HEAD Commit:
-///   SHA:      409fdf941059f57f1f9c7ebdac98ed4999bc3af3
-///   Date:     December 30, 2025 at 9:29 PM EST
+///   SHA:      7984aa49f6505dc5906a550adc3f0c4d362a2d1d
+///   Date:     January 6, 2026 at 9:55 PM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  chore: Regenerate CaseStudies schema with fixed public modifiers
+///   Message:  feat: Add transcription entities to test schema
 ///
 /// Schema File Last Modified:
-///   SHA:      522ffbf617207b60ecfa647b2d1dc6b9bfa3a7ff
-///   Date:     December 22, 2025 at 6:46 AM EST
+///   SHA:      7984aa49f6505dc5906a550adc3f0c4d362a2d1d
+///   Date:     January 6, 2026 at 9:55 PM EST
 ///   Author:   Michael Lustig <mlustig@hioscar.com>
-///   Message:  fix: Remove recursive self-link to fix Swift compilation
+///   Message:  feat: Add transcription entities to test schema
 ///
 /// ═══════════════════════════════════════════════════════════════════════════════
 
@@ -233,46 +305,75 @@ import SharingInstant
 // MARK: - Link Definitions
 
 public enum SchemaLinks {
+  /// $users ↔ $users relationship
+  /// - Note: Involves InstantDB system entity.
+  public static let instantUsersLinkedPrimaryUser = Link(
+    name: "$usersLinkedPrimaryUser",
+    from: InstantUser.self, fromLabel: "linkedPrimaryUser", fromCardinality: .one,
+    to: InstantUser.self, toLabel: "linkedGuestUsers", toCardinality: .many
+  )
+
   /// boards ↔ tiles relationship
-  public static let boardTiles = Link(
-    name: "boardTiles",
+  public static let boardsLinkedTiles = Link(
+    name: "boardsLinkedTiles",
+    from: Board.self, fromLabel: "linkedTiles", fromCardinality: .many,
+    to: Tile.self, toLabel: "linkedBoard", toCardinality: .many
+  )
+
+  /// boards ↔ tiles relationship
+  public static let boardsTiles = Link(
+    name: "boardsTiles",
     from: Board.self, fromLabel: "tiles", fromCardinality: .many,
     to: Tile.self, toLabel: "board", toCardinality: .one
   )
 
-  /// profiles ↔ posts relationship
-  public static let profilePosts = Link(
-    name: "profilePosts",
-    from: Profile.self, fromLabel: "posts", fromCardinality: .many,
-    to: Post.self, toLabel: "author", toCardinality: .one
-  )
-
-  /// profiles ↔ comments relationship
-  public static let profileComments = Link(
-    name: "profileComments",
-    from: Profile.self, fromLabel: "comments", fromCardinality: .many,
-    to: Comment.self, toLabel: "author", toCardinality: .one
-  )
-
   /// posts ↔ comments relationship
-  public static let postComments = Link(
-    name: "postComments",
+  public static let postsComments = Link(
+    name: "postsComments",
     from: Post.self, fromLabel: "comments", fromCardinality: .many,
     to: Comment.self, toLabel: "post", toCardinality: .one
   )
 
+  /// posts ↔ likes relationship
+  public static let postsLikes = Link(
+    name: "postsLikes",
+    from: Post.self, fromLabel: "likes", fromCardinality: .many,
+    to: Like.self, toLabel: "post", toCardinality: .one
+  )
+
+  /// profiles ↔ comments relationship
+  public static let profilesComments = Link(
+    name: "profilesComments",
+    from: Profile.self, fromLabel: "comments", fromCardinality: .many,
+    to: Comment.self, toLabel: "author", toCardinality: .one
+  )
+
   /// profiles ↔ likes relationship
-  public static let profileLikes = Link(
-    name: "profileLikes",
+  public static let profilesLikes = Link(
+    name: "profilesLikes",
     from: Profile.self, fromLabel: "likes", fromCardinality: .many,
     to: Like.self, toLabel: "profile", toCardinality: .one
   )
 
-  /// posts ↔ likes relationship
-  public static let postLikes = Link(
-    name: "postLikes",
-    from: Post.self, fromLabel: "likes", fromCardinality: .many,
-    to: Like.self, toLabel: "post", toCardinality: .one
+  /// profiles ↔ posts relationship
+  public static let profilesPosts = Link(
+    name: "profilesPosts",
+    from: Profile.self, fromLabel: "posts", fromCardinality: .many,
+    to: Post.self, toLabel: "author", toCardinality: .one
+  )
+
+  /// media ↔ transcriptionRuns relationship
+  public static let mediaTranscriptionRuns = Link(
+    name: "mediaTranscriptionRuns",
+    from: Media.self, fromLabel: "transcriptionRuns", fromCardinality: .many,
+    to: TranscriptionRun.self, toLabel: "media", toCardinality: .one
+  )
+
+  /// transcriptionRuns ↔ transcriptionSegments relationship
+  public static let transcriptionRunsSegments = Link(
+    name: "transcriptionRunsSegments",
+    from: TranscriptionRun.self, fromLabel: "transcriptionSegments", fromCardinality: .many,
+    to: TranscriptionSegment.self, toLabel: "transcriptionRun", toCardinality: .one
   )
 
 }
