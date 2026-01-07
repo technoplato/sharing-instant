@@ -61,6 +61,30 @@ const _schema = i.schema({
       done: i.boolean(),
       title: i.string(),
     }),
+    // Rapid Transcription Demo Entities
+    media: i.entity({
+      title: i.string().indexed(),
+      durationSeconds: i.number(),
+      mediaType: i.string().indexed(),
+      ingestedAt: i.string(),
+      description: i.string().optional(),
+    }),
+    transcriptionRuns: i.entity({
+      toolVersion: i.string(),
+      executedAt: i.string(),
+      runType: i.string().indexed().optional(),
+      isActive: i.boolean().indexed().optional(),
+    }),
+    transcriptionSegments: i.entity({
+      startTime: i.number().indexed(),
+      endTime: i.number().indexed(),
+      text: i.string(),
+      segmentIndex: i.number().indexed(),
+      isFinalized: i.boolean().indexed(),
+      ingestedAt: i.string(),
+      speaker: i.number().optional(),
+      words: i.json<{ text: string; startTime: number; endTime: number }[]>().optional(),
+    }),
   },
   links: {
     $usersLinkedPrimaryUser: {
@@ -164,6 +188,31 @@ const _schema = i.schema({
         has: "one",
         label: "author",
         onDelete: "cascade",
+      },
+    },
+    // Transcription Links
+    mediaTranscriptionRuns: {
+      forward: {
+        on: "media",
+        has: "many",
+        label: "transcriptionRuns",
+      },
+      reverse: {
+        on: "transcriptionRuns",
+        has: "one",
+        label: "media",
+      },
+    },
+    transcriptionRunsSegments: {
+      forward: {
+        on: "transcriptionRuns",
+        has: "many",
+        label: "transcriptionSegments",
+      },
+      reverse: {
+        on: "transcriptionSegments",
+        has: "one",
+        label: "transcriptionRun",
       },
     },
   },
