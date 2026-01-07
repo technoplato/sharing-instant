@@ -89,6 +89,64 @@ const _schema = i.schema({
       title: i.string(),
       createdAt: i.number(),
     }),
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Rapid Transcription Demo Entities
+    // Mirrors SpeechRecorderApp schema for testing rapid updates
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * A piece of media (audio recording, video, etc).
+     */
+    media: i.entity({
+      /** Title of the media (user-editable for recordings). */
+      title: i.string().indexed(),
+      /** Duration in seconds. */
+      durationSeconds: i.number(),
+      /** Type of media: "audio" for recordings. */
+      mediaType: i.string().indexed(),
+      /** When this media was ingested/created. ISO 8601 format. */
+      ingestedAt: i.string(),
+      /** Optional description. */
+      description: i.string().optional(),
+    }),
+
+    /**
+     * A transcription run for a piece of media.
+     */
+    transcriptionRuns: i.entity({
+      /** Tool version used (e.g., "SpeechAnalyzer-iOS18"). */
+      toolVersion: i.string(),
+      /** When the transcription run was executed. ISO 8601 format. */
+      executedAt: i.string(),
+      /** Type of run: "volatile" or "finalized". */
+      runType: i.string().indexed().optional(),
+      /** Whether this run is currently active. */
+      isActive: i.boolean().indexed().optional(),
+    }),
+
+    /**
+     * A segment of transcription text with timing.
+     * Words are embedded as JSON rather than separate entities.
+     */
+    transcriptionSegments: i.entity({
+      /** Start time in seconds. */
+      startTime: i.number().indexed(),
+      /** End time in seconds. */
+      endTime: i.number().indexed(),
+      /** The transcribed text for this segment. */
+      text: i.string(),
+      /** Segment index within the transcription run. */
+      segmentIndex: i.number().indexed(),
+      /** Whether this segment is finalized. */
+      isFinalized: i.boolean().indexed(),
+      /** When this segment was ingested. ISO 8601 format. */
+      ingestedAt: i.string(),
+      /** Speaker number (for diarization). */
+      speaker: i.number().optional(),
+      /** Word-level timing data (only populated for finalized segments). */
+      words: i.json<{ text: string; startTime: number; endTime: number }[]>().optional(),
+    }),
   },
 
   links: {
@@ -201,6 +259,38 @@ const _schema = i.schema({
         has: "one",
         label: "post",
         onDelete: "cascade",
+      },
+    },
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Transcription Links
+    // ─────────────────────────────────────────────────────────────────────────
+
+    // Media → TranscriptionRuns (one-to-many)
+    mediaTranscriptionRuns: {
+      forward: {
+        on: "media",
+        has: "many",
+        label: "transcriptionRuns",
+      },
+      reverse: {
+        on: "transcriptionRuns",
+        has: "one",
+        label: "media",
+      },
+    },
+
+    // TranscriptionRuns → TranscriptionSegments (one-to-many)
+    transcriptionRunsSegments: {
+      forward: {
+        on: "transcriptionRuns",
+        has: "many",
+        label: "transcriptionSegments",
+      },
+      reverse: {
+        on: "transcriptionSegments",
+        has: "one",
+        label: "transcriptionRun",
       },
     },
   },
