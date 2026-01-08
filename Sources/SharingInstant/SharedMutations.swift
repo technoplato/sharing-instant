@@ -114,6 +114,49 @@ public struct MutationCallbacks<T: Sendable>: Sendable {
   }
 }
 
+// MARK: - MutationCallbacks Convenience Methods
+
+extension MutationCallbacks {
+  /// Create callbacks with only an error handler.
+  ///
+  /// This is the most common use case for fire-and-forget mutations where
+  /// you only care about logging errors.
+  ///
+  /// ## Example
+  /// ```swift
+  /// $posts.updateTitle(id, to: "New Title", callbacks: .onError { error in
+  ///     print("Failed: \(error)")
+  /// })
+  /// ```
+  public static func onError(_ handler: @escaping @Sendable (Error) -> Void) -> MutationCallbacks {
+    MutationCallbacks(onError: handler)
+  }
+
+  /// Create callbacks with only a success handler.
+  ///
+  /// ## Example
+  /// ```swift
+  /// $posts.createPost(title: "Hello", callbacks: .onSuccess { post in
+  ///     print("Created: \(post.id)")
+  /// })
+  /// ```
+  public static func onSuccess(_ handler: @escaping @Sendable (T) -> Void) -> MutationCallbacks {
+    MutationCallbacks(onSuccess: handler)
+  }
+
+  /// Create callbacks with only a settled handler.
+  ///
+  /// ## Example
+  /// ```swift
+  /// $posts.deletePost(id, callbacks: .onSettled {
+  ///     isLoading = false
+  /// })
+  /// ```
+  public static func onSettled(_ handler: @escaping @Sendable () -> Void) -> MutationCallbacks {
+    MutationCallbacks(onSettled: handler)
+  }
+}
+
 // MARK: - Explicit Mutation Methods for Shared Collections
 
 extension Shared {
