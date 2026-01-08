@@ -348,22 +348,32 @@ public struct LinkSideParser: Parser {
     while !input.hasPrefix("}") && !input.isEmpty {
       let key = try Identifier().parse(&input)
       try Colon().parse(&input)
-      let value = try StringLiteral().parse(&input)
-      
-      switch key {
-      case "on": entityName = value
-      case "has":
-        switch value {
-        case "one": cardinality = .one
-        case "many": cardinality = .many
-        default:
-          struct InvalidCardinality: Error { let value: String }
-          throw InvalidCardinality(value: value)
+
+      // Handle string values for known keys, skip non-string values (like `required: true`)
+      if input.first == "\"" || input.first == "'" {
+        let value = try StringLiteral().parse(&input)
+
+        switch key {
+        case "on": entityName = value
+        case "has":
+          switch value {
+          case "one": cardinality = .one
+          case "many": cardinality = .many
+          default:
+            struct InvalidCardinality: Error { let value: String }
+            throw InvalidCardinality(value: value)
+          }
+        case "label": label = value
+        default: break // Ignore unknown string keys like "onDelete"
         }
-      case "label": label = value
-      default: break // Ignore unknown keys like "onDelete"
+      } else {
+        // Skip non-string values (booleans like `required: true`)
+        // Consume until comma or closing brace
+        while !input.isEmpty && !input.hasPrefix(",") && !input.hasPrefix("}") {
+          input.removeFirst(1)
+        }
       }
-      
+
       try SkipWhitespaceAndComments().parse(&input)
       if input.hasPrefix(",") {
         input.removeFirst(1)
