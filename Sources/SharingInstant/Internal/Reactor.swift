@@ -14,10 +14,114 @@ import Sharing
 
 // #region agent log
 /// Debug logging helper for Cursor debug mode - sends via HTTP to Mac
-private func reactorDebugLog(_ message: String, data: [String: Any] = [:], hypothesisId: String = "H10", file: String = #file, line: Int = #line) {
+/// Logs are queued and persisted to disk, then sent when network is available.
+///
+/// To use:
+/// 1. Run: python3 Scripts/debug-log-server.py 7248
+/// 2. Update the IP below to your Mac's local IP
+private let debugLogServerURL = "http://192.168.68.111:7248/ingest/debug"
+
+/// Actor to manage thread-safe debug log queue with persistence
+private actor DebugLogQueue {
+    static let shared = DebugLogQueue()
+
+    private let fileURL: URL
+    private var isFlushing = false
+
+    init() {
+        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        self.fileURL = docs.appendingPathComponent("debug-logs-queue.jsonl")
+    }
+
+    func enqueue(_ jsonData: Data) {
+        // Append to file (JSONL format - one JSON object per line)
+        if let line = String(data: jsonData, encoding: .utf8) {
+            let lineWithNewline = line + "\n"
+            if let lineData = lineWithNewline.data(using: .utf8) {
+                if FileManager.default.fileExists(atPath: fileURL.path) {
+                    if let handle = try? FileHandle(forWritingTo: fileURL) {
+                        handle.seekToEndOfFile()
+                        handle.write(lineData)
+                        try? handle.close()
+                    }
+                } else {
+                    try? lineData.write(to: fileURL)
+                }
+            }
+        }
+
+        // Try to flush immediately
+        Task {
+            await flush()
+        }
+    }
+
+    func flush() async {
+        guard !isFlushing else { return }
+        isFlushing = true
+        defer { isFlushing = false }
+
+        guard FileManager.default.fileExists(atPath: fileURL.path),
+              let content = try? String(contentsOf: fileURL, encoding: .utf8) else {
+            return
+        }
+
+        let lines = content.components(separatedBy: "\n").filter { !$0.isEmpty }
+        guard !lines.isEmpty else { return }
+
+        guard let ingestURL = URL(string: debugLogServerURL) else { return }
+
+        var successCount = 0
+
+        for line in lines {
+            guard let jsonData = line.data(using: .utf8) else {
+                successCount += 1 // Skip malformed
+                continue
+            }
+
+            var request = URLRequest(url: ingestURL)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = jsonData
+            request.timeoutInterval = 5
+
+            do {
+                let (_, response) = try await URLSession.shared.data(for: request)
+                if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
+                    successCount += 1
+                } else {
+                    break // Server error, stop
+                }
+            } catch {
+                // Network error - stop trying, will retry later
+                break
+            }
+        }
+
+        // Remove successfully sent logs by rewriting file with remaining lines
+        if successCount > 0 {
+            let remainingLines = Array(lines.dropFirst(successCount))
+            if remainingLines.isEmpty {
+                try? FileManager.default.removeItem(at: fileURL)
+            } else {
+                let remainingContent = remainingLines.joined(separator: "\n") + "\n"
+                try? remainingContent.write(to: fileURL, atomically: true, encoding: .utf8)
+            }
+        }
+    }
+}
+
+private func reactorDebugLog(_ message: String, data: [String: Any] = [:], hypothesisId: String = "RESTORE", file: String = #file, line: Int = #line) {
+    #if DEBUG
     let fileName = (file as NSString).lastPathComponent.replacingOccurrences(of: ".swift", with: "")
     let location = "\(fileName):\(line)"
-    guard let ingestURL = URL(string: "http://192.168.68.108:7248/ingest/8e9cd30c-2978-4fd0-aac6-721b5eaff68a") else { return }
+
+    // Print to Xcode console for local debugging
+    let dataStr = data.isEmpty ? "" : " | \(data.map { "\($0.key): \($0.value)" }.joined(separator: ", "))"
+    print("[RESTORE] [\(location)] \(message)\(dataStr)")
+
+    // Queue for HTTP delivery (persisted to disk, sent when online)
+    // Convert to JSON Data immediately to make it Sendable
     let payload: [String: Any] = [
         "location": location,
         "message": message,
@@ -26,26 +130,243 @@ private func reactorDebugLog(_ message: String, data: [String: Any] = [:], hypot
         "sessionId": "debug-session",
         "hypothesisId": hypothesisId
     ]
-    guard let jsonData = try? JSONSerialization.data(withJSONObject: payload) else { return }
-    var request = URLRequest(url: ingestURL)
-    request.httpMethod = "POST"
-    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-    request.httpBody = jsonData
-    URLSession.shared.dataTask(with: request).resume()
+
+    if let jsonData = try? JSONSerialization.data(withJSONObject: payload) {
+        Task {
+            await DebugLogQueue.shared.enqueue(jsonData)
+        }
+    }
+    #endif
+}
+
+/// Call this when the app comes back online to flush queued logs
+public func flushDebugLogs() {
+    #if DEBUG
+    Task {
+        await DebugLogQueue.shared.flush()
+    }
+    #endif
 }
 // #endregion
 
 public actor Reactor {
   // public static let shared = Reactor() // Removed for DI
 
-  
+
   private let store: SharedTripleStore
   private let clientInstanceID: String
   private var activeSubscriptions: [UUID: SubscriptionHandle] = [:]
-  
+
+  /// Tracks whether we've restored pending mutations from SQLite.
+  ///
+  /// ## Why This Exists
+  /// When the app restarts, pending mutations (optimistic updates that haven't been
+  /// confirmed by the server) are persisted in SQLite but not in the in-memory
+  /// SharedTripleStore. Without restoring them, the UI would show stale data until
+  /// the server confirms the mutations (which requires network connectivity).
+  ///
+  /// This flag ensures we only restore once per app launch to avoid duplicate
+  /// application of the same mutations.
+  private var hasRestoredPendingMutations: Bool = false
+
   public init(store: SharedTripleStore, clientInstanceID: String = "default") {
     self.store = store
     self.clientInstanceID = clientInstanceID
+  }
+
+  // MARK: - Pending Mutation Restoration
+
+  /// Restores pending mutations from SQLite to the in-memory SharedTripleStore.
+  ///
+  /// ## Why This Exists
+  /// When the app restarts, pending mutations are persisted in SQLite but not in
+  /// the in-memory SharedTripleStore. This method re-applies those mutations so
+  /// users see their changes immediately, even before the server confirms them.
+  ///
+  /// This matches the TypeScript SDK behavior where `pendingMutations` are merged
+  /// into query results via `_applyOptimisticUpdates()`.
+  ///
+  /// - Parameter client: The InstantClient to load pending mutations from
+  private func restorePendingMutationsIfNeeded(client: InstantClient, appID: String) async {
+    guard !hasRestoredPendingMutations else {
+      reactorDebugLog("restorePendingMutations: SKIPPED - already restored")
+      return
+    }
+    hasRestoredPendingMutations = true
+
+    reactorDebugLog("restorePendingMutations: START", data: [
+      "activeSubscriptionCount": activeSubscriptions.count,
+      "subscriptionNamespaces": activeSubscriptions.values.map { $0.namespace }
+    ])
+
+    let pending = await client.getUnconfirmedPendingMutations()
+    guard !pending.isEmpty else {
+      reactorDebugLog("restorePendingMutations: no pending mutations to restore")
+      return
+    }
+
+    reactorDebugLog("restorePendingMutations: found \(pending.count) pending mutations", data: [
+      "mutationEventIds": pending.map { $0.eventId }
+    ])
+
+    // Get current attributes for cardinality information
+    let attrs = await MainActor.run { client.attributes }
+    reactorDebugLog("restorePendingMutations: got attributes", data: [
+      "attrCount": attrs.count
+    ])
+    if !attrs.isEmpty {
+      store.updateAttributes(attrs)
+    }
+
+    // Track all entity IDs we're restoring so we can notify subscriptions properly
+    var restoredEntityIds: [(namespace: String, id: String)] = []
+
+    // Apply each pending mutation to the local store
+    for mutation in pending {
+      let entityIds = applyPendingMutationToStore(mutation)
+      restoredEntityIds.append(contentsOf: entityIds)
+    }
+
+    reactorDebugLog("restorePendingMutations: applied to store", data: [
+      "restoredEntityCount": restoredEntityIds.count,
+      "restoredEntityIds": restoredEntityIds.map { "\($0.namespace):\($0.id)" }
+    ])
+
+    // CRITICAL: We must notify with specific entity IDs, not just notifyAll()
+    // because notifyAll() uses "__notifyAll__" sentinel which doesn't add to currentIDs.
+    // If currentIDs is empty (no server data yet), the subscription yields nothing.
+    for (namespace, id) in restoredEntityIds {
+      await notifyOptimisticUpsert(namespace: namespace, id: id)
+    }
+
+    reactorDebugLog("restorePendingMutations: notified subscriptions", data: [
+      "notifiedCount": restoredEntityIds.count
+    ])
+
+    // Also do a full notifyAll to ensure any complex queries recompute
+    await notifyAll()
+
+    reactorDebugLog("restorePendingMutations: COMPLETE", data: [
+      "restoredCount": pending.count,
+      "entityIds": restoredEntityIds.map { $0.id }
+    ])
+  }
+
+  /// Applies a single pending mutation's tx-steps to the local TripleStore.
+  ///
+  /// This parses the raw tx-steps format and applies creates/updates/deletes
+  /// to the SharedTripleStore, making the data immediately visible to subscriptions.
+  ///
+  /// - Returns: Array of (namespace, entityId) tuples for entities that were modified
+  private func applyPendingMutationToStore(_ mutation: PendingMutation) -> [(namespace: String, id: String)] {
+    let timestamp = ConflictResolution.optimisticTimestamp()
+    var modifiedEntities: [(namespace: String, id: String)] = []
+
+    for step in mutation.txSteps {
+      // CRITICAL FIX: step is [AnyCodableValue], not [Any].
+      // We must access .value on each element to get the underlying value.
+      guard step.count >= 1,
+            let action = step[0].value as? String else {
+        continue
+      }
+
+      switch action {
+      case "add-triple":
+        // Format: ["add-triple", entityId, attrId, value, ...]
+        guard step.count >= 4,
+              let entityId = step[1].value as? String,
+              let attrId = step[2].value as? String else {
+          continue
+        }
+        let rawValue = step[3].value
+        let value = convertToTripleValue(rawValue)
+
+        let triple = Triple(
+          entityId: entityId,
+          attributeId: attrId,
+          value: value,
+          createdAt: timestamp
+        )
+        let attr = store.attrsStore.getAttr(attrId)
+        let hasCardinalityOne = attr?.cardinality == .one
+        let isRef = attr?.valueType == .ref
+        store.addTriple(triple, hasCardinalityOne: hasCardinalityOne, isRef: isRef)
+
+        // Extract namespace from attrId (format: "namespace/field")
+        let namespace = attrId.components(separatedBy: "/").first ?? "unknown"
+        if !modifiedEntities.contains(where: { $0.id == entityId }) {
+          modifiedEntities.append((namespace: namespace, id: entityId))
+        }
+
+      case "retract-triple":
+        // Format: ["retract-triple", entityId, attrId, value, ...]
+        guard step.count >= 4,
+              let entityId = step[1].value as? String,
+              let attrId = step[2].value as? String else {
+          continue
+        }
+        let rawValue = step[3].value
+        let value = convertToTripleValue(rawValue)
+
+        let triple = Triple(
+          entityId: entityId,
+          attributeId: attrId,
+          value: value,
+          createdAt: timestamp
+        )
+        let attr = store.attrsStore.getAttr(attrId)
+        let isRef = attr?.valueType == .ref
+        store.retractTriple(triple, isRef: isRef)
+
+        let namespace = attrId.components(separatedBy: "/").first ?? "unknown"
+        if !modifiedEntities.contains(where: { $0.id == entityId }) {
+          modifiedEntities.append((namespace: namespace, id: entityId))
+        }
+
+      case "delete-entity":
+        // Format: ["delete-entity", namespace, entityId]
+        guard step.count >= 3,
+              let namespace = step[1].value as? String,
+              let entityId = step[2].value as? String else {
+          continue
+        }
+        store.deleteEntity(id: entityId)
+        // Don't add to modifiedEntities since it's deleted
+
+      default:
+        // Skip add-attr, update-attr, etc. - they're handled by the server
+        break
+      }
+    }
+
+    reactorDebugLog("applyPendingMutationToStore: processed mutation", data: [
+      "eventId": mutation.eventId,
+      "stepCount": mutation.txSteps.count,
+      "modifiedEntities": modifiedEntities.map { "\($0.namespace):\($0.id)" }
+    ])
+
+    return modifiedEntities
+  }
+
+  /// Converts a raw value from tx-steps to a TripleValue.
+  private func convertToTripleValue(_ rawValue: Any) -> TripleValue {
+    switch rawValue {
+    case let s as String:
+      return .string(s)
+    case let i as Int:
+      return .double(Double(i))
+    case let i as Int64:
+      return .double(Double(i))
+    case let d as Double:
+      return .double(d)
+    case let b as Bool:
+      return .bool(b)
+    case is NSNull:
+      return .null
+    default:
+      // For complex types, try to represent as string
+      return .string(String(describing: rawValue))
+    }
   }
 
   // MARK: - Schema Readiness
@@ -150,12 +471,29 @@ public actor Reactor {
   }
 
   private func notifyOptimisticUpsert(namespace: String, id: String) async {
+    let matchingHandles = activeSubscriptions.values.filter { $0.namespace == namespace }
+    reactorDebugLog("notifyOptimisticUpsert", data: [
+      "namespace": namespace,
+      "id": id,
+      "totalSubscriptions": activeSubscriptions.count,
+      "matchingSubscriptions": matchingHandles.count,
+      "allNamespaces": activeSubscriptions.values.map { $0.namespace }
+    ])
+
     for (_, handle) in activeSubscriptions where handle.namespace == namespace {
       switch handle.filter {
       case .matchAll:
+        reactorDebugLog("notifyOptimisticUpsert: calling upsert (matchAll)", data: [
+          "namespace": namespace,
+          "id": id
+        ])
         await handle.upsert(id)
       case .idEquals(let expectedId):
         guard expectedId == id else { continue }
+        reactorDebugLog("notifyOptimisticUpsert: calling upsert (idEquals)", data: [
+          "namespace": namespace,
+          "id": id
+        ])
         await handle.upsert(id)
       case .unsupported:
         continue
@@ -485,12 +823,16 @@ public actor Reactor {
     continuation: AsyncStream<[Value]>.Continuation
   ) async {
     let client = await MainActor.run { InstantClientFactory.makeClient(appID: appID, instanceID: self.clientInstanceID) }
-    
+
     // Connect if needed
     let isDisconnected = await MainActor.run { client.connectionState == .disconnected }
     if isDisconnected {
       await MainActor.run { client.connect() }
     }
+
+    // NOTE: Pending mutation restoration is done AFTER subscription registration
+    // so that the subscription can be notified of restored entities.
+    // See the call to restorePendingMutationsIfNeeded below.
 
     let attrs = await waitForAttributes(
       client: client,
@@ -510,11 +852,16 @@ public actor Reactor {
     }
     
     // Manage state with a dedicated actor to handle concurrency between DB callbacks and Store callbacks
+    // TypeScript SDK Pattern: Pass appID/clientInstanceID so handleStoreUpdate() can fetch
+    // pending mutations at query time (see Reactor.js dataForQuery -> _applyOptimisticUpdates)
     let subscriptionState = SubscriptionState<Value>(
       continuation: continuation,
       store: store,
       namespace: namespace,
-      orderByIsDescending: orderBy?.isDescending ?? false
+      orderByIsDescending: orderBy?.isDescending ?? false,
+      includedLinks: includedLinks,
+      appID: appID,
+      clientInstanceID: self.clientInstanceID
     )
 
     let handleId = UUID()
@@ -528,15 +875,16 @@ public actor Reactor {
         await subscriptionState.handleOptimisticDelete(id: id)
       }
     )
-    
-    // Setup Store Observer
-    // We observe the TripleStore for any changes to the entities we care about.
-    // When the store changes, we re-evaluate our query against the store to yield new data.
-    // The TripleStore acts as the "normalized cache" or "source of truth".
-    
-    // Note: We don't know WHICH IDs to observe initially until we get data from DB.
-    // The SubscriptionState will handle adding observers as data comes in.
-    
+
+    // TypeScript SDK Pattern: Pending mutations are now applied at query time in handleStoreUpdate().
+    // We still call restorePendingMutationsIfNeeded to populate the TripleStore for linked entity
+    // resolution and ensure data is available for store.get() calls.
+    await restorePendingMutationsIfNeeded(client: client, appID: appID)
+
+    // Trigger initial yield to show any pending mutation data immediately
+    // (TypeScript SDK does this via initial dataForQuery call)
+    await subscriptionState.handleStoreUpdate()
+
     // Subscribe to InstantDB
     // Use QueryOptions to pass non-Sendable data to MainActor
 
@@ -576,44 +924,48 @@ public actor Reactor {
         
         // #region agent log
         // HYPOTHESIS C: Log the query being sent to InstantDB
-        let whereClauseStr = options.whereClause.map { dict -> String in
-          let pairs = dict.map { "\($0.key): \(String(describing: $0.value))" }
-          return "[\(pairs.joined(separator: ", "))]"
-        } ?? "nil"
-        
-        // Log the actual whereClause dictionary as JSON
-        let whereClauseJson: String
-        if let wc = options.whereClause,
-           let jsonData = try? JSONSerialization.data(withJSONObject: wc, options: [.sortedKeys]),
-           let str = String(data: jsonData, encoding: .utf8) {
-          whereClauseJson = str
-        } else {
-          whereClauseJson = "nil or failed to serialize"
+        // NOTE: Disabled by default - enable with INSTANT_DEBUG_LOG=1
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["INSTANT_DEBUG_LOG"] == "1" {
+          let whereClauseStr = options.whereClause.map { dict -> String in
+            let pairs = dict.map { "\($0.key): \(String(describing: $0.value))" }
+            return "[\(pairs.joined(separator: ", "))]"
+          } ?? "nil"
+
+          let whereClauseJson: String
+          if let wc = options.whereClause,
+             let jsonData = try? JSONSerialization.data(withJSONObject: wc, options: [.sortedKeys]),
+             let str = String(data: jsonData, encoding: .utf8) {
+            whereClauseJson = str
+          } else {
+            whereClauseJson = "nil or failed to serialize"
+          }
+
+          let payload: [String: Any] = [
+            "location": "Reactor.swift:startSubscription",
+            "message": "HYPOTHESIS_C: Query being sent to InstantDB",
+            "data": [
+              "namespace": namespace,
+              "whereClause": whereClauseStr,
+              "whereClauseJson": whereClauseJson,
+              "hasDotNotation": (options.whereClause?.keys.contains(where: { $0.contains(".") }) ?? false),
+              "includedLinks": Array(options.includedLinks),
+              "linkTreeCount": options.linkTree.count
+            ],
+            "timestamp": Date().timeIntervalSince1970 * 1000,
+            "sessionId": "debug-session",
+            "hypothesisId": "C"
+          ]
+          if let jsonData = try? JSONSerialization.data(withJSONObject: payload) {
+            var request = URLRequest(url: URL(string: "http://127.0.0.1:7243/ingest/b61a72ba-9985-415b-9c60-d4184ed05385")!)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = jsonData
+            let task = URLSession.shared.dataTask(with: request) { _, _, _ in }
+            task.resume()
+          }
         }
-        
-        let payload: [String: Any] = [
-          "location": "Reactor.swift:startSubscription",
-          "message": "HYPOTHESIS_C: Query being sent to InstantDB",
-          "data": [
-            "namespace": namespace,
-            "whereClause": whereClauseStr,
-            "whereClauseJson": whereClauseJson,
-            "hasDotNotation": (options.whereClause?.keys.contains(where: { $0.contains(".") }) ?? false),
-            "includedLinks": Array(options.includedLinks),
-            "linkTreeCount": options.linkTree.count
-          ],
-          "timestamp": Date().timeIntervalSince1970 * 1000,
-          "sessionId": "debug-session",
-          "hypothesisId": "C"
-        ]
-        if let jsonData = try? JSONSerialization.data(withJSONObject: payload) {
-          var request = URLRequest(url: URL(string: "http://127.0.0.1:7243/ingest/b61a72ba-9985-415b-9c60-d4184ed05385")!)
-          request.httpMethod = "POST"
-          request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-          request.httpBody = jsonData
-          let task = URLSession.shared.dataTask(with: request) { _, _, _ in }
-          task.resume()
-        }
+        #endif
         // #endregion
         
 	        return try? client.subscribe(q) { [weak subscriptionState] result in
@@ -624,26 +976,31 @@ public actor Reactor {
 	            if let error = result.error {
                   // #region agent log
                   // HYPOTHESIS C: Log subscription errors
-                  let payload: [String: Any] = [
-                    "location": "Reactor.swift:subscribe",
-                    "message": "HYPOTHESIS_C: Subscription error",
-                    "data": [
-                      "namespace": namespace,
-                      "error": "\(error)",
-                      "whereClause": String(describing: options.whereClause)
-                    ],
-                    "timestamp": Date().timeIntervalSince1970 * 1000,
-                    "sessionId": "debug-session",
-                    "hypothesisId": "C"
-                  ]
-                  if let jsonData = try? JSONSerialization.data(withJSONObject: payload) {
-                    var request = URLRequest(url: URL(string: "http://127.0.0.1:7243/ingest/b61a72ba-9985-415b-9c60-d4184ed05385")!)
-                    request.httpMethod = "POST"
-                    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                    request.httpBody = jsonData
-                    let task = URLSession.shared.dataTask(with: request) { _, _, _ in }
-                    task.resume()
+                  // NOTE: Disabled by default - enable with INSTANT_DEBUG_LOG=1
+                  #if DEBUG
+                  if ProcessInfo.processInfo.environment["INSTANT_DEBUG_LOG"] == "1" {
+                    let payload: [String: Any] = [
+                      "location": "Reactor.swift:subscribe",
+                      "message": "HYPOTHESIS_C: Subscription error",
+                      "data": [
+                        "namespace": namespace,
+                        "error": "\(error)",
+                        "whereClause": String(describing: options.whereClause)
+                      ],
+                      "timestamp": Date().timeIntervalSince1970 * 1000,
+                      "sessionId": "debug-session",
+                      "hypothesisId": "C"
+                    ]
+                    if let jsonData = try? JSONSerialization.data(withJSONObject: payload) {
+                      var request = URLRequest(url: URL(string: "http://127.0.0.1:7243/ingest/b61a72ba-9985-415b-9c60-d4184ed05385")!)
+                      request.httpMethod = "POST"
+                      request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                      request.httpBody = jsonData
+                      let task = URLSession.shared.dataTask(with: request) { _, _, _ in }
+                      task.resume()
+                    }
                   }
+                  #endif
                   // #endregion
 	                Task { @MainActor in
 	                  InstantLogger.error("Reactor subscription callback error.", error: error)
@@ -657,28 +1014,33 @@ public actor Reactor {
             
             // #region agent log
             // HYPOTHESIS C: Log subscription results
-            let dataPayload: [String: Any] = [
-              "location": "Reactor.swift:subscribe",
-              "message": "HYPOTHESIS_C: Subscription result received",
-              "data": [
-                "namespace": namespace,
-                "resultCount": data.count,
-                "resultIds": data.map { $0.id },
-                "whereClause": String(describing: options.whereClause),
-                "hasDotNotation": (options.whereClause?.keys.contains(where: { $0.contains(".") }) ?? false)
-              ],
-              "timestamp": Date().timeIntervalSince1970 * 1000,
-              "sessionId": "debug-session",
-              "hypothesisId": "C"
-            ]
-            if let jsonData = try? JSONSerialization.data(withJSONObject: dataPayload) {
-              var request = URLRequest(url: URL(string: "http://127.0.0.1:7243/ingest/b61a72ba-9985-415b-9c60-d4184ed05385")!)
-              request.httpMethod = "POST"
-              request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-              request.httpBody = jsonData
-              let task = URLSession.shared.dataTask(with: request) { _, _, _ in }
-              task.resume()
+            // NOTE: Disabled by default - enable with INSTANT_DEBUG_LOG=1
+            #if DEBUG
+            if ProcessInfo.processInfo.environment["INSTANT_DEBUG_LOG"] == "1" {
+              let dataPayload: [String: Any] = [
+                "location": "Reactor.swift:subscribe",
+                "message": "HYPOTHESIS_C: Subscription result received",
+                "data": [
+                  "namespace": namespace,
+                  "resultCount": data.count,
+                  "resultIds": data.map { $0.id },
+                  "whereClause": String(describing: options.whereClause),
+                  "hasDotNotation": (options.whereClause?.keys.contains(where: { $0.contains(".") }) ?? false)
+                ],
+                "timestamp": Date().timeIntervalSince1970 * 1000,
+                "sessionId": "debug-session",
+                "hypothesisId": "C"
+              ]
+              if let jsonData = try? JSONSerialization.data(withJSONObject: dataPayload) {
+                var request = URLRequest(url: URL(string: "http://127.0.0.1:7243/ingest/b61a72ba-9985-415b-9c60-d4184ed05385")!)
+                request.httpMethod = "POST"
+                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                request.httpBody = jsonData
+                let task = URLSession.shared.dataTask(with: request) { _, _, _ in }
+                task.resume()
+              }
             }
+            #endif
             // #endregion
             
             Task {
@@ -732,14 +1094,32 @@ public actor Reactor {
   }
 }
 
-/// Actor to manage the state of a single subscription
+/// Actor to manage the state of a single subscription.
+///
+/// ## Query-Level Reactivity (TypeScript SDK Pattern)
+/// This actor applies pending mutations at query evaluation time, matching the TypeScript
+/// SDK's `dataForQuery()` -> `_applyOptimisticUpdates()` pattern.
+///
+/// Instead of persisting pending mutations to the store once, we merge them on-the-fly
+/// every time `handleStoreUpdate()` is called. This ensures pending mutations are ALWAYS
+/// visible, regardless of subscription lifecycle or store state.
+///
+/// See: instant-client/src/Reactor.js - dataForQuery(), _applyOptimisticUpdates()
 private actor SubscriptionState<Value: EntityIdentifiable & Codable & Sendable> {
     private var currentIDs: [String] = [] // Keep order for consistent results
-    private var observerTokens: [String: UUID] = [:]
     private let continuation: AsyncStream<[Value]>.Continuation
     private let store: SharedTripleStore
     private let namespace: String
     private let orderByIsDescending: Bool
+
+    /// Links to include when resolving entities from the store.
+    /// This controls which linked entities are fetched during entity resolution.
+    /// Without this, bidirectional links cause exponential memory growth.
+    private let includedLinks: Set<String>
+
+    /// For fetching pending mutations at query time (TypeScript SDK pattern).
+    private let appID: String
+    private let clientInstanceID: String
 
     /// IDs that have been introduced by local optimistic writes, but have not yet been
     /// observed in a server query result.
@@ -755,26 +1135,30 @@ private actor SubscriptionState<Value: EntityIdentifiable & Codable & Sendable> 
     /// server eventually includes them (at which point they become confirmed and we can
     /// stop treating them as optimistic).
     private var optimisticIDs: [String] = []
-    
+
     init(
       continuation: AsyncStream<[Value]>.Continuation,
       store: SharedTripleStore,
       namespace: String,
-      orderByIsDescending: Bool
+      orderByIsDescending: Bool,
+      includedLinks: Set<String>,
+      appID: String,
+      clientInstanceID: String
     ) {
         self.continuation = continuation
         self.store = store
         self.namespace = namespace
         self.orderByIsDescending = orderByIsDescending
+        self.includedLinks = includedLinks
+        self.appID = appID
+        self.clientInstanceID = clientInstanceID
     }
     
     func handleDBUpdate(data: [Value]) async {
-        let previousIDs = currentIDs
-
         // 1. Merge data into store (Normalize Tree -> Triples)
         // Use manual dictionary merge to convert to Dict
         let dicts = data.compactMap { try? $0.asDictionary() }
-        
+
         var allTriples: [Triple] = []
         for dict in dicts {
             // Normalize: dict -> triples
@@ -799,32 +1183,6 @@ private actor SubscriptionState<Value: EntityIdentifiable & Codable & Sendable> 
           mergedIDs = serverIDs + pendingOptimisticIDs
         }
 
-        let mergedIDSet = Set(mergedIDs)
-
-        // Remove stale observers.
-        //
-        // IMPORTANT:
-        // We remove observers using the *previous* ID list, so that we do not
-        // accidentally drop optimistic IDs that are not (yet) present in `serverIDs`.
-        for id in previousIDs {
-            if !mergedIDSet.contains(id), let token = observerTokens[id] {
-                store.removeObserver(id: id, token: token)
-                observerTokens.removeValue(forKey: id)
-            }
-        }
-
-        // Add new observers.
-        let previousIDSet = Set(previousIDs)
-        for id in mergedIDs where !previousIDSet.contains(id) {
-          let token = store.addObserver(id: id) { [weak self] in
-              guard let self = self else { return }
-              Task {
-                  await self.handleStoreUpdate()
-              }
-          }
-          observerTokens[id] = token
-        }
-
         currentIDs = mergedIDs
 
         // Yield from the normalized store rather than the raw DB response.
@@ -837,20 +1195,139 @@ private actor SubscriptionState<Value: EntityIdentifiable & Codable & Sendable> 
     }
     
     func handleStoreUpdate() async {
-        // Re-construct result from store
+        reactorDebugLog("SubscriptionState.handleStoreUpdate", data: [
+          "namespace": namespace,
+          "currentIDsCount": currentIDs.count,
+          "currentIDs": currentIDs,
+          "optimisticIDsCount": optimisticIDs.count,
+          "optimisticIDs": optimisticIDs
+        ])
+
+        // TypeScript SDK Pattern: Apply pending mutations at query time
+        // See Reactor.js dataForQuery() -> _applyOptimisticUpdates()
+        //
+        // 1. Get pending mutations from SQLite
+        let client = await MainActor.run {
+            InstantClientFactory.makeClient(appID: appID, instanceID: clientInstanceID)
+        }
+        let pendingMutations = await client.getUnconfirmedPendingMutations()
+
+        // 2. Extract entity data from pending mutations for our namespace
+        var pendingEntityData: [String: [String: Any]] = [:]
+        var pendingEntityOrder: [String] = [] // Maintain insertion order
+
+        for mutation in pendingMutations {
+            for step in mutation.txSteps {
+                guard step.count >= 4,
+                      let action = step[0].value as? String,
+                      action == "add-triple",
+                      let entityId = step[1].value as? String,
+                      let attrId = step[2].value as? String else {
+                    continue
+                }
+
+                // Resolve attribute ID to namespace and field name
+                // attrId can be either:
+                // 1. A UUID that needs lookup in attrsStore
+                // 2. A "namespace/field" format string (legacy/fallback)
+                let attrNamespace: String
+                let fieldName: String
+
+                if let attr = store.attrsStore.getAttr(attrId),
+                   attr.forwardIdentity.count >= 3 {
+                    // forwardIdentity = [attrId, namespace, label]
+                    attrNamespace = attr.forwardIdentity[1]
+                    fieldName = attr.forwardIdentity[2]
+                } else {
+                    // Fallback: try parsing as "namespace/field"
+                    let parts = attrId.components(separatedBy: "/")
+                    guard parts.count >= 2 else { continue }
+                    attrNamespace = parts[0]
+                    fieldName = parts[1]
+                }
+
+                // Check if this triple belongs to our namespace
+                guard attrNamespace == namespace else { continue }
+
+                let rawValue = step[3].value
+
+                // Initialize entity data if needed
+                if pendingEntityData[entityId] == nil {
+                    pendingEntityData[entityId] = ["id": entityId]
+                    pendingEntityOrder.append(entityId)
+                }
+
+                // Store the field value
+                pendingEntityData[entityId]?[fieldName] = rawValue
+            }
+        }
+
+        reactorDebugLog("SubscriptionState.handleStoreUpdate: pending mutations extracted", data: [
+          "namespace": namespace,
+          "pendingEntityCount": pendingEntityData.count,
+          "pendingEntityIds": pendingEntityOrder
+        ])
+
+        // 3. Merge currentIDs with pending entity IDs (maintaining order)
+        // Pending entities that aren't in currentIDs are new optimistic creates
+        var allIDs = currentIDs
+        for entityId in pendingEntityOrder {
+            if !allIDs.contains(entityId) {
+                if orderByIsDescending {
+                    allIDs.insert(entityId, at: 0)
+                } else {
+                    allIDs.append(entityId)
+                }
+            }
+        }
+
+        // 4. Build result by merging store data with pending mutations
         var values: [Value] = []
-        
-        // Iterate currentIDs to maintain order
-        for id in currentIDs {
-            if let val: Value = store.get(id: id) {
+
+        for id in allIDs {
+            var entityDict: [String: Any]
+
+            // Get base data from store (if exists)
+            // CRITICAL: Pass includedLinks to only resolve explicitly requested links.
+            if let val: Value = store.get(id: id, includedLinks: includedLinks) {
+                entityDict = (try? val.asDictionary()) ?? ["id": id]
+            } else {
+                entityDict = ["id": id]
+            }
+
+            // Merge pending mutation data (overwrites store data for same fields)
+            // This is the key TypeScript SDK pattern - pending mutations take precedence
+            if let pendingData = pendingEntityData[id] {
+                for (key, value) in pendingData {
+                    entityDict[key] = value
+                }
+            }
+
+            // Decode back to Value type
+            if let data = try? JSONSerialization.data(withJSONObject: entityDict),
+               let val = try? JSONDecoder().decode(Value.self, from: data) {
                 values.append(val)
             }
         }
-        
+
+        reactorDebugLog("SubscriptionState.handleStoreUpdate: yielding", data: [
+          "namespace": namespace,
+          "valueCount": values.count,
+          "valueIds": values.map { $0.id },
+          "pendingMutationCount": pendingMutations.count
+        ])
+
         continuation.yield(values)
     }
-    
+
     func handleOptimisticUpsert(id: String) async {
+        reactorDebugLog("SubscriptionState.handleOptimisticUpsert", data: [
+          "namespace": namespace,
+          "id": id,
+          "currentIDsCount": currentIDs.count,
+          "optimisticIDsCount": optimisticIDs.count
+        ])
+
         // Handle notifyAll() sentinel - just trigger a store update without modifying tracking
         if id == "__notifyAll__" {
           await handleStoreUpdate()
@@ -873,34 +1350,24 @@ private actor SubscriptionState<Value: EntityIdentifiable & Codable & Sendable> 
           }
         }
 
-        if observerTokens[id] == nil {
-            let token = store.addObserver(id: id) { [weak self] in
-                guard let self else { return }
-                Task {
-                    await self.handleStoreUpdate()
-                }
-            }
-            observerTokens[id] = token
-        }
+        reactorDebugLog("SubscriptionState.handleOptimisticUpsert: after update", data: [
+          "namespace": namespace,
+          "id": id,
+          "currentIDs": currentIDs,
+          "optimisticIDs": optimisticIDs
+        ])
 
         await handleStoreUpdate()
     }
     
     func handleOptimisticDelete(id: String) async {
-        if let token = observerTokens[id] {
-            store.removeObserver(id: id, token: token)
-            observerTokens.removeValue(forKey: id)
-        }
-        
         currentIDs.removeAll { $0 == id }
+        optimisticIDs.removeAll { $0 == id }
         await handleStoreUpdate()
     }
-    
+
     func cleanup() async {
-        for (id, token) in observerTokens {
-            store.removeObserver(id: id, token: token)
-        }
-        observerTokens.removeAll()
+        // No observers to clean up - query-level reactivity doesn't use per-entity observers
     }
 }
 
