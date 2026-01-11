@@ -12,8 +12,17 @@ extension InstantDB.TripleStore {
     ///   - attrsStore: The store containing attribute definitions (schema).
     ///   - depth: Current recursion depth (to prevent infinite loops if circular).
     ///   - maxDepth: Maximum recursion depth.
+    ///   - includedLinks: Optional set of link names to resolve. If nil, all links are resolved.
+    ///                    If empty set, no links are resolved. This matches the TypeScript SDK's
+    ///                    query-driven link resolution behavior.
     /// - Returns: A dictionary representation of the entity.
-    public func resolve(id: String, attrsStore: AttrsStore, depth: Int = 0, maxDepth: Int = 10) -> [String: Any] {
+    public func resolve(
+        id: String,
+        attrsStore: AttrsStore,
+        depth: Int = 0,
+        maxDepth: Int = 10,
+        includedLinks: Set<String>? = nil
+    ) -> [String: Any] {
         if depth > maxDepth { return ["id": id] }
         
         let triples = self.getTriples(entity: id)
@@ -44,12 +53,19 @@ extension InstantDB.TripleStore {
                     continue
                 }
 
+                // Skip links not in includedLinks (if specified)
+                // This matches the TypeScript SDK's query-driven link resolution:
+                // only resolve links that were explicitly requested in the query.
+                if let includedLinks = includedLinks, !includedLinks.contains(label) {
+                    continue
+                }
+
                 // Handle References (Links)
                 var resolvedRefs: [Any] = []
-                
+
                 for triple in attrTriples {
                     if case .ref(let targetId) = triple.value {
-                        let childObj = resolve(id: targetId, attrsStore: attrsStore, depth: depth + 1, maxDepth: maxDepth)
+                        let childObj = resolve(id: targetId, attrsStore: attrsStore, depth: depth + 1, maxDepth: maxDepth, includedLinks: includedLinks)
                         // Skip entities that have been deleted or not fully loaded (only have "id" field).
                         // This happens when a where clause references a linked entity (e.g., board.id)
                         // but the entity wasn't explicitly requested via .with(). Including such
@@ -60,7 +76,7 @@ extension InstantDB.TripleStore {
                         resolvedRefs.append(childObj)
                     } else if case .string(let targetId) = triple.value {
                          // Fallback if ref stored as string? Should satisfy TripleValue.ref though.
-                        let childObj = resolve(id: targetId, attrsStore: attrsStore, depth: depth + 1, maxDepth: maxDepth)
+                        let childObj = resolve(id: targetId, attrsStore: attrsStore, depth: depth + 1, maxDepth: maxDepth, includedLinks: includedLinks)
                         // Same guard for ghost entities
                         if childObj.count <= 1 {
                             continue
@@ -100,6 +116,12 @@ extension InstantDB.TripleStore {
             let reverseAttrs = attrsStore.revIdents[entityType] ?? [:]
 
             for (reverseLabel, attr) in reverseAttrs {
+                // Skip reverse links not in includedLinks (if specified)
+                // This matches the TypeScript SDK's query-driven link resolution.
+                if let includedLinks = includedLinks, !includedLinks.contains(reverseLabel) {
+                    continue
+                }
+
                 let reverseTriples = getReverseRefs(entityId: id, attributeId: attr.id)
                 guard !reverseTriples.isEmpty else { continue }
 
@@ -111,7 +133,8 @@ extension InstantDB.TripleStore {
                         id: triple.entityId,
                         attrsStore: attrsStore,
                         depth: depth + 1,
-                        maxDepth: maxDepth
+                        maxDepth: maxDepth,
+                        includedLinks: includedLinks
                     )
 
                     // Skip entities that have been deleted (only have "id" field)
@@ -129,19 +152,18 @@ extension InstantDB.TripleStore {
                 // reverse-linked entities have been deleted
                 guard !resolvedParents.isEmpty else { continue }
 
-                let isReverseMany: Bool
-                if attr.unique == true {
-                    isReverseMany = false
-                } else if attr.cardinality == .one {
-                    isReverseMany = true
-                } else {
-                    isReverseMany = false
-                }
+                // Determine reverse cardinality using the `unique` field.
+                // Per InstantDB server encoding (schema.clj lines 199-200):
+                // - `unique? = true` means reverse has "one" (singular)
+                // - `unique? = false` or nil means reverse has "many" (array)
+                //
+                // See Types.swift Attribute documentation for full details.
+                let isReverseSingular = attr.unique == true
 
-                if isReverseMany {
-                    obj[reverseLabel] = resolvedParents
-                } else {
+                if isReverseSingular {
                     obj[reverseLabel] = resolvedParents.first
+                } else {
+                    obj[reverseLabel] = resolvedParents
                 }
             }
         }
@@ -150,8 +172,15 @@ extension InstantDB.TripleStore {
     }
 
     /// Decodes an entity from the store into a Swift type.
-    public func get<T: Decodable>(id: String, attrsStore: AttrsStore) -> T? {
-        let dict = resolve(id: id, attrsStore: attrsStore)
+    ///
+    /// - Parameters:
+    ///   - id: The entity ID to decode.
+    ///   - attrsStore: The store containing attribute definitions (schema).
+    ///   - includedLinks: Optional set of link names to resolve. If nil, all links are resolved.
+    ///                    If empty set, no links are resolved.
+    /// - Returns: The decoded entity, or nil if decoding fails.
+    public func get<T: Decodable>(id: String, attrsStore: AttrsStore, includedLinks: Set<String>? = nil) -> T? {
+        let dict = resolve(id: id, attrsStore: attrsStore, includedLinks: includedLinks)
         
         do {
             let data = try JSONSerialization.data(withJSONObject: dict, options: [])

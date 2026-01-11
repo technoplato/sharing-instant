@@ -105,9 +105,9 @@ public final class SharedTripleStore: @unchecked Sendable {
     }
     
     // MARK: - Data Access
-    
-    public func get<T: Decodable>(id: String) -> T? {
-        return inner.get(id: id, attrsStore: attrsStore)
+
+    public func get<T: Decodable>(id: String, includedLinks: Set<String>? = nil) -> T? {
+        return inner.get(id: id, attrsStore: attrsStore, includedLinks: includedLinks)
     }
 
     // MARK: - Observation

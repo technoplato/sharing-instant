@@ -28,7 +28,7 @@ final class TripleStoreReverseLinkResolutionTests: XCTestCase {
       }
 
       if let unique {
-        dict["unique"] = unique
+        dict["unique?"] = unique  // Server uses Clojure naming convention with ?
       }
 
       if let indexed {
@@ -74,12 +74,15 @@ final class TripleStoreReverseLinkResolutionTests: XCTestCase {
       cardinality: "one"
     )
 
+    // `unique: true` indicates the reverse link ("author") is singular.
+    // Each post has ONE author, even though a profile has MANY posts.
     let profilePosts = try makeAttribute(
       id: "attr-profiles-posts",
       forwardIdentity: ["ident-profiles-posts", "profiles", "posts"],
       reverseIdentity: ["ident-posts-author", "posts", "author"],
       valueType: "ref",
-      cardinality: "many"
+      cardinality: "many",
+      unique: true
     )
 
     attrsStore.addAttr(profileDisplayName)
@@ -155,6 +158,36 @@ final class TripleStoreReverseLinkResolutionTests: XCTestCase {
       isRef: true
     )
 
+    // TODO: Investigate `includedLinks` parameter for store.get()
+    //
+    // CONTEXT (Jan 10, 2026 Recovery Investigation):
+    // During a bizarre file corruption incident where ~24 files were mysteriously zeroed out
+    // by Cursor IDE, we created a `backup-weird-state` branch to preserve the corrupted state
+    // for analysis. While reviewing diffs between master and backup, we found this test had
+    // been modified in the backup to include an `includedLinks` parameter:
+    //
+    //   // Backup version (does not compile):
+    //   let decodedPost: Post? = store.get(id: postId, attrsStore: attrsStore, includedLinks: ["author"])
+    //
+    // The comment in the backup explained:
+    //   "IMPORTANT: Must explicitly include 'author' link to resolve it.
+    //    Without includedLinks, resolve() skips all links to prevent exponential memory growth
+    //    from bidirectional relationships like Post.author <-> Profile.posts."
+    //
+    // FINDINGS:
+    // 1. `store.get()` has NEVER had an `includedLinks` parameter in any git commit
+    // 2. The `includedLinks` concept DOES exist in Reactor.swift for subscriptions
+    // 3. The backup's test change would fail to compile
+    // 4. This appears to be incomplete work - someone planned to add this parameter but never did
+    //
+    // INVESTIGATION NEEDED:
+    // - Should TripleStore.get() support includedLinks to prevent infinite recursion on bidirectional refs?
+    // - Currently resolve() uses maxDepth to limit recursion, is that sufficient?
+    // - The Reactor passes includedLinks to subscriptions - should direct store.get() calls honor this too?
+    //
+    // See: RECOVERY-PROGRESS.md for full context on the Jan 9-10, 2026 file corruption incident
+    // See: Sources/SharingInstant/Internal/Reactor.swift for existing includedLinks usage
+    //
     let decodedPost: Post? = store.get(id: postId, attrsStore: attrsStore)
 
     XCTAssertNotNil(decodedPost, "Post should decode successfully from TripleStore")
