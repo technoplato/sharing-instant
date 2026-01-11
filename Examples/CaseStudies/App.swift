@@ -3,17 +3,33 @@ import SwiftUI
 
 @main
 struct CaseStudiesApp: App {
-  
+
   init() {
     prepareDependencies {
       // Use the test InstantDB app
       $0.instantAppID = "b9319949-2f2d-410b-8f8a-6990177c1d44"
     }
   }
-  
+
   var body: some Scene {
     WindowGroup {
-      NavigationStack {
+      ZStack(alignment: .topTrailing) {
+        mainContent
+
+        // Memory monitor overlay (debug only)
+        #if DEBUG
+        MemoryMonitorView()
+          .frame(width: 150)
+          .padding(.trailing, 8)
+          .padding(.top, 60)
+        #endif
+      }
+    }
+  }
+
+  @ViewBuilder
+  private var mainContent: some View {
+    NavigationStack {
         List {
           Section {
             VStack(alignment: .leading, spacing: 8) {
@@ -261,6 +277,5 @@ struct CaseStudiesApp: App {
         #endif
         .navigationTitle("Case Studies")
       }
-    }
   }
 }

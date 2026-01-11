@@ -195,7 +195,9 @@ private struct AddCommentSheet: View {
           .lineLimit(3...6)
       }
       .navigationTitle("Add Comment")
+      #if os(iOS)
       .navigationBarTitleDisplayMode(.inline)
+      #endif
       .toolbar {
         ToolbarItem(placement: .cancellationAction) {
           Button("Cancel", action: onCancel)
