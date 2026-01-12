@@ -1,5 +1,5 @@
 import Foundation
-import InstantDB
+@preconcurrency import InstantDB
 import Dependencies
 import Sharing
 @preconcurrency import Combine
@@ -1073,27 +1073,38 @@ public actor Reactor {
             // Subscribe to connection state changes to handle reconnection
             // TypeScript SDK Pattern: When connection is restored, subscriptions are automatically
             // re-queried by the SDK. We mirror this by triggering handleStoreUpdate() on reconnection.
-            // See Reactor.js: _startSocket() -> handleInitOk() -> flushPendingMessages()
+            // See Reactor.js: _startSocket() -> handleInitOk() -> _flushPendingMessages()
             let connectionSubscription = await MainActor.run {
                 var previousState: ConnectionState = client.connectionState
                 return client.$connectionState
                     .receive(on: DispatchQueue.main)
                     .sink { [weak subscriptionState] newState in
-                        let wasDisconnected = (previousState == .disconnected || previousState == .connecting)
+                        // Detect any transition TO authenticated state
+                        // This covers: disconnected→authenticated, connecting→authenticated,
+                        // connected→authenticated, error→authenticated
+                        let wasNotAuthenticated: Bool
+                        switch previousState {
+                        case .authenticated:
+                            wasNotAuthenticated = false
+                        case .disconnected, .connecting, .connected, .error:
+                            wasNotAuthenticated = true
+                        }
                         let isNowAuthenticated = (newState == .authenticated)
 
                         reactorDebugLog("Connection state changed", data: [
                             "namespace": namespace,
                             "previousState": "\(previousState)",
                             "newState": "\(newState)",
-                            "wasDisconnected": wasDisconnected,
+                            "wasNotAuthenticated": wasNotAuthenticated,
                             "isNowAuthenticated": isNowAuthenticated
                         ])
 
-                        // Trigger re-query when reconnecting
-                        if wasDisconnected && isNowAuthenticated {
-                            reactorDebugLog("Connection restored - triggering handleStoreUpdate", data: [
-                                "namespace": namespace
+                        // Trigger re-query when becoming authenticated from any non-authenticated state
+                        // This handles initial connection, reconnection after disconnect, and recovery from errors
+                        if wasNotAuthenticated && isNowAuthenticated {
+                            reactorDebugLog("Connection authenticated - triggering handleStoreUpdate", data: [
+                                "namespace": namespace,
+                                "previousState": "\(previousState)"
                             ])
                             Task {
                                 await subscriptionState?.handleStoreUpdate()
@@ -1105,9 +1116,31 @@ public actor Reactor {
             }
             connectionCancellableBox.pointee = connectionSubscription
 
-            // Wait for cancellation by checking periodically
+            // Periodic health check interval (5 seconds)
+            // TypeScript SDK relies on network listener + mutation timeouts for detection.
+            // We add an explicit health check to catch cases where the WebSocket silently dies.
+            let healthCheckIntervalNs: UInt64 = 5_000_000_000 // 5 seconds
+
+            // Wait for cancellation, with periodic health checks
             while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 100_000_000) // 100ms poll
+                try? await Task.sleep(nanoseconds: healthCheckIntervalNs)
+
+                // Health check: If we think we should be connected but we're not,
+                // trigger a reconnect attempt
+                let currentState = await MainActor.run { client.connectionState }
+                if case .disconnected = currentState {
+                    // We're disconnected - attempt to reconnect
+                    reactorDebugLog("Health check: disconnected, attempting reconnect", data: [
+                        "namespace": namespace
+                    ])
+                    await MainActor.run { client.connect() }
+                } else if case .error = currentState {
+                    // We're in error state - attempt to reconnect
+                    reactorDebugLog("Health check: error state, attempting reconnect", data: [
+                        "namespace": namespace
+                    ])
+                    await MainActor.run { client.connect() }
+                }
             }
 
             // When cancelled, resume continuation and cleanup
