@@ -2,6 +2,7 @@ import Foundation
 import InstantDB
 import Dependencies
 import Sharing
+@preconcurrency import Combine
 
 /// Adapted from: instant-client/src/client_db.ts (Reactor logic)
 ///
@@ -1063,14 +1064,57 @@ public actor Reactor {
         let continuationBox = UnsafeMutablePointer<CheckedContinuation<Void, Never>?>.allocate(capacity: 1)
         continuationBox.initialize(to: continuation)
 
+        // Store connection state subscription for cleanup
+        let connectionCancellableBox = UnsafeMutablePointer<AnyCancellable?>.allocate(capacity: 1)
+        connectionCancellableBox.initialize(to: nil)
+
         // Set up cancellation handler that resumes the continuation
         Task { [handleId] in
+            // Subscribe to connection state changes to handle reconnection
+            // TypeScript SDK Pattern: When connection is restored, subscriptions are automatically
+            // re-queried by the SDK. We mirror this by triggering handleStoreUpdate() on reconnection.
+            // See Reactor.js: _startSocket() -> handleInitOk() -> flushPendingMessages()
+            let connectionSubscription = await MainActor.run {
+                var previousState: ConnectionState = client.connectionState
+                return client.$connectionState
+                    .receive(on: DispatchQueue.main)
+                    .sink { [weak subscriptionState] newState in
+                        let wasDisconnected = (previousState == .disconnected || previousState == .connecting)
+                        let isNowAuthenticated = (newState == .authenticated)
+
+                        reactorDebugLog("Connection state changed", data: [
+                            "namespace": namespace,
+                            "previousState": "\(previousState)",
+                            "newState": "\(newState)",
+                            "wasDisconnected": wasDisconnected,
+                            "isNowAuthenticated": isNowAuthenticated
+                        ])
+
+                        // Trigger re-query when reconnecting
+                        if wasDisconnected && isNowAuthenticated {
+                            reactorDebugLog("Connection restored - triggering handleStoreUpdate", data: [
+                                "namespace": namespace
+                            ])
+                            Task {
+                                await subscriptionState?.handleStoreUpdate()
+                            }
+                        }
+
+                        previousState = newState
+                    }
+            }
+            connectionCancellableBox.pointee = connectionSubscription
+
             // Wait for cancellation by checking periodically
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 100_000_000) // 100ms poll
             }
 
             // When cancelled, resume continuation and cleanup
+            connectionCancellableBox.pointee?.cancel()
+            connectionCancellableBox.pointee = nil
+            connectionCancellableBox.deallocate()
+
             if let cont = continuationBox.pointee {
                 continuationBox.pointee = nil
                 cont.resume()
