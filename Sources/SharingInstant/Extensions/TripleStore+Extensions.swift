@@ -3,26 +3,48 @@ import Foundation
 import InstantDB
 
 extension InstantDB.TripleStore {
-    
+
     /// Recursively resolves an entity into a dictionary, following references.
     /// This is used to hydrate `Codable` structs from the flat TripleStore.
+    ///
+    /// ## Cycle Detection
+    /// The `visited` parameter tracks entity IDs that are currently being resolved in the
+    /// current resolution path. This prevents infinite loops when entities have circular
+    /// references (e.g., A -> B -> A). When a cycle is detected, the function returns
+    /// early with just `["id": id]` to break the cycle.
+    ///
+    /// The `defer { visited.remove(id) }` pattern allows the same entity to be visited
+    /// in different branches of the resolution tree. For example, if entities A and B
+    /// both link to C, C can be fully resolved for both A and B independently.
     ///
     /// - Parameters:
     ///   - id: The entity ID to resolve.
     ///   - attrsStore: The store containing attribute definitions (schema).
     ///   - depth: Current recursion depth (to prevent infinite loops if circular).
-    ///   - maxDepth: Maximum recursion depth.
+    ///   - maxDepth: Maximum recursion depth (default: 5, reduced from 10 for safety).
     ///   - includedLinks: Optional set of link names to resolve. If nil, all links are resolved.
     ///                    If empty set, no links are resolved. This matches the TypeScript SDK's
     ///                    query-driven link resolution behavior.
+    ///   - visited: Set of entity IDs currently being resolved in this path for cycle detection.
     /// - Returns: A dictionary representation of the entity.
     public func resolve(
         id: String,
         attrsStore: AttrsStore,
         depth: Int = 0,
-        maxDepth: Int = 10,
-        includedLinks: Set<String>? = nil
+        maxDepth: Int = 5,
+        includedLinks: Set<String>? = nil,
+        visited: inout Set<String>
     ) -> [String: Any] {
+        // Cycle detection: if we've already started resolving this entity in the current path,
+        // return minimal representation to break the cycle
+        if visited.contains(id) {
+            return ["id": id]
+        }
+
+        // Mark this entity as being visited in the current resolution path
+        visited.insert(id)
+        defer { visited.remove(id) }  // Allow revisiting in different branches
+
         if depth > maxDepth { return ["id": id] }
         
         let triples = self.getTriples(entity: id)
@@ -65,19 +87,20 @@ extension InstantDB.TripleStore {
 
                 for triple in attrTriples {
                     if case .ref(let targetId) = triple.value {
-                        let childObj = resolve(id: targetId, attrsStore: attrsStore, depth: depth + 1, maxDepth: maxDepth, includedLinks: includedLinks)
+                        let childObj = resolve(id: targetId, attrsStore: attrsStore, depth: depth + 1, maxDepth: maxDepth, includedLinks: includedLinks, visited: &visited)
                         // Skip entities that have been deleted or not fully loaded (only have "id" field).
                         // This happens when a where clause references a linked entity (e.g., board.id)
                         // but the entity wasn't explicitly requested via .with(). Including such
                         // "ghost" entities would cause decode failures because required fields are missing.
+                        // Also skips cycle-broken entities that return early with just ["id": id].
                         if childObj.count <= 1 {
                             continue
                         }
                         resolvedRefs.append(childObj)
                     } else if case .string(let targetId) = triple.value {
                          // Fallback if ref stored as string? Should satisfy TripleValue.ref though.
-                        let childObj = resolve(id: targetId, attrsStore: attrsStore, depth: depth + 1, maxDepth: maxDepth, includedLinks: includedLinks)
-                        // Same guard for ghost entities
+                        let childObj = resolve(id: targetId, attrsStore: attrsStore, depth: depth + 1, maxDepth: maxDepth, includedLinks: includedLinks, visited: &visited)
+                        // Same guard for ghost entities and cycle-broken entities
                         if childObj.count <= 1 {
                             continue
                         }
@@ -134,13 +157,15 @@ extension InstantDB.TripleStore {
                         attrsStore: attrsStore,
                         depth: depth + 1,
                         maxDepth: maxDepth,
-                        includedLinks: includedLinks
+                        includedLinks: includedLinks,
+                        visited: &visited
                     )
 
                     // Skip entities that have been deleted (only have "id" field)
                     // This happens when a linked entity is deleted from the store but
                     // the reverse reference triple still exists in VAE index.
                     // Including such "ghost" entities would cause decode failures.
+                    // Also skips cycle-broken entities that return early with just ["id": id].
                     if parentObj.count <= 1 {
                         continue
                     }
@@ -169,6 +194,35 @@ extension InstantDB.TripleStore {
         }
         
         return obj
+    }
+
+    /// Convenience overload that creates the visited set for cycle detection.
+    /// This is the primary entry point for callers who don't need to manage the visited set.
+    ///
+    /// - Parameters:
+    ///   - id: The entity ID to resolve.
+    ///   - attrsStore: The store containing attribute definitions (schema).
+    ///   - depth: Current recursion depth (to prevent infinite loops if circular).
+    ///   - maxDepth: Maximum recursion depth (default: 5).
+    ///   - includedLinks: Optional set of link names to resolve. If nil, all links are resolved.
+    ///                    If empty set, no links are resolved.
+    /// - Returns: A dictionary representation of the entity.
+    public func resolve(
+        id: String,
+        attrsStore: AttrsStore,
+        depth: Int = 0,
+        maxDepth: Int = 5,
+        includedLinks: Set<String>? = nil
+    ) -> [String: Any] {
+        var visited = Set<String>()
+        return resolve(
+            id: id,
+            attrsStore: attrsStore,
+            depth: depth,
+            maxDepth: maxDepth,
+            includedLinks: includedLinks,
+            visited: &visited
+        )
     }
 
     /// Decodes an entity from the store into a Swift type.
