@@ -42,53 +42,91 @@ private struct TestSegmentData {
   let final: FinalUpdate
 }
 
-/// Test data that mirrors real speech transcription timing
-private let testSegmentsData: [TestSegmentData] = [
-  TestSegmentData(
-    index: 0,
-    updates: [
-      SegmentUpdate(delay: 0, text: "T"),
-      SegmentUpdate(delay: 7, text: "Test"),
-      SegmentUpdate(delay: 8, text: "Testing"),
-      SegmentUpdate(delay: 888, text: "Testing 12"),
-      SegmentUpdate(delay: 890, text: "Testing 123"),
-      SegmentUpdate(delay: 1895, text: "Testing 1234"),
-      SegmentUpdate(delay: 1897, text: "Testing 1234 test"),
-      SegmentUpdate(delay: 1899, text: "Testing 1234 testing"),
-      SegmentUpdate(delay: 2880, text: "Testing 1234 testing 12"),
-      SegmentUpdate(delay: 2882, text: "Testing 1234 testing 123"),
-      SegmentUpdate(delay: 2883, text: "Testing 1234 testing 1234."),
-    ],
-    final: FinalUpdate(
-      delay: 3889,
-      text: "Testing 1234 testing 1234.",
-      words: [
-        WordData(text: "Testing", startTime: 0.0, endTime: 0.72),
-        WordData(text: "1234", startTime: 0.72, endTime: 1.98),
-        WordData(text: "testing", startTime: 1.98, endTime: 2.52),
-        WordData(text: "1234.", startTime: 2.52, endTime: 3.60),
-      ]
+/// Generate rapid burst updates for a phrase (1-3ms intervals)
+private func generateRapidBurst(startDelay: Int, phrase: String) -> [SegmentUpdate] {
+  var updates: [SegmentUpdate] = []
+  var currentDelay = startDelay
+  var currentText = ""
+
+  for char in phrase {
+    currentText.append(char)
+    updates.append(SegmentUpdate(delay: currentDelay, text: currentText))
+    // Ultra-rapid: 1-3ms between characters
+    currentDelay += Int.random(in: 1...3)
+  }
+  return updates
+}
+
+/// Generate test segment with rapid character-by-character updates
+private func generateStressTestSegment(index: Int, startDelay: Int, phrases: [String]) -> TestSegmentData {
+  var allUpdates: [SegmentUpdate] = []
+  var currentDelay = startDelay
+  var fullText = ""
+
+  for (phraseIndex, phrase) in phrases.enumerated() {
+    if phraseIndex > 0 {
+      fullText += " "
+      currentDelay += Int.random(in: 50...150) // Small gap between words
+    }
+
+    for char in phrase {
+      fullText.append(char)
+      allUpdates.append(SegmentUpdate(delay: currentDelay, text: fullText))
+      currentDelay += Int.random(in: 1...3) // 1-3ms per character
+    }
+  }
+
+  let words = phrases.enumerated().map { (i, phrase) in
+    WordData(
+      text: phrase,
+      startTime: Double(i) * 0.5,
+      endTime: Double(i + 1) * 0.5
     )
-  ),
-  TestSegmentData(
-    index: 1,
-    updates: [
-      SegmentUpdate(delay: 7900, text: "T"),
-      SegmentUpdate(delay: 7902, text: "Test"),
-      SegmentUpdate(delay: 8880, text: "Testing"),
-      SegmentUpdate(delay: 8882, text: "Testing 18"),
-      SegmentUpdate(delay: 9900, text: "Testing 1835."),
-    ],
+  }
+
+  return TestSegmentData(
+    index: index,
+    updates: allUpdates,
     final: FinalUpdate(
-      delay: 10855,
-      text: "Testing 1835?",
-      words: [
-        WordData(text: "Testing", startTime: 4.20, endTime: 6.90),
-        WordData(text: "1835?", startTime: 6.90, endTime: 8.70),
-      ]
+      delay: currentDelay + 100,
+      text: fullText,
+      words: words
     )
-  ),
-]
+  )
+}
+
+/// STRESS TEST: 10 segments with ultra-rapid character-by-character updates
+/// This generates ~500+ mutations in under 5 seconds
+private let testSegmentsData: [TestSegmentData] = {
+  let sentences = [
+    ["The", "quick", "brown", "fox", "jumps", "over", "the", "lazy", "dog"],
+    ["Hello", "world", "this", "is", "a", "test", "of", "rapid", "updates"],
+    ["SharingInstant", "handles", "high", "frequency", "mutations", "well"],
+    ["Real", "time", "transcription", "requires", "millisecond", "precision"],
+    ["Memory", "management", "is", "critical", "for", "mobile", "apps"],
+    ["Optimistic", "updates", "provide", "instant", "user", "feedback"],
+    ["The", "TripleStore", "caches", "entities", "efficiently"],
+    ["Cycle", "detection", "prevents", "infinite", "recursion"],
+    ["Query", "caching", "improves", "performance", "dramatically"],
+    ["Garbage", "collection", "keeps", "memory", "usage", "stable"],
+  ]
+
+  var segments: [TestSegmentData] = []
+  var currentDelay = 0
+
+  for (index, words) in sentences.enumerated() {
+    let segment = generateStressTestSegment(
+      index: index,
+      startDelay: currentDelay,
+      phrases: words
+    )
+    segments.append(segment)
+    // Gap between segments: 200-400ms
+    currentDelay = segment.final.delay + Int.random(in: 200...400)
+  }
+
+  return segments
+}()
 
 // MARK: - Segment Card View
 
@@ -196,17 +234,14 @@ private struct WordRowView: View {
 
 struct RapidTranscriptionDemo: SwiftUICaseStudy {
   let readMe = """
-    This demo simulates rapid real-time speech transcription updates to verify \
-    that SharingInstant handles high-frequency mutations correctly.
+    STRESS TEST: Ultra-rapid character-by-character transcription simulation.
 
-    Real speech transcription emits updates at irregular intervals:
-    • Multiple updates within milliseconds (7-8ms apart)
-    • Longer gaps between words (800-1000ms)
-    • Final segment with word-level timing data
+    This demo generates 10 segments with ~500+ mutations in under 5 seconds:
+    • Character-by-character updates at 1-3ms intervals
+    • 10 complete sentences with 6-9 words each
+    • Tests cycle detection, GC, and query caching under extreme load
 
-    The demo creates multiple segments with rapid text updates, then finalizes \
-    them with word timing data. This tests concurrent field updates (text vs words) \
-    and verifies optimistic updates work correctly under load.
+    Watch memory usage in Debug Navigator - it should stay stable!
     """
   let caseStudyTitle = "Rapid Transcription"
 
