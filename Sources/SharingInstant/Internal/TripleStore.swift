@@ -110,6 +110,23 @@ public final class SharedTripleStore: @unchecked Sendable {
         return inner.get(id: id, attrsStore: attrsStore, includedLinks: includedLinks)
     }
 
+    /// Returns the set of all entity IDs currently in the store.
+    /// Used by TripleStoreGC for orphan detection.
+    public func getAllEntityIds() -> Set<String> {
+        let triples = inner.allTriples()
+        return Set(triples.map { $0.entityId })
+    }
+
+    /// Returns the total number of triples in the store.
+    public func getTripleCount() -> Int {
+        return inner.allTriples().count
+    }
+
+    /// Returns the number of triples for a specific entity.
+    public func getTripleCount(for entityId: String) -> Int {
+        return inner.getTriples(entity: entityId).count
+    }
+
     // MARK: - Observation
 
     @discardableResult

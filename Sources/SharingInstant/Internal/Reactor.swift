@@ -170,9 +170,225 @@ public actor Reactor {
   /// application of the same mutations.
   private var hasRestoredPendingMutations: Bool = false
 
+  // MARK: - Pending Mutation Cache (TypeScript SDK Parity - Priority 5)
+  //
+  // ## Why Cache Pending Mutations?
+  // The TypeScript SDK caches pending mutations in memory (`this.kv.currentValue.pendingMutations`)
+  // and only reads from IndexedDB on startup. This is critical for performance because:
+  // 1. `handleStoreUpdate()` is called on EVERY store change (rapid during transcription)
+  // 2. Each call previously queried SQLite via `client.getUnconfirmedPendingMutations()`
+  // 3. With rapid updates (7-8ms intervals), this caused significant SQLite overhead
+  //
+  // By caching in memory, we:
+  // - Only read from SQLite once on startup (via `loadPendingMutationsIfNeeded()`)
+  // - Read from the fast in-memory cache on subsequent calls
+  //
+  // See: instant-client/src/Reactor.js - _pendingMutations(), kv.currentValue
+
+  /// In-memory cache of pending mutations, keyed by eventId.
+  /// This mirrors TypeScript's `this.kv.currentValue.pendingMutations`.
+  private var cachedPendingMutations: [String: CachedMutation] = [:]
+
+  /// Tracks whether we've loaded pending mutations from SQLite into the cache.
+  private var pendingMutationsLoaded = false
+
+  /// Version counter for pending mutations. Incremented when mutations are added/removed/confirmed.
+  ///
+  /// ## TypeScript SDK Parity
+  /// Matches `kv.version()` in Reactor.js line 1233 (kv stores pendingMutations).
+  /// Used to detect when cached query results are stale due to mutation changes.
+  private var pendingMutationsVersion: Int = 0
+
+  /// Cached Mutation struct for in-memory pending mutation storage.
+  ///
+  /// ## TypeScript SDK Parity
+  /// This mirrors the structure in Reactor.js `_pendingMutations()` which returns
+  /// a Map of eventId to mutation objects containing tx-steps, createdAt, tx-id, confirmed.
+  public struct CachedMutation: Sendable {
+    /// Unique identifier for this mutation (used in the wire protocol)
+    public let eventId: String
+
+    /// The transaction steps to apply.
+    /// Each step is an array like ["add-triple", entityId, attrId, value, ...]
+    public let txSteps: [[AnyCodableValue]]
+
+    /// When this mutation was created locally (Unix timestamp)
+    public let createdAt: TimeInterval
+
+    /// Server-assigned transaction ID (set when server confirms)
+    public var txId: Int?
+
+    /// When the server confirmed this mutation (Unix timestamp)
+    public var confirmedAt: TimeInterval?
+
+    /// Order in which mutations should be applied
+    public let order: Int
+
+    public init(
+      eventId: String,
+      txSteps: [[AnyCodableValue]],
+      createdAt: TimeInterval,
+      txId: Int? = nil,
+      confirmedAt: TimeInterval? = nil,
+      order: Int
+    ) {
+      self.eventId = eventId
+      self.txSteps = txSteps
+      self.createdAt = createdAt
+      self.txId = txId
+      self.confirmedAt = confirmedAt
+      self.order = order
+    }
+  }
+
   public init(store: SharedTripleStore, clientInstanceID: String = "default") {
     self.store = store
     self.clientInstanceID = clientInstanceID
+  }
+
+  // MARK: - Pending Mutation Cache Methods
+
+  /// Loads pending mutations from SQLite into the in-memory cache.
+  /// Only loads once per Reactor lifetime (lazy initialization).
+  ///
+  /// ## TypeScript SDK Parity
+  /// Matches the lazy loading pattern in PersistedObject.ts where kv.currentValue
+  /// is loaded from IndexedDB on first access.
+  ///
+  /// - Parameter client: The InstantClient to load pending mutations from
+  private func loadPendingMutationsIfNeeded(client: InstantClient) async {
+    guard !pendingMutationsLoaded else { return }
+
+    let mutations = await client.getUnconfirmedPendingMutations()
+
+    for mutation in mutations {
+      cachedPendingMutations[mutation.eventId] = CachedMutation(
+        eventId: mutation.eventId,
+        txSteps: mutation.txSteps,
+        createdAt: mutation.createdAt.timeIntervalSince1970,
+        txId: mutation.txId.map { Int($0) },
+        confirmedAt: mutation.confirmedAt?.timeIntervalSince1970,
+        order: mutation.order
+      )
+    }
+
+    pendingMutationsLoaded = true
+
+    reactorDebugLog("loadPendingMutationsIfNeeded: loaded from SQLite", data: [
+      "count": mutations.count,
+      "eventIds": mutations.map { $0.eventId }
+    ])
+  }
+
+  /// Gets all pending mutations from the in-memory cache.
+  /// Loads from SQLite on first access if not already loaded.
+  ///
+  /// ## Performance
+  /// After initial load, this returns immediately from memory with no SQLite overhead.
+  /// This is critical for rapid updates (7-8ms intervals during transcription).
+  ///
+  /// ## TypeScript SDK Parity
+  /// Matches Reactor.js `_pendingMutations()` which returns `this.kv.currentValue.pendingMutations`.
+  ///
+  /// - Parameter client: The InstantClient (needed for initial load)
+  /// - Returns: Array of cached mutations sorted by order
+  public func getPendingMutations(client: InstantClient) async -> [CachedMutation] {
+    await loadPendingMutationsIfNeeded(client: client)
+    return Array(cachedPendingMutations.values).sorted { $0.order < $1.order }
+  }
+
+  /// Gets pending mutations that have not been confirmed by the server.
+  ///
+  /// ## TypeScript SDK Parity
+  /// In TypeScript, unconfirmed mutations are those where `tx-id` is not set.
+  /// These are the mutations that should be applied as optimistic updates.
+  ///
+  /// - Parameter client: The InstantClient (needed for initial load)
+  /// - Returns: Array of unconfirmed cached mutations sorted by order
+  public func getUnconfirmedCachedPendingMutations(client: InstantClient) async -> [CachedMutation] {
+    await loadPendingMutationsIfNeeded(client: client)
+    return Array(cachedPendingMutations.values)
+      .filter { $0.txId == nil && $0.confirmedAt == nil }
+      .sorted { $0.order < $1.order }
+  }
+
+  /// Adds a pending mutation to the cache.
+  ///
+  /// ## TypeScript SDK Parity
+  /// Matches the pattern in Reactor.js where mutations are added to the in-memory
+  /// pendingMutations map and then persisted via PersistedObject's throttled write.
+  ///
+  /// - Parameter mutation: The mutation to add
+  public func addPendingMutation(_ mutation: CachedMutation) {
+    cachedPendingMutations[mutation.eventId] = mutation
+    pendingMutationsVersion += 1
+
+    reactorDebugLog("addPendingMutation: added to cache", data: [
+      "eventId": mutation.eventId,
+      "cacheSize": cachedPendingMutations.count
+    ])
+  }
+
+  /// Confirms a pending mutation (called when server acknowledges).
+  /// Updates the cache and increments the version.
+  ///
+  /// ## TypeScript SDK Parity
+  /// Matches Reactor.js handleReceive for "transact-ok" messages which set
+  /// `tx-id` and `confirmed` timestamp on the mutation.
+  ///
+  /// - Parameters:
+  ///   - eventId: The mutation's event ID
+  ///   - txId: The server-assigned transaction ID
+  public func confirmPendingMutation(eventId: String, txId: Int) {
+    guard var mutation = cachedPendingMutations[eventId] else {
+      reactorDebugLog("confirmPendingMutation: mutation not found", data: [
+        "eventId": eventId
+      ])
+      return
+    }
+
+    mutation.txId = txId
+    mutation.confirmedAt = Date().timeIntervalSince1970
+    cachedPendingMutations[eventId] = mutation
+    pendingMutationsVersion += 1
+
+    reactorDebugLog("confirmPendingMutation: confirmed", data: [
+      "eventId": eventId,
+      "txId": txId
+    ])
+  }
+
+  /// Removes a pending mutation from the cache.
+  /// Called after cleanup (mutation confirmed and processed by all queries).
+  ///
+  /// ## TypeScript SDK Parity
+  /// Matches the cleanup in Reactor.js `_cleanupPendingMutationsQueries()` and
+  /// `_cleanupPendingMutationsTimeout()`.
+  ///
+  /// - Parameter eventId: The mutation's event ID
+  public func removePendingMutation(eventId: String) {
+    guard cachedPendingMutations.removeValue(forKey: eventId) != nil else {
+      return
+    }
+    pendingMutationsVersion += 1
+
+    reactorDebugLog("removePendingMutation: removed from cache", data: [
+      "eventId": eventId,
+      "remainingCount": cachedPendingMutations.count
+    ])
+  }
+
+  /// Clears all pending mutations from the cache.
+  /// Useful when user signs out or for testing.
+  public func clearPendingMutationsCache() {
+    cachedPendingMutations.removeAll()
+    pendingMutationsLoaded = false
+    pendingMutationsVersion += 1
+  }
+
+  /// Gets current pending mutations version (for cache validation).
+  public func getPendingMutationsVersion() -> Int {
+    return pendingMutationsVersion
   }
 
   // MARK: - Pending Mutation Restoration
